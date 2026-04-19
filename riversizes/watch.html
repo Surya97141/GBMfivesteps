@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch — River Sizes</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --text: #f0ede6;
+    --muted: #666;
+    --accent: #c8f060;
+    --river: #3b82f6;
+    --visited-land: #2a2a2a;
+    --visited-river: #1e3a5f;
+    --active: #f59e0b;
+    --river-glow: rgba(59,130,246,0.4);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  .mode-badge {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 2px;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .nav-tab {
+    padding: 4px 14px;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    border-right: 1px solid var(--border);
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .nav-tab:last-child { border-right: none; }
+  .nav-tab.active { background: var(--accent); color: #0d0d0d; }
+  .nav-tab:hover:not(.active) { background: var(--surface); color: var(--text); }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .left-panel {
+    padding: 3rem 3rem 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .stage-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .narrator-text {
+    font-family: 'Fraunces', serif;
+    font-size: 2rem;
+    font-weight: 300;
+    line-height: 1.4;
+    color: var(--text);
+    min-height: 12rem;
+    transition: opacity 0.3s;
+  }
+
+  .narrator-text .highlight {
+    color: var(--accent);
+    font-style: italic;
+  }
+
+  .concept-tag {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    background: rgba(200,240,96,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(200,240,96,0.3);
+    padding: 3px 10px;
+    border-radius: 2px;
+    margin-top: 1.5rem;
+  }
+
+  .teacher-quote {
+    margin-top: 2rem;
+    padding: 1rem 1.25rem;
+    border-left: 2px solid var(--accent);
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-style: italic;
+    line-height: 1.6;
+    min-height: 4rem;
+    transition: opacity 0.4s;
+  }
+
+  .teacher-quote span { color: var(--text); }
+
+  .progress-bar {
+    margin-top: 2rem;
+    height: 2px;
+    background: var(--border);
+    border-radius: 1px;
+    position: relative;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 1px;
+    transition: width 0.5s ease;
+    width: 0%;
+  }
+
+  .step-counter {
+    font-size: 0.6rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    letter-spacing: 0.1em;
+  }
+
+  .right-panel {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+  }
+
+  .grid-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .grid-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    align-self: flex-start;
+  }
+
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 52px);
+    gap: 4px;
+  }
+
+  .cell {
+    width: 52px;
+    height: 52px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 500;
+    border-radius: 3px;
+    transition: all 0.35s ease;
+    position: relative;
+    cursor: default;
+  }
+
+  .cell.land { color: var(--muted); background: var(--surface); }
+  .cell.river { color: #93c5fd; background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.3); }
+  .cell.visited-land { color: #444; background: #111; border-color: #1f1f1f; }
+  .cell.visited-river { color: var(--river); background: rgba(59,130,246,0.18); border-color: var(--river); box-shadow: 0 0 12px var(--river-glow); }
+  .cell.active-cell { color: var(--active); background: rgba(245,158,11,0.15); border-color: var(--active); box-shadow: 0 0 16px rgba(245,158,11,0.4); transform: scale(1.08); z-index: 2; }
+  .cell.river-complete { background: rgba(59,130,246,0.25); border-color: #60a5fa; color: #bfdbfe; }
+
+  .cell-coord {
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    font-size: 0.45rem;
+    color: #333;
+    line-height: 1;
+  }
+
+  .visited-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 44px);
+    gap: 3px;
+  }
+
+  .v-cell {
+    width: 44px;
+    height: 28px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    border-radius: 2px;
+    transition: all 0.35s ease;
+    color: var(--muted);
+    background: var(--surface);
+  }
+
+  .v-cell.true { color: var(--accent); background: rgba(200,240,96,0.08); border-color: rgba(200,240,96,0.3); }
+
+  .stack-section {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .stack-header {
+    padding: 0.5rem 0.75rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .stack-tag { color: var(--accent); }
+
+  .stack-body {
+    padding: 0.5rem;
+    min-height: 60px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: flex-start;
+    align-content: flex-start;
+  }
+
+  .stack-item {
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.4);
+    border-radius: 2px;
+    padding: 3px 8px;
+    font-size: 0.7rem;
+    color: #93c5fd;
+    animation: stackIn 0.2s ease;
+  }
+
+  @keyframes stackIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .river-sizes-display {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .size-pill {
+    padding: 4px 12px;
+    border-radius: 2px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    animation: popIn 0.3s ease;
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.7); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  footer {
+    padding: 1rem 2rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    padding: 8px 18px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .btn:hover { background: var(--surface); border-color: #444; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0d0d0d;
+    border-color: var(--accent);
+    font-weight: 500;
+  }
+
+  .btn-primary:hover { opacity: 0.85; }
+
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  .speed-control input { width: 80px; accent-color: var(--accent); }
+
+  .river-legend {
+    display: flex;
+    gap: 12px;
+    font-size: 0.65rem;
+    color: var(--muted);
+    align-items: center;
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+  }
+
+  .sizes-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sizes-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .fade { opacity: 0.3; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">algo.learn</div>
+  <nav class="nav-tabs">
+    <a href="watch.html" class="nav-tab active">01 Watch</a>
+    <a href="guide.html" class="nav-tab">02 Guide</a>
+    <a href="solo.html" class="nav-tab">03 Solo</a>
+  </nav>
+  <div class="mode-badge">River Sizes</div>
+</header>
+
+<main>
+  <div class="left-panel">
+    <div>
+      <div class="stage-label" id="stageLabel">Stage 1 of 8 — Problem Setup</div>
+      <div class="narrator-text" id="narratorText">
+        A matrix of <span class="highlight">zeros and ones.</span><br>
+        Every one is part of a river.<br>
+        Rivers connect <span class="highlight">horizontally or vertically.</span>
+      </div>
+      <div class="concept-tag" id="conceptTag">KEY CONCEPT: Problem Definition</div>
+      <div class="teacher-quote" id="teacherQuote">
+        <span>"A river basically consists of a bunch of ones that are adjacent, right next to each other, either horizontally or vertically."</span>
+      </div>
+    </div>
+    <div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="step-counter" id="stepCounter">Step 1 / 8</div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="grid-section">
+      <div class="grid-label">Input Matrix</div>
+      <div class="matrix-grid" id="mainGrid"></div>
+    </div>
+
+    <div class="sizes-row">
+      <div class="sizes-label">Rivers found:</div>
+      <div class="river-sizes-display" id="riverSizes"></div>
+    </div>
+
+    <div class="grid-section">
+      <div class="grid-label">Visited Matrix (boolean)</div>
+      <div class="visited-grid" id="visitedGrid"></div>
+    </div>
+
+    <div class="stack-section">
+      <div class="stack-header">
+        <span>Nodes to Explore <span class="stack-tag">(DFS Stack)</span></span>
+        <span id="stackCount">0 items</span>
+      </div>
+      <div class="stack-body" id="stackBody"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="controls">
+    <button class="btn" id="prevBtn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-primary" id="nextBtn" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+  </div>
+  <div class="speed-control">
+    <span>Auto speed:</span>
+    <input type="range" id="speedSlider" min="500" max="3000" value="1500" step="100">
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">Auto Play</button>
+  </div>
+  <div class="river-legend">
+    <span><span class="legend-dot" style="background:#3b82f6"></span>River</span>
+    <span><span class="legend-dot" style="background:#f59e0b"></span>Active</span>
+    <span><span class="legend-dot" style="background:#c8f060"></span>Complete</span>
+  </div>
+</footer>
+
+<script>
+const MATRIX = [
+  [1,0,0,1,0],
+  [1,0,1,0,0],
+  [0,0,1,0,1],
+  [1,0,1,0,1],
+  [1,0,1,1,0]
+];
+
+const RIVER_COLORS = ['#3b82f6','#a78bfa','#34d399','#f472b6','#fb923c'];
+
+const STEPS = [
+  {
+    stage: "Stage 1 of 8 — Problem Setup",
+    narrator: `A matrix of <span class="highlight">zeros and ones.</span><br>Every one is part of a river.<br>Rivers connect <span class="highlight">horizontally or vertically.</span>`,
+    concept: "KEY CONCEPT: Problem Definition",
+    quote: `"A river basically consists of a bunch of ones that are adjacent, right next to each other, either horizontally or vertically."`,
+    activeCells: [],
+    visitedCells: [],
+    stack: [],
+    rivers: [],
+    highlight: 'none'
+  },
+  {
+    stage: "Stage 2 of 8 — Identify the Rivers",
+    narrator: `There are exactly <span class="highlight">5 rivers</span> in this matrix.<br>Sizes: 1, 2, 2, 2, and 5.<br>Diagonal adjacency <span class="highlight">does not count.</span>`,
+    concept: "KEY CONCEPT: River Identity",
+    quote: `"Even though it's adjacent diagonally to another one, that doesn't mean that it's part of a greater river."`,
+    activeCells: [[0,0],[1,0],[0,3],[2,4],[3,4]],
+    visitedCells: [],
+    stack: [],
+    rivers: [],
+    highlight: 'rivers'
+  },
+  {
+    stage: "Stage 3 of 8 — Treat It as a Graph",
+    narrator: `Every cell is a <span class="highlight">node.</span><br>Each node has up to <span class="highlight">4 neighbors.</span><br>This turns our matrix into a graph.`,
+    concept: "KEY CONCEPT: Graph Reframe",
+    quote: `"If you treat this matrix as a graph, you can treat every element in this matrix as a node in the graph where each node has a value."`,
+    activeCells: [[2,2]],
+    visitedCells: [],
+    stack: ['[1,2]','[3,2]','[2,1]','[2,3]'],
+    rivers: [],
+    highlight: 'neighbors'
+  },
+  {
+    stage: "Stage 4 of 8 — DFS Begins",
+    narrator: `We traverse <span class="highlight">row by row.</span><br>Hit a 1? Start DFS.<br>Hit a 0? <span class="highlight">Stop. Don't explore.</span>`,
+    concept: "KEY CONCEPT: DFS Trigger",
+    quote: `"Whenever you encounter a node that has a value one and that is therefore part of a river, you can start applying DFS."`,
+    activeCells: [[0,0]],
+    visitedCells: [[0,0]],
+    stack: ['[0,0]'],
+    rivers: [],
+    highlight: 'dfs-start'
+  },
+  {
+    stage: "Stage 5 of 8 — The Visited Matrix",
+    narrator: `Mark every node we visit.<br>If <span class="highlight">already visited</span> — skip it.<br>This prevents double-counting.`,
+    concept: "KEY CONCEPT: Visited Tracking",
+    quote: `"We're just gonna keep track of all of the nodes that we visited. And if we ever encounter a node that we've already visited, we just skip it."`,
+    activeCells: [[1,0]],
+    visitedCells: [[0,0],[1,0]],
+    stack: ['[1,0]'],
+    rivers: [],
+    highlight: 'visited'
+  },
+  {
+    stage: "Stage 6 of 8 — First River Found",
+    narrator: `River of size <span class="highlight">2 complete.</span><br>Both cells visited and counted.<br>Add 2 to our <span class="highlight">sizes array.</span>`,
+    concept: "KEY CONCEPT: River Complete",
+    quote: `"We finished exploring our river. We've encountered only zeroes as the last sort of neighbouring nodes. So we can grab our current size."`,
+    activeCells: [],
+    visitedCells: [[0,0],[1,0],[0,1],[1,1],[0,2],[0,3]],
+    stack: [],
+    rivers: [2],
+    riverCells: [[0,0],[1,0]],
+    highlight: 'complete'
+  },
+  {
+    stage: "Stage 7 of 8 — The Big River (size 5)",
+    narrator: `The river of <span class="highlight">size 5</span> spans both<br>horizontally and vertically.<br>DFS traces the entire path.`,
+    concept: "KEY CONCEPT: Complex Traversal",
+    quote: `"You've encountered five ones and you've kind of kept track of them by incrementing some kind of variable."`,
+    activeCells: [],
+    visitedCells: [[0,0],[1,0],[0,1],[1,1],[0,2],[0,3],[1,2],[2,2],[3,2],[4,2],[4,3]],
+    stack: [],
+    rivers: [2,1,5],
+    riverCells: [[1,2],[2,2],[3,2],[4,2],[4,3]],
+    highlight: 'big-river'
+  },
+  {
+    stage: "Stage 8 of 8 — Complexity",
+    narrator: `Time: <span class="highlight">O(w × h)</span><br>Space: <span class="highlight">O(w × h)</span><br>Every node visited exactly once.`,
+    concept: "KEY CONCEPT: Time & Space Complexity",
+    quote: `"The time complexity is going to be O of w times h, where w is the width of the matrix and h is the height."`,
+    activeCells: [],
+    visitedCells: 'all',
+    stack: [],
+    rivers: [2,1,5,2,2],
+    highlight: 'complexity'
+  }
+];
+
+let currentStep = 0;
+let autoTimer = null;
+let visited = Array.from({length:5}, () => Array(5).fill(false));
+
+function buildGrids() {
+  const mg = document.getElementById('mainGrid');
+  const vg = document.getElementById('visitedGrid');
+  mg.innerHTML = ''; vg.innerHTML = '';
+  for (let r=0; r<5; r++) {
+    for (let c=0; c<5; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + (MATRIX[r][c] === 1 ? 'river' : 'land');
+      cell.id = `cell-${r}-${c}`;
+      cell.innerHTML = `${MATRIX[r][c]}<span class="cell-coord">${r},${c}</span>`;
+      mg.appendChild(cell);
+
+      const vc = document.createElement('div');
+      vc.className = 'v-cell';
+      vc.id = `vcell-${r}-${c}`;
+      vc.textContent = 'F';
+      vg.appendChild(vc);
+    }
+  }
+}
+
+function applyStep(step) {
+  for (let r=0; r<5; r++) {
+    for (let c=0; c<5; c++) {
+      const cell = document.getElementById(`cell-${r}-${c}`);
+      const vc = document.getElementById(`vcell-${r}-${c}`);
+      cell.className = 'cell ' + (MATRIX[r][c] === 1 ? 'river' : 'land');
+      vc.className = 'v-cell';
+      vc.textContent = 'F';
+    }
+  }
+
+  const visitedSet = step.visitedCells === 'all'
+    ? Array.from({length:5}, (_,r) => Array.from({length:5}, (_,c) => [r,c])).flat()
+    : (step.visitedCells || []);
+
+  visitedSet.forEach(([r,c]) => {
+    const cell = document.getElementById(`cell-${r}-${c}`);
+    const vc = document.getElementById(`vcell-${r}-${c}`);
+    if (MATRIX[r][c] === 1) cell.className = 'cell visited-river';
+    else cell.className = 'cell visited-land';
+    vc.className = 'v-cell true';
+    vc.textContent = 'T';
+  });
+
+  (step.riverCells || []).forEach(([r,c]) => {
+    const cell = document.getElementById(`cell-${r}-${c}`);
+    cell.className = 'cell river-complete';
+  });
+
+  (step.activeCells || []).forEach(([r,c]) => {
+    const cell = document.getElementById(`cell-${r}-${c}`);
+    cell.className = 'cell active-cell';
+  });
+
+  const stackBody = document.getElementById('stackBody');
+  stackBody.innerHTML = '';
+  (step.stack || []).forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'stack-item';
+    el.textContent = s;
+    stackBody.appendChild(el);
+  });
+  document.getElementById('stackCount').textContent = (step.stack||[]).length + ' items';
+
+  const riverSizes = document.getElementById('riverSizes');
+  riverSizes.innerHTML = '';
+  (step.rivers || []).forEach((size, i) => {
+    const pill = document.createElement('div');
+    pill.className = 'size-pill';
+    pill.style.background = RIVER_COLORS[i % RIVER_COLORS.length] + '22';
+    pill.style.border = `1px solid ${RIVER_COLORS[i % RIVER_COLORS.length]}66`;
+    pill.style.color = RIVER_COLORS[i % RIVER_COLORS.length];
+    pill.textContent = size;
+    riverSizes.appendChild(pill);
+  });
+
+  document.getElementById('stageLabel').textContent = step.stage;
+  document.getElementById('narratorText').innerHTML = step.narrator;
+  document.getElementById('conceptTag').textContent = step.concept;
+  document.getElementById('teacherQuote').innerHTML = `<span>${step.quote}</span>`;
+  document.getElementById('progressFill').style.width = ((currentStep+1)/STEPS.length*100) + '%';
+  document.getElementById('stepCounter').textContent = `Step ${currentStep+1} / ${STEPS.length}`;
+  document.getElementById('prevBtn').disabled = currentStep === 0;
+  document.getElementById('nextBtn').disabled = currentStep === STEPS.length - 1;
+}
+
+function nextStep() {
+  if (currentStep < STEPS.length - 1) {
+    currentStep++;
+    applyStep(STEPS[currentStep]);
+  }
+}
+
+function prevStep() {
+  if (currentStep > 0) {
+    currentStep--;
+    applyStep(STEPS[currentStep]);
+  }
+}
+
+function resetAll() {
+  currentStep = 0;
+  applyStep(STEPS[0]);
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; document.getElementById('autoBtn').textContent = 'Auto Play'; }
+}
+
+function toggleAuto() {
+  if (autoTimer) {
+    clearInterval(autoTimer);
+    autoTimer = null;
+    document.getElementById('autoBtn').textContent = 'Auto Play';
+  } else {
+    const speed = parseInt(document.getElementById('speedSlider').value);
+    document.getElementById('autoBtn').textContent = 'Stop';
+    autoTimer = setInterval(() => {
+      if (currentStep < STEPS.length - 1) nextStep();
+      else { clearInterval(autoTimer); autoTimer = null; document.getElementById('autoBtn').textContent = 'Auto Play'; }
+    }, speed);
+  }
+}
+
+buildGrids();
+applyStep(STEPS[0]);
+</script>
+</body>
+</html>

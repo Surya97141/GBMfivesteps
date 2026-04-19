@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch — Minimum Passes</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f5f2eb;
+  --surface:#ffffff;
+  --surface2:#f0ede6;
+  --border:#e0dbd0;
+  --border2:#c8c0b0;
+  --text:#1a1814;
+  --muted:#8a8278;
+  --accent:#e63d00;
+  --accent2:#ff5522;
+  --pos:#1a6b3c;
+  --pos-bg:#e8f5ee;
+  --pos-border:#6dbf8a;
+  --neg:#c0392b;
+  --neg-bg:#fdecea;
+  --neg-border:#e87b72;
+  --zero:#5a7a8a;
+  --zero-bg:#eaf2f5;
+  --zero-border:#8ab4c4;
+  --flipped:#e67e00;
+  --flipped-bg:#fff3e0;
+  --flipped-border:#ffab40;
+  --queue-a:#7b3fc4;
+  --queue-b:#1a6b3c;
+}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;height:100vh;display:grid;grid-template-rows:56px 1fr 56px;overflow:hidden;}
+
+header{padding:0 2rem;border-bottom:2px solid var(--text);display:flex;align-items:center;justify-content:space-between;background:var(--text);}
+.logo{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:#f5f2eb;letter-spacing:.08em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 14px;font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5);text-decoration:none;border-right:1px solid rgba(255,255,255,.15);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}
+.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+
+main{display:grid;grid-template-columns:1fr 440px;overflow:hidden;}
+
+.left-panel{padding:2.5rem 3rem;display:flex;flex-direction:column;justify-content:space-between;border-right:2px solid var(--border2);overflow:hidden;}
+.stage-tag{font-size:.58rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;}
+.narrator{font-family:'Syne',sans-serif;font-size:1.9rem;font-weight:400;line-height:1.35;color:var(--text);min-height:11rem;}
+.narrator .hl{color:var(--accent);font-weight:700;}
+.narrator .pos{color:var(--pos);}
+.narrator .neg{color:var(--neg);}
+.concept{display:inline-block;margin-top:1.25rem;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;background:var(--text);color:#f5f2eb;padding:4px 12px;border-radius:1px;}
+.quote{margin-top:1.5rem;padding:.9rem 1.1rem;border-left:3px solid var(--accent);font-size:.75rem;color:var(--muted);font-style:italic;line-height:1.6;min-height:3.5rem;}
+.quote span{color:var(--text);}
+.progress-wrap{margin-top:2rem;}
+.progress-bar{height:3px;background:var(--border);position:relative;}
+.progress-fill{height:100%;background:var(--accent);transition:width .5s ease;}
+.progress-label{font-size:.58rem;color:var(--muted);margin-top:.4rem;letter-spacing:.1em;}
+
+.right-panel{padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.55rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+
+.matrix-grid{display:grid;grid-template-columns:repeat(5,58px);gap:5px;align-self:center;justify-self:center;}
+.cell{width:58px;height:58px;border:2px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;transition:all .35s ease;position:relative;font-family:'Syne',sans-serif;}
+.cell-val{font-size:1.1rem;font-weight:700;line-height:1;}
+.cell-coord{font-size:.42rem;color:var(--muted);margin-top:2px;font-family:'IBM Plex Mono',monospace;}
+.cell.pos{background:var(--pos-bg);border-color:var(--pos-border);color:var(--pos);}
+.cell.neg{background:var(--neg-bg);border-color:var(--neg-border);color:var(--neg);}
+.cell.zero{background:var(--zero-bg);border-color:var(--zero-border);color:var(--zero);}
+.cell.flipped{background:var(--flipped-bg);border-color:var(--flipped-border);color:var(--flipped);animation:flipPulse .5s ease;}
+.cell.in-queue{box-shadow:0 0 0 3px var(--queue-a);animation:queuePulse 1s ease infinite;}
+.cell.in-next-queue{box-shadow:0 0 0 3px var(--queue-b);}
+@keyframes flipPulse{0%{transform:scale(1.15);}100%{transform:scale(1);}}
+@keyframes queuePulse{0%,100%{box-shadow:0 0 0 3px var(--queue-a);}50%{box-shadow:0 0 0 5px var(--queue-a);}}
+
+.pass-counter{display:flex;align-items:center;gap:1rem;}
+.pass-num{font-family:'Syne',sans-serif;font-size:2.5rem;font-weight:700;color:var(--accent);line-height:1;}
+.pass-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
+
+.queue-display{display:flex;flex-direction:column;gap:.5rem;}
+.queue-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;}
+.queue-label{font-size:.6rem;color:var(--muted);min-width:80px;text-transform:uppercase;letter-spacing:.1em;}
+.queue-item{padding:3px 8px;border-radius:2px;font-size:.68rem;font-weight:500;animation:qIn .2s ease;}
+@keyframes qIn{from{opacity:0;transform:scale(.8);}to{opacity:1;transform:scale(1);}}
+.queue-item.current{background:rgba(123,63,196,.12);border:1px solid rgba(123,63,196,.4);color:var(--queue-a);}
+.queue-item.next{background:rgba(26,107,60,.12);border:1px solid rgba(26,107,60,.4);color:var(--queue-b);}
+
+.stats-row{display:flex;gap:.75rem;}
+.stat-card{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:.65rem .75rem;}
+.stat-val{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;line-height:1;}
+.stat-key{font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}
+.stat-val.pos{color:var(--pos);}
+.stat-val.neg{color:var(--neg);}
+.stat-val.accent{color:var(--accent);}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--text);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--text);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-accent:hover{background:var(--accent2);border-color:var(--accent2);}
+.speed-wrap{display:flex;align-items:center;gap:.75rem;font-size:.62rem;color:var(--muted);}
+.speed-wrap input{accent-color:var(--accent);width:80px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">ALGO · LEARN</div>
+  <nav class="nav-tabs">
+    <a href="mp_watch.html" class="nav-tab active">01 Watch</a>
+    <a href="mp_guide.html" class="nav-tab">02 Guide</a>
+    <a href="mp_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="mp_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="mp_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="mp_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Minimum Passes · Watch</div>
+</header>
+
+<main>
+  <div class="left-panel">
+    <div>
+      <div class="stage-tag" id="stageTag">Stage 1 of 9 — Problem</div>
+      <div class="narrator" id="narrator">A matrix of integers.<br><span class="pos">Positives</span> can flip <span class="neg">negatives</span><br>that touch them — left, right, up, down.</div>
+      <div class="concept" id="concept">KEY CONCEPT: Problem Definition</div>
+      <div class="quote" id="quote"><span>"You can convert a negative value to a positive value if any of its adjacent elements are positive values."</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Step 1 / 9</div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Matrix</div>
+    <div class="matrix-grid" id="mainGrid"></div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val accent" id="statPasses">0</div><div class="stat-key">Passes</div></div>
+      <div class="stat-card"><div class="stat-val pos" id="statPos">3</div><div class="stat-key">Positives</div></div>
+      <div class="stat-card"><div class="stat-val neg" id="statNeg">9</div><div class="stat-key">Negatives</div></div>
+    </div>
+
+    <div class="panel-label">BFS Queues</div>
+    <div class="queue-display">
+      <div class="queue-row">
+        <span class="queue-label">Current →</span>
+        <div id="qCurrent" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+      </div>
+      <div class="queue-row">
+        <span class="queue-label">Next →</span>
+        <div id="qNext" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+  </div>
+  <div class="speed-wrap">
+    Auto speed: <input type="range" id="speedSlider" min="600" max="3000" value="1600" step="100">
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">Auto Play</button>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    <a href="mp_guide.html" class="btn btn-accent">Guide →</a>
+  </div>
+</footer>
+
+<script>
+// The matrix from the transcript
+const MATRIX_INIT = [
+  [ 0,-1,-3, 2, 0],
+  [ 1,-2,-1,-3,-4],
+  [ 3, 0, 1,-1,-2],
+  [ 0,-4, 0, 0,-3]
+];
+
+const STAGES = [
+  {
+    tag:'Stage 1 of 9 — Problem',
+    narrator:'A matrix of integers.<br><span class="pos">Positives</span> can flip <span class="neg">negatives</span><br>that touch them — left, right, up, down.',
+    concept:'KEY CONCEPT: Problem Definition',
+    quote:'"You can convert a negative value to a positive value if any of its adjacent elements are positive values."',
+    matrix: null, passes:0, qCur:[], qNext:[], highlight:[]
+  },
+  {
+    tag:'Stage 2 of 9 — Zero is Neutral',
+    narrator:'<span class="hl">Zero</span> is neither positive nor negative.<br>It never flips. It never helps flip.<br>Just a neutral bystander.',
+    concept:'KEY CONCEPT: Zero is neutral',
+    quote:'"It\'s very important that you understand — zero is not a positive or negative value. We can think of it just as some neutral value."',
+    matrix:null, passes:0, qCur:[], qNext:[], highlight:[]
+  },
+  {
+    tag:'Stage 3 of 9 — Find All Positives',
+    narrator:'First: scan the entire matrix.<br>Collect all <span class="pos">positive positions</span><br>into the <span class="hl">current queue</span>.',
+    concept:'KEY CONCEPT: BFS Initialization',
+    quote:'"We\'re gonna start our algorithm by looking through every element in the matrix and adding all of the positive values to the queue."',
+    matrix:null, passes:0,
+    qCur:[[0,3],[1,0],[2,0],[2,2]], qNext:[],
+    highlight:[[0,3],[1,0],[2,0],[2,2]]
+  },
+  {
+    tag:'Stage 4 of 9 — Pass 1 Begins',
+    narrator:'Process each positive from the queue.<br>Any <span class="neg">negative neighbor</span>?<br><span class="hl">Flip it.</span> Add to next queue.',
+    concept:'KEY CONCEPT: BFS Pass Execution',
+    quote:'"We start by looking at this element. We pop it off of the queue. We have neighbors — two of these neighbors are negative. We flip them and add to next queue."',
+    matrix:[
+      [ 0,-1, 3, 2, 0],
+      [ 1,-2,-1, 3,-4],
+      [ 3, 0, 1,-1,-2],
+      [ 0,-4, 0, 0,-3]
+    ], passes:0,
+    qCur:[], qNext:[[0,2],[1,3],[1,1]],
+    highlight:[[0,2],[1,3],[1,1]]
+  },
+  {
+    tag:'Stage 5 of 9 — Pass 1 Complete',
+    narrator:'Pass 1 done.<br>Flipped <span class="hl">3 cells</span> to positive.<br>Swap queues. Increment passes.',
+    concept:'KEY CONCEPT: Queue Swap',
+    quote:'"We\'ve finished processing the current queue. So we indicate passes equals one and swap the queues. The next queue becomes the current queue."',
+    matrix:[
+      [ 0,-1, 3, 2, 0],
+      [ 1, 2,-1, 3,-4],
+      [ 3, 0, 1,-1,-2],
+      [ 0,-4, 0, 0,-3]
+    ], passes:1,
+    qCur:[[0,2],[1,3],[1,1]], qNext:[],
+    highlight:[]
+  },
+  {
+    tag:'Stage 6 of 9 — Pass 2 Flips',
+    narrator:'New positives spread the <span class="hl">wave further</span>.<br>4 more negatives flipped.<br>The infection keeps spreading.',
+    concept:'KEY CONCEPT: Wave Propagation',
+    quote:'"We have some new positive values — this allows us to actually convert some new elements."',
+    matrix:[
+      [ 0, 1, 3, 2, 0],
+      [ 1, 2, 5, 3, 3],
+      [ 3, 0, 1,-1,-2],
+      [ 0, 4, 0, 0,-3]
+    ], passes:2,
+    qCur:[[0,1],[1,2],[1,4],[3,1]], qNext:[],
+    highlight:[[0,1],[1,2],[1,4],[3,1]]
+  },
+  {
+    tag:'Stage 7 of 9 — Pass 3 Final Flip',
+    narrator:'Only <span class="neg">one negative</span> remains.<br>Pass 3 reaches it.<br>Last flip. Matrix complete.',
+    concept:'KEY CONCEPT: Termination',
+    quote:'"Now there\'s only one negative value left. We can convert this to a positive and that means it took us three passes."',
+    matrix:[
+      [ 0, 1, 3, 2, 0],
+      [ 1, 2, 5, 3, 3],
+      [ 3, 0, 1, 1, 2],
+      [ 0, 4, 0, 0, 3]
+    ], passes:3,
+    qCur:[], qNext:[],
+    highlight:[[2,3],[2,4],[3,4]]
+  },
+  {
+    tag:'Stage 8 of 9 — The Off-By-One',
+    narrator:'We counted <span class="hl">4 passes</span> internally.<br>But the last pass just empties the queue.<br>Return <span class="hl">passes − 1 = 3</span>.',
+    concept:'KEY CONCEPT: passes − 1',
+    quote:'"The reason to return passes minus one is because the last pass is always going to be just removing all of the positive values from the next queue."',
+    matrix:[
+      [ 0, 1, 3, 2, 0],
+      [ 1, 2, 5, 3, 3],
+      [ 3, 0, 1, 1, 2],
+      [ 0, 4, 0, 0, 3]
+    ], passes:4,
+    qCur:[], qNext:[],
+    highlight:[]
+  },
+  {
+    tag:'Stage 9 of 9 — Complexity',
+    narrator:'Time: <span class="hl">O(w × h)</span><br>Space: <span class="hl">O(w × h)</span><br>Every cell processed at most once.',
+    concept:'KEY CONCEPT: Time & Space Complexity',
+    quote:'"We will only ever process the same element one time. Once it\'s removed from the queue it will never be added back."',
+    matrix:[
+      [ 0, 1, 3, 2, 0],
+      [ 1, 2, 5, 3, 3],
+      [ 3, 0, 1, 1, 2],
+      [ 0, 4, 0, 0, 3]
+    ], passes:3,
+    qCur:[], qNext:[],
+    highlight:[]
+  }
+];
+
+let cur = 0;
+let autoTimer = null;
+
+function cellClass(val) {
+  if (val > 0) return 'pos';
+  if (val < 0) return 'neg';
+  return 'zero';
+}
+
+function buildGrid(matrix, highlight, qCur, qNext) {
+  const mg = document.getElementById('mainGrid');
+  const mat = matrix || MATRIX_INIT;
+  mg.innerHTML = '';
+  const qCurSet = new Set((qCur||[]).map(([r,c])=>`${r},${c}`));
+  const qNextSet = new Set((qNext||[]).map(([r,c])=>`${r},${c}`));
+  const hlSet = new Set((highlight||[]).map(([r,c])=>`${r},${c}`));
+  for (let r=0;r<mat.length;r++) {
+    for (let c=0;c<mat[r].length;c++) {
+      const val = mat[r][c];
+      const el = document.createElement('div');
+      const key = `${r},${c}`;
+      let cls = 'cell ' + cellClass(val);
+      if (hlSet.has(key)) cls += ' flipped';
+      if (qCurSet.has(key)) cls += ' in-queue';
+      if (qNextSet.has(key)) cls += ' in-next-queue';
+      el.className = cls;
+      el.innerHTML = `<span class="cell-val">${val}</span><span class="cell-coord">${r},${c}</span>`;
+      mg.appendChild(el);
+    }
+  }
+}
+
+function renderQueue(id, items, type) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  if (!items || items.length === 0) {
+    el.innerHTML = '<span style="font-size:.62rem;color:var(--muted);">empty</span>';
+    return;
+  }
+  items.forEach(([r,c]) => {
+    const d = document.createElement('div');
+    d.className = `queue-item ${type}`;
+    d.textContent = `[${r},${c}]`;
+    el.appendChild(d);
+  });
+}
+
+function countCells(matrix) {
+  const mat = matrix || MATRIX_INIT;
+  let pos=0, neg=0;
+  mat.flat().forEach(v => { if(v>0)pos++; else if(v<0)neg++; });
+  return {pos, neg};
+}
+
+function applyStage(s) {
+  document.getElementById('stageTag').textContent = s.tag;
+  document.getElementById('narrator').innerHTML = s.narrator;
+  document.getElementById('concept').textContent = s.concept;
+  document.getElementById('quote').innerHTML = `<span>${s.quote}</span>`;
+  buildGrid(s.matrix, s.highlight, s.qCur, s.qNext);
+  renderQueue('qCurrent', s.qCur, 'current');
+  renderQueue('qNext', s.qNext, 'next');
+  const {pos,neg} = countCells(s.matrix);
+  document.getElementById('statPasses').textContent = s.passes;
+  document.getElementById('statPos').textContent = pos;
+  document.getElementById('statNeg').textContent = neg;
+  const pct = ((cur+1)/STAGES.length*100).toFixed(0);
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('progressLabel').textContent = `Step ${cur+1} / ${STAGES.length}`;
+}
+
+function nextStep(){ if(cur<STAGES.length-1){cur++;applyStage(STAGES[cur]);} }
+function prevStep(){ if(cur>0){cur--;applyStage(STAGES[cur]);} }
+function resetAll(){
+  cur=0;applyStage(STAGES[0]);
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+  else{
+    const spd=parseInt(document.getElementById('speedSlider').value);
+    document.getElementById('autoBtn').textContent='Stop';
+    autoTimer=setInterval(()=>{
+      if(cur<STAGES.length-1)nextStep();
+      else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+    },spd);
+  }
+}
+
+applyStage(STAGES[0]);
+</script>
+</body>
+</html>

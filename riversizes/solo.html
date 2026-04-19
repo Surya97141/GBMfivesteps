@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo — River Sizes</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --text: #f0ede6;
+    --muted: #555;
+    --accent: #c8f060;
+    --river: #3b82f6;
+    --wrong: #ef4444;
+    --right: #22c55e;
+    --active: #f59e0b;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+  }
+
+  header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 300; color: var(--accent); }
+  .nav-tabs { display: flex; border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  .nav-tab { padding: 4px 14px; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); text-decoration: none; border-right: 1px solid var(--border); transition: all 0.2s; }
+  .nav-tab:last-child { border-right: none; }
+  .nav-tab.active { background: var(--accent); color: #0d0d0d; }
+  .nav-tab:hover:not(.active) { background: var(--surface); color: var(--text); }
+  .mode-badge { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    overflow: hidden;
+  }
+
+  .center {
+    padding: 2.5rem 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+
+  .solo-prompt {
+    text-align: center;
+  }
+
+  .solo-prompt h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.8rem;
+    font-weight: 300;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+
+  .solo-prompt p {
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 64px);
+    gap: 5px;
+  }
+
+  .cell {
+    width: 64px;
+    height: 64px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    font-weight: 500;
+    border-radius: 4px;
+    transition: all 0.25s ease;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .cell.unknown { color: #333; background: var(--surface); }
+  .cell.unknown:hover { border-color: var(--accent); background: rgba(200,240,96,0.05); }
+  .cell.marked-visited { color: #444; background: #111; border-color: #1f1f1f; cursor: default; }
+  .cell.marked-river { color: var(--river); background: rgba(59,130,246,0.18); border-color: var(--river); cursor: default; }
+  .cell.marked-land { color: #333; background: #111; border-color: #1f1f1f; cursor: default; }
+
+  .cell.replay-user { background: rgba(245,158,11,0.2); border-color: var(--active); color: var(--active); }
+  .cell.replay-correct { background: rgba(34,197,94,0.2); border-color: var(--right); color: var(--right); }
+  .cell.replay-wrong { background: rgba(239,68,68,0.2); border-color: var(--wrong); color: var(--wrong); }
+  .cell.replay-missed { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.4); color: rgba(239,68,68,0.7); }
+
+  .cell-coord { position: absolute; top: 2px; right: 3px; font-size: 0.45rem; color: #333; }
+
+  .answer-area {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .answer-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .answer-input {
+    font-family: 'DM Mono', monospace;
+    font-size: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 3px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .answer-input:focus { border-color: var(--accent); }
+  .answer-input.correct { border-color: var(--right); }
+  .answer-input.wrong { border-color: var(--wrong); }
+
+  .answer-hint { font-size: 0.65rem; color: var(--muted); }
+
+  .right-panel {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow-y: auto;
+  }
+
+  .panel-title {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+  }
+
+  .user-trace-log {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .trace-item {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .trace-item.river-trace { border-color: rgba(59,130,246,0.3); color: #93c5fd; }
+  .trace-item.land-trace { color: var(--muted); }
+
+  .score-display {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .score-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+  }
+
+  .score-key { color: var(--muted); }
+  .score-val { font-weight: 500; }
+  .score-val.green { color: var(--right); }
+  .score-val.red { color: var(--wrong); }
+  .score-val.amber { color: var(--active); }
+
+  .diff-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.7rem;
+  }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+  }
+
+  .legend-swatch {
+    width: 28px;
+    height: 16px;
+    border-radius: 2px;
+  }
+
+  .replay-controls {
+    display: flex;
+    gap: 6px;
+  }
+
+  .mini-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+
+  .mini-btn:hover { background: var(--surface); }
+  .mini-btn.accent { background: var(--accent); color: #0d0d0d; border-color: var(--accent); }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(13,13,13,0.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+    z-index: 10;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .overlay.show { opacity: 1; pointer-events: all; }
+
+  .overlay-title {
+    font-family: 'Fraunces', serif;
+    font-size: 2.5rem;
+    font-weight: 700;
+  }
+
+  .overlay-title.win { color: var(--accent); }
+  .overlay-title.partial { color: var(--active); }
+
+  .overlay-sub {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 400px;
+  }
+
+  .overlay-btns { display: flex; gap: 10px; }
+
+  .ob {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    padding: 10px 22px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .ob:hover { background: var(--surface); }
+  .ob.primary { background: var(--accent); color: #0d0d0d; border-color: var(--accent); }
+
+  .clock {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .tick { color: var(--text); }
+
+  footer {
+    padding: 1rem 2rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    padding: 8px 18px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .btn:hover { background: var(--surface); }
+  .btn-accent { background: var(--accent); color: #0d0d0d; border-color: var(--accent); font-weight: 500; }
+  .btn-accent:hover { opacity: 0.85; }
+
+  .mode-indicator {
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .mode-indicator span { color: var(--wrong); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">algo.learn</div>
+  <nav class="nav-tabs">
+    <a href="watch.html" class="nav-tab">01 Watch</a>
+    <a href="guide.html" class="nav-tab">02 Guide</a>
+    <a href="solo.html" class="nav-tab active">03 Solo</a>
+  </nav>
+  <div class="mode-badge">River Sizes</div>
+</header>
+
+<main>
+  <div class="center" id="centerPanel">
+    <div class="overlay" id="resultOverlay">
+      <div class="overlay-title" id="overlayTitle">—</div>
+      <div class="overlay-sub" id="overlaySub"></div>
+      <div class="overlay-btns">
+        <button class="ob" onclick="closeOverlay()">See diff replay</button>
+        <button class="ob" onclick="resetAll()">Try again</button>
+        <a href="watch.html" class="ob">Re-watch</a>
+      </div>
+    </div>
+
+    <div class="solo-prompt">
+      <h2>No hints. No guide.</h2>
+      <p>Click cells to mark them as visited. Trace the rivers yourself.<br>Type your answer below. Then hit <strong>Check.</strong></p>
+    </div>
+
+    <div class="matrix-grid" id="mainGrid"></div>
+
+    <div class="answer-area">
+      <div class="answer-label">Your answer — river sizes array</div>
+      <input type="text" class="answer-input" id="answerInput" placeholder="e.g. 1, 2, 2, 2, 5" />
+      <div class="answer-hint">Order doesn't matter. Just list all river sizes separated by commas.</div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-title">Your traversal log</div>
+    <div class="user-trace-log" id="traceLog">
+      <div style="font-size:0.7rem;color:var(--muted);">Click cells to begin...</div>
+    </div>
+
+    <div class="panel-title">Score</div>
+    <div class="score-display" id="scoreDisplay">
+      <div class="score-row"><span class="score-key">Cells clicked</span><span class="score-val" id="scCells">0</span></div>
+      <div class="score-row"><span class="score-key">Rivers traced</span><span class="score-val" id="scRivers">—</span></div>
+      <div class="score-row"><span class="score-key">Correct cells</span><span class="score-val green" id="scCorrect">—</span></div>
+      <div class="score-row"><span class="score-key">Missed cells</span><span class="score-val red" id="scMissed">—</span></div>
+      <div class="score-row"><span class="score-key">Answer</span><span class="score-val amber" id="scAnswer">—</span></div>
+    </div>
+
+    <div class="panel-title">Diff legend</div>
+    <div class="diff-legend">
+      <div class="legend-row"><div class="legend-swatch" style="background:rgba(34,197,94,0.25);border:1px solid #22c55e;"></div>Correct — you got it</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:rgba(239,68,68,0.2);border:1px solid #ef4444;"></div>Wrong — you clicked this</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.4);"></div>Missed — algorithm visited, you didn't</div>
+    </div>
+
+    <div class="panel-title">Replay controls</div>
+    <div class="replay-controls">
+      <button class="mini-btn accent" id="checkBtn" onclick="checkAnswer()">Check answer</button>
+      <button class="mini-btn" onclick="runGhostReplay()">Ghost replay</button>
+      <button class="mini-btn" onclick="resetAll()">Reset</button>
+    </div>
+
+    <div class="panel-title">Timer</div>
+    <div class="clock">Elapsed: <span class="tick" id="clock">00:00</span></div>
+  </div>
+</main>
+
+<footer>
+  <div class="mode-indicator">No hints. No stack. <span>Memory only.</span></div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn" onclick="checkAnswer()">Check →</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="watch.html" class="btn">Re-watch</a>
+  </div>
+</footer>
+
+<script>
+const MATRIX = [
+  [1,0,0,1,0],
+  [1,0,1,0,0],
+  [0,0,1,0,1],
+  [1,0,1,0,1],
+  [1,0,1,1,0]
+];
+
+const CORRECT_ANSWER = [1,2,2,2,5];
+
+const CORRECT_VISITED_ORDER = buildCorrectPath();
+
+function buildCorrectPath() {
+  const visited = Array.from({length:5}, () => Array(5).fill(false));
+  const order = [];
+
+  function getNeighbors(r,c) {
+    const n = [];
+    if (r>0) n.push([r-1,c]);
+    if (r<4) n.push([r+1,c]);
+    if (c>0) n.push([r,c-1]);
+    if (c<4) n.push([r,c+1]);
+    return n;
+  }
+
+  for (let r=0; r<5; r++) {
+    for (let c=0; c<5; c++) {
+      if (!visited[r][c]) {
+        visited[r][c] = true;
+        order.push([r,c,'scan']);
+        if (MATRIX[r][c] === 1) {
+          const stack = [[r,c]];
+          while (stack.length) {
+            const [cr,cc] = stack.pop();
+            const nbrs = getNeighbors(cr,cc).filter(([nr,nc]) => !visited[nr][nc]);
+            nbrs.forEach(([nr,nc]) => {
+              visited[nr][nc] = true;
+              order.push([nr,nc,'dfs']);
+              stack.push([nr,nc]);
+            });
+          }
+        }
+      }
+    }
+  }
+  return order;
+}
+
+const CORRECT_RIVER_CELLS = (() => {
+  const visited = Array.from({length:5}, () => Array(5).fill(false));
+  const rivers = [];
+  function getN(r,c){const n=[];if(r>0)n.push([r-1,c]);if(r<4)n.push([r+1,c]);if(c>0)n.push([r,c-1]);if(c<4)n.push([r,c+1]);return n;}
+  for(let r=0;r<5;r++) for(let c=0;c<5;c++) {
+    if(!visited[r][c]){
+      visited[r][c]=true;
+      if(MATRIX[r][c]===1){
+        const river=[[r,c]];
+        const stack=[[r,c]];
+        while(stack.length){
+          const[cr,cc]=stack.pop();
+          getN(cr,cc).filter(([nr,nc])=>!visited[nr][nc]).forEach(([nr,nc])=>{
+            visited[nr][nc]=true; river.push([nr,nc]); stack.push([nr,nc]);
+          });
+        }
+        rivers.push(river);
+      }
+    }
+  }
+  return rivers;
+})();
+
+let userClicked = [];
+let clickedSet = new Set();
+let traceLog = [];
+let checked = false;
+let startTime = null;
+let clockTimer = null;
+
+function cellKey(r,c) { return `${r},${c}`; }
+
+function buildGrid() {
+  const mg = document.getElementById('mainGrid');
+  mg.innerHTML = '';
+  for (let r=0; r<5; r++) {
+    for (let c=0; c<5; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell unknown';
+      cell.id = `cell-${r}-${c}`;
+      cell.innerHTML = `?<span class="cell-coord">${r},${c}</span>`;
+      cell.onclick = () => handleClick(r, c);
+      mg.appendChild(cell);
+    }
+  }
+}
+
+function handleClick(r, c) {
+  if (checked) return;
+  const key = cellKey(r,c);
+  if (clickedSet.has(key)) return;
+
+  if (!startTime) {
+    startTime = Date.now();
+    clockTimer = setInterval(updateClock, 1000);
+  }
+
+  clickedSet.add(key);
+  userClicked.push([r,c]);
+
+  const cell = document.getElementById(`cell-${r}-${c}`);
+  const isRiver = MATRIX[r][c] === 1;
+
+  if (isRiver) {
+    cell.innerHTML = `1<span class="cell-coord">${r},${c}</span>`;
+    cell.className = 'cell marked-river';
+  } else {
+    cell.innerHTML = `0<span class="cell-coord">${r},${c}</span>`;
+    cell.className = 'cell marked-land';
+  }
+
+  addTraceItem(r, c, isRiver);
+  updateScore();
+}
+
+function addTraceItem(r, c, isRiver) {
+  const log = document.getElementById('traceLog');
+  if (log.querySelector('div[style]')) log.innerHTML = '';
+
+  const item = document.createElement('div');
+  item.className = `trace-item ${isRiver ? 'river-trace' : 'land-trace'}`;
+  item.innerHTML = `<span>[${r},${c}]</span><span>${isRiver ? '= 1 (river)' : '= 0 (land)'}</span>`;
+  log.appendChild(item);
+  log.scrollTop = log.scrollHeight;
+  traceLog.push([r,c]);
+}
+
+function updateScore() {
+  document.getElementById('scCells').textContent = userClicked.length;
+}
+
+function checkAnswer() {
+  if (checked) return;
+  checked = true;
+  clearInterval(clockTimer);
+
+  const input = document.getElementById('answerInput').value;
+  const userAnswer = input.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+  const correctSorted = [...CORRECT_ANSWER].sort((a,b)=>a-b);
+  const answerCorrect = JSON.stringify(userAnswer) === JSON.stringify(correctSorted);
+
+  const userSet = new Set(userClicked.map(([r,c]) => cellKey(r,c)));
+  const correctSet = new Set(CORRECT_VISITED_ORDER.map(([r,c]) => cellKey(r,c)));
+  const riverCellSet = new Set(CORRECT_RIVER_CELLS.flat().map(([r,c]) => cellKey(r,c)));
+
+  let correctCount = 0, wrongCount = 0, missedCount = 0;
+
+  userClicked.forEach(([r,c]) => {
+    const key = cellKey(r,c);
+    const cell = document.getElementById(`cell-${r}-${c}`);
+    cell.innerHTML = `${MATRIX[r][c]}<span class="cell-coord">${r},${c}</span>`;
+    if (correctSet.has(key)) {
+      cell.className = 'cell replay-correct';
+      correctCount++;
+    } else {
+      cell.className = 'cell replay-wrong';
+      wrongCount++;
+    }
+  });
+
+  for (let r=0; r<5; r++) {
+    for (let c=0; c<5; c++) {
+      const key = cellKey(r,c);
+      if (correctSet.has(key) && !userSet.has(key) && riverCellSet.has(key)) {
+        const cell = document.getElementById(`cell-${r}-${c}`);
+        cell.innerHTML = `1<span class="cell-coord">${r},${c}</span>`;
+        cell.className = 'cell replay-missed';
+        missedCount++;
+      }
+    }
+  }
+
+  document.getElementById('scRivers').textContent = CORRECT_RIVER_CELLS.length;
+  document.getElementById('scCorrect').textContent = correctCount;
+  document.getElementById('scMissed').textContent = missedCount;
+  document.getElementById('scAnswer').textContent = answerCorrect ? '✓ correct' : `✗ expected [${correctSorted.join(', ')}]`;
+  document.getElementById('scAnswer').className = `score-val ${answerCorrect ? 'green' : 'red'}`;
+
+  const input_el = document.getElementById('answerInput');
+  input_el.className = `answer-input ${answerCorrect ? 'correct' : 'wrong'}`;
+
+  const score = Math.round((correctCount / (correctCount + missedCount + wrongCount + 0.001)) * 100);
+  const perfect = answerCorrect && missedCount === 0 && wrongCount === 0;
+
+  const overlay = document.getElementById('resultOverlay');
+  const title = document.getElementById('overlayTitle');
+  const sub = document.getElementById('overlaySub');
+
+  if (perfect) {
+    title.textContent = 'Perfect.';
+    title.className = 'overlay-title win';
+    sub.innerHTML = `You traced all rivers correctly and got the right answer.<br>The algorithm is yours now. Try a new problem.`;
+  } else if (score >= 60) {
+    title.textContent = 'Almost.';
+    title.className = 'overlay-title partial';
+    sub.innerHTML = `Score: ${score}%. You got ${correctCount} correct, missed ${missedCount}, wrong ${wrongCount}.<br>See the diff below — then re-watch the exact moment you missed.`;
+  } else {
+    title.textContent = 'Not yet.';
+    title.className = 'overlay-title';
+    title.style.color = 'var(--wrong)';
+    sub.innerHTML = `Score: ${score}%. The ghost replay shows your path vs. the correct path.<br>Go back to Watch or Guide and try once more.`;
+  }
+
+  overlay.classList.add('show');
+}
+
+function closeOverlay() {
+  document.getElementById('resultOverlay').classList.remove('show');
+  runGhostReplay();
+}
+
+function runGhostReplay() {
+  if (!checked) { checkAnswer(); return; }
+  document.getElementById('resultOverlay').classList.remove('show');
+
+  for (let r=0; r<5; r++) for (let c=0; c<5; c++) {
+    const cell = document.getElementById(`cell-${r}-${c}`);
+    cell.innerHTML = `?<span class="cell-coord">${r},${c}</span>`;
+    cell.className = 'cell unknown';
+  }
+
+  const userSet = new Set(userClicked.map(([r,c]) => cellKey(r,c)));
+  const correctSet = new Set(CORRECT_VISITED_ORDER.map(([r,c]) => cellKey(r,c)));
+  const riverCellSet = new Set(CORRECT_RIVER_CELLS.flat().map(([r,c]) => cellKey(r,c)));
+
+  const allSteps = [];
+
+  CORRECT_VISITED_ORDER.forEach(([r,c]) => {
+    const key = cellKey(r,c);
+    if (userSet.has(key)) allSteps.push([r,c,'correct']);
+    else if (riverCellSet.has(key)) allSteps.push([r,c,'missed']);
+  });
+
+  userClicked.forEach(([r,c]) => {
+    const key = cellKey(r,c);
+    if (!correctSet.has(key)) allSteps.push([r,c,'wrong']);
+  });
+
+  let i = 0;
+  const replayTimer = setInterval(() => {
+    if (i >= allSteps.length) { clearInterval(replayTimer); return; }
+    const [r,c,type] = allSteps[i];
+    const cell = document.getElementById(`cell-${r}-${c}`);
+    cell.innerHTML = `${MATRIX[r][c]}<span class="cell-coord">${r},${c}</span>`;
+    cell.className = `cell replay-${type}`;
+    i++;
+  }, 200);
+}
+
+function updateClock() {
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = Math.floor(elapsed / 60).toString().padStart(2,'0');
+  const s = (elapsed % 60).toString().padStart(2,'0');
+  document.getElementById('clock').textContent = `${m}:${s}`;
+}
+
+function resetAll() {
+  userClicked = []; clickedSet = new Set(); traceLog = [];
+  checked = false; startTime = null;
+  clearInterval(clockTimer);
+  document.getElementById('clock').textContent = '00:00';
+  document.getElementById('answerInput').value = '';
+  document.getElementById('answerInput').className = 'answer-input';
+  document.getElementById('traceLog').innerHTML = '<div style="font-size:0.7rem;color:var(--muted);">Click cells to begin...</div>';
+  document.getElementById('scCells').textContent = '0';
+  document.getElementById('scRivers').textContent = '—';
+  document.getElementById('scCorrect').textContent = '—';
+  document.getElementById('scMissed').textContent = '—';
+  document.getElementById('scAnswer').textContent = '—';
+  document.getElementById('scAnswer').className = 'score-val amber';
+  document.getElementById('resultOverlay').classList.remove('show');
+  buildGrid();
+}
+
+buildGrid();
+</script>
+</body>
+</html>

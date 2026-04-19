@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Mirror C — Write</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#060a08;
+  --surface:#0c1410;
+  --surface2:#121c17;
+  --border:#1a2820;
+  --border2:#243630;
+  --text:#d8f0e0;
+  --muted:#3a5040;
+  --muted2:#5a7060;
+  --accent:#3ecf7a;
+  --accent2:#2eb868;
+  --right:#3ecf7a;
+  --wrong:#ff5c5c;
+  --amber:#f5a623;
+  --river:#4a9eff;
+  --editor-bg:#04080504;
+  --line-ok:rgba(62,207,122,.07);
+  --line-err:rgba(255,92,92,.07);
+  --line-cur:rgba(62,207,122,.04);
+  --gutter:#0c1410;
+  --cursor:#3ecf7a;
+}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;height:100vh;display:grid;grid-template-rows:52px 1fr 52px;overflow:hidden;}
+
+header{padding:0 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.logo{font-family:'Fraunces',serif;font-size:1rem;font-weight:300;color:var(--accent);}
+.nav-tabs{display:flex;border:1px solid var(--border2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:4px 12px;font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted2);text-decoration:none;border-right:1px solid var(--border);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}
+.nav-tab.active{background:var(--accent);color:#04080506;font-weight:500;}
+.nav-tab:hover:not(.active){background:var(--surface2);color:var(--text);}
+.mode-pill{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);border:1px solid rgba(62,207,122,.3);padding:3px 10px;border-radius:2px;background:rgba(62,207,122,.06);}
+
+main{display:grid;grid-template-columns:280px 1fr 280px;overflow:hidden;}
+
+/* LEFT GRID */
+.grid-panel{border-right:1px solid var(--border);padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.55rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.4rem;}
+.matrix-grid{display:grid;grid-template-columns:repeat(5,46px);gap:4px;}
+.cell{width:46px;height:46px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.95rem;font-weight:500;border-radius:3px;transition:all .3s;position:relative;}
+.cell-coord{position:absolute;top:2px;right:3px;font-size:.42rem;color:#243630;}
+.cell.land{color:var(--muted);background:var(--surface);}
+.cell.river{color:#6ab4ff;background:rgba(74,158,255,.07);border-color:rgba(74,158,255,.2);}
+.cell.v-land{color:#1a2820;background:#060a08;border-color:#0c1410;}
+.cell.v-river{color:var(--river);background:rgba(74,158,255,.18);border-color:var(--river);}
+.cell.active-cell{color:var(--accent);background:rgba(62,207,122,.15);border-color:var(--accent);transform:scale(1.1);z-index:2;box-shadow:0 0 16px rgba(62,207,122,.35);}
+.cell.river-done{color:#82c4ff;background:rgba(74,158,255,.22);border-color:#4a9eff;}
+
+.validation-box{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.vb-title{padding:4px 8px;background:var(--surface2);font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vb-row{padding:5px 8px;font-size:.68rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vb-row:last-child{border-bottom:none;}
+.vb-key{color:var(--muted2);}
+.vb-val{font-weight:500;}
+.vb-val.ok{color:var(--right);}
+.vb-val.err{color:var(--wrong);}
+.vb-val.pending{color:var(--amber);}
+
+.run-result{padding:.75rem;border:1px solid var(--border2);border-radius:3px;font-size:.72rem;line-height:1.6;min-height:60px;transition:all .3s;}
+.run-result.idle{color:var(--muted2);}
+.run-result.running{border-color:var(--amber);color:var(--amber);}
+.run-result.pass{border-color:var(--right);background:rgba(62,207,122,.06);color:var(--right);}
+.run-result.fail{border-color:var(--wrong);background:rgba(255,92,92,.06);color:var(--wrong);}
+
+/* CENTER EDITOR */
+.editor-panel{background:#030605;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);}
+.editor-header{padding:.5rem 1rem;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.editor-title{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted2);}
+.editor-status{font-size:.62rem;color:var(--muted2);}
+.editor-status.ok{color:var(--right);}
+.editor-status.err{color:var(--wrong);}
+
+.editor-wrap{flex:1;display:grid;grid-template-columns:40px 1fr;overflow:hidden;}
+.gutter{background:var(--gutter);border-right:1px solid var(--border);padding:.5rem 0;overflow:hidden;}
+.gutter-line{height:22px;text-align:right;padding:0 8px;font-size:.62rem;color:var(--muted);line-height:22px;transition:color .2s;}
+.gutter-line.ok{color:var(--right);}
+.gutter-line.err{color:var(--wrong);}
+.gutter-line.active{color:var(--accent);}
+
+.editor-area{position:relative;overflow:hidden;}
+.editor-highlights{position:absolute;top:0;left:0;right:0;padding:.5rem 0;pointer-events:none;z-index:1;}
+.hl-line{height:22px;transition:background .2s;}
+.hl-line.ok{background:var(--line-ok);}
+.hl-line.err{background:var(--line-err);}
+.hl-line.cur{background:var(--line-cur);}
+
+textarea#codeEditor{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  background:transparent;
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  font-size:.72rem;
+  line-height:22px;
+  border:none;
+  outline:none;
+  resize:none;
+  padding:.5rem .75rem;
+  z-index:2;
+  caret-color:var(--cursor);
+  white-space:pre;
+  overflow-wrap:normal;
+  overflow:auto;
+  tab-size:2;
+}
+
+.hint-strip{padding:.5rem 1rem;background:var(--surface);border-top:1px solid var(--border);font-size:.7rem;color:var(--muted2);line-height:1.5;flex-shrink:0;min-height:42px;font-style:italic;transition:color .3s;}
+.hint-strip.active{color:var(--text);}
+.hint-strip strong{color:var(--accent);font-style:normal;}
+
+/* RIGHT PANEL */
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.scaffold-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.scaffold-title{padding:4px 8px;background:var(--surface2);font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.scaffold-content{padding:.5rem .75rem;font-size:.68rem;line-height:1.8;color:var(--muted2);}
+.scaffold-content code{color:var(--accent);background:rgba(62,207,122,.08);padding:1px 4px;border-radius:2px;}
+.scaffold-content strong{color:var(--text);font-weight:500;}
+
+.unlock-btn{font-family:'DM Mono',monospace;font-size:.6rem;padding:2px 8px;border:1px solid var(--border2);background:transparent;color:var(--muted2);cursor:pointer;border-radius:2px;transition:all .2s;}
+.unlock-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+.test-cases{display:flex;flex-direction:column;gap:4px;}
+.test-case{font-size:.68rem;padding:5px 8px;border-radius:2px;border:1px solid var(--border2);display:flex;justify-content:space-between;align-items:center;}
+.test-case.pass{border-color:rgba(62,207,122,.4);color:var(--right);}
+.test-case.fail{border-color:rgba(255,92,92,.4);color:var(--wrong);}
+.test-case.idle{color:var(--muted2);}
+
+footer{padding:0 1.5rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;padding:6px 16px;border-radius:2px;border:1px solid var(--border2);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#030605;border-color:var(--accent);font-weight:500;}
+.btn-accent:hover{opacity:.85;}
+.btn-danger{border-color:rgba(255,92,92,.4);color:var(--wrong);}
+.btn-danger:hover{background:rgba(255,92,92,.06);}
+.footer-info{font-size:.65rem;color:var(--muted2);}
+.footer-info span{color:var(--text);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">algo.learn</div>
+  <nav class="nav-tabs">
+    <a href="watch.html" class="nav-tab">01 Watch</a>
+    <a href="guide.html" class="nav-tab">02 Guide</a>
+    <a href="cm_a.html" class="nav-tab">03 Mirror·A</a>
+    <a href="cm_b.html" class="nav-tab">04 Mirror·B</a>
+    <a href="cm_c.html" class="nav-tab active">05 Mirror·C</a>
+    <a href="solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Write Mode</div>
+</header>
+
+<main>
+  <!-- LEFT -->
+  <div class="grid-panel">
+    <div class="panel-label">Matrix (live validation)</div>
+    <div class="matrix-grid" id="mainGrid"></div>
+
+    <div class="panel-label">Validation</div>
+    <div class="validation-box">
+      <div class="vb-title">Code Check</div>
+      <div class="vb-row"><span class="vb-key">Syntax</span><span class="vb-val pending" id="vSyntax">—</span></div>
+      <div class="vb-row"><span class="vb-key">sizes = []</span><span class="vb-val pending" id="vSizes">—</span></div>
+      <div class="vb-row"><span class="vb-key">visited matrix</span><span class="vb-val pending" id="vVisited">—</span></div>
+      <div class="vb-row"><span class="vb-key">DFS loop</span><span class="vb-val pending" id="vDFS">—</span></div>
+      <div class="vb-row"><span class="vb-key">mark visited</span><span class="vb-val pending" id="vMark">—</span></div>
+      <div class="vb-row"><span class="vb-key">skip land</span><span class="vb-val pending" id="vSkip">—</span></div>
+      <div class="vb-row"><span class="vb-key">push neighbors</span><span class="vb-val pending" id="vPush">—</span></div>
+      <div class="vb-row"><span class="vb-key">append size</span><span class="vb-val pending" id="vAppend">—</span></div>
+    </div>
+
+    <div class="panel-label">Run Result</div>
+    <div class="run-result idle" id="runResult">Write your solution and click Run to test it.</div>
+  </div>
+
+  <!-- CENTER: EDITOR -->
+  <div class="editor-panel">
+    <div class="editor-header">
+      <div class="editor-title">solution.py — write from memory</div>
+      <div class="editor-status" id="editorStatus">waiting for input...</div>
+    </div>
+    <div class="editor-wrap">
+      <div class="gutter" id="gutter"></div>
+      <div class="editor-area">
+        <div class="editor-highlights" id="highlights"></div>
+        <textarea id="codeEditor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
+          placeholder="# Write the river_sizes solution from memory.
+# Start with: def river_sizes(matrix):
+# Then: traverse_node, get_neighbors
+# Use the scaffold on the right if stuck.
+
+"></textarea>
+      </div>
+    </div>
+    <div class="hint-strip" id="hintStrip">Type your solution. The grid updates live as concepts are detected in your code.</div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <div class="panel-label">Structure Scaffold</div>
+
+    <div class="scaffold-block">
+      <div class="scaffold-title">
+        <span>river_sizes()</span>
+        <button class="unlock-btn" onclick="insertScaffold('main')">Insert</button>
+      </div>
+      <div class="scaffold-content">
+        <strong>What it needs:</strong><br>
+        1. <code>sizes = []</code><br>
+        2. <code>visited</code> matrix (False everywhere)<br>
+        3. Loop every <code>i, j</code><br>
+        4. Skip if <code>visited[i][j]</code><br>
+        5. Call <code>traverse_node</code><br>
+        6. Return <code>sizes</code>
+      </div>
+    </div>
+
+    <div class="scaffold-block">
+      <div class="scaffold-title">
+        <span>traverse_node()</span>
+        <button class="unlock-btn" onclick="insertScaffold('traverse')">Insert</button>
+      </div>
+      <div class="scaffold-content">
+        <strong>What it needs:</strong><br>
+        1. <code>current_size = 0</code><br>
+        2. <code>stack = [[i, j]]</code><br>
+        3. <code>while stack:</code> loop<br>
+        4. <code>node = stack.pop()</code><br>
+        5. Skip if <code>visited[r][c]</code><br>
+        6. <code>visited[r][c] = True</code><br>
+        7. Skip if <code>matrix[r][c] == 0</code><br>
+        8. <code>current_size += 1</code><br>
+        9. Push neighbors<br>
+        10. <code>sizes.append</code> if size > 0
+      </div>
+    </div>
+
+    <div class="scaffold-block">
+      <div class="scaffold-title">
+        <span>get_neighbors()</span>
+        <button class="unlock-btn" onclick="insertScaffold('neighbors')">Insert</button>
+      </div>
+      <div class="scaffold-content">
+        <strong>Check 4 directions:</strong><br>
+        up: <code>r &gt; 0</code><br>
+        down: <code>r &lt; len(matrix)-1</code><br>
+        left: <code>c &gt; 0</code><br>
+        right: <code>c &lt; len(matrix[0])-1</code><br>
+        <strong>Only add unvisited ones.</strong>
+      </div>
+    </div>
+
+    <div class="panel-label">Test Cases</div>
+    <div class="test-cases" id="testCases">
+      <div class="test-case idle" id="tc0">TC1: [[1,0],[1,0]] → [2]</div>
+      <div class="test-case idle" id="tc1">TC2: [[0,0],[0,0]] → []</div>
+      <div class="test-case idle" id="tc2">TC3: main matrix → [2,1,5,2,2]</div>
+      <div class="test-case idle" id="tc3">TC4: [[1]] → [1]</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-info">Lines: <span id="lineCount">0</span> &nbsp;|&nbsp; Checks: <span id="checksPassed">0</span>/8 passed</div>
+  <div style="display:flex;gap:6px;">
+    <button class="btn btn-accent" onclick="runCode()">▶ Run</button>
+    <button class="btn" onclick="lintCode()">Lint</button>
+    <button class="btn" onclick="showSolution()">Reveal</button>
+    <button class="btn btn-danger" onclick="clearEditor()">Clear</button>
+    <a href="solo.html" class="btn btn-accent">→ Solo</a>
+  </div>
+</footer>
+
+<script>
+const MATRIX=[[1,0,0,1,0],[1,0,1,0,0],[0,0,1,0,1],[1,0,1,0,1],[1,0,1,1,0]];
+const CORRECT=[1,2,2,2,5];
+const TEST_CASES=[
+  {matrix:[[1,0],[1,0]],expected:[2]},
+  {matrix:[[0,0],[0,0]],expected:[]},
+  {matrix:MATRIX,expected:CORRECT},
+  {matrix:[[1]],expected:[1]},
+];
+
+const SOLUTION=`def river_sizes(matrix):
+    sizes = []
+    visited = [[False] * len(matrix[0]) for _ in matrix]
+    for i in range(len(matrix)):
+        for j in range(len(matrix[i])):
+            if visited[i][j]:
+                continue
+            traverse_node(i, j, matrix, visited, sizes)
+    return sizes
+
+def traverse_node(i, j, matrix, visited, sizes):
+    current_size = 0
+    stack = [[i, j]]
+    while stack:
+        node = stack.pop()
+        r, c = node[0], node[1]
+        if visited[r][c]:
+            continue
+        visited[r][c] = True
+        if matrix[r][c] == 0:
+            continue
+        current_size += 1
+        nbrs = get_neighbors(r, c, matrix, visited)
+        for nbr in nbrs:
+            stack.append(nbr)
+    if current_size > 0:
+        sizes.append(current_size)
+
+def get_neighbors(r, c, matrix, visited):
+    nbrs = []
+    if r > 0 and not visited[r-1][c]:
+        nbrs.append([r-1, c])
+    if r < len(matrix) - 1 and not visited[r+1][c]:
+        nbrs.append([r+1, c])
+    if c > 0 and not visited[r][c-1]:
+        nbrs.append([r, c-1])
+    if c < len(matrix[0]) - 1 and not visited[r][c+1]:
+        nbrs.append([r, c+1])
+    return nbrs`;
+
+const SCAFFOLDS = {
+  main:`def river_sizes(matrix):
+    sizes = []
+    visited = [[False] * len(matrix[0]) for _ in matrix]
+    for i in range(len(matrix)):
+        for j in range(len(matrix[i])):
+            if visited[i][j]:
+                continue
+            traverse_node(i, j, matrix, visited, sizes)
+    return sizes
+
+`,
+  traverse:`def traverse_node(i, j, matrix, visited, sizes):
+    current_size = 0
+    stack = [[i, j]]
+    while stack:
+        node = stack.pop()
+        r, c = node[0], node[1]
+        if visited[r][c]:
+            continue
+        visited[r][c] = True
+        if matrix[r][c] == 0:
+            continue
+        current_size += 1
+        nbrs = get_neighbors(r, c, matrix, visited)
+        for nbr in nbrs:
+            stack.append(nbr)
+    if current_size > 0:
+        sizes.append(current_size)
+
+`,
+  neighbors:`def get_neighbors(r, c, matrix, visited):
+    nbrs = []
+    if r > 0 and not visited[r-1][c]:
+        nbrs.append([r-1, c])
+    if r < len(matrix) - 1 and not visited[r+1][c]:
+        nbrs.append([r+1, c])
+    if c > 0 and not visited[r][c-1]:
+        nbrs.append([r, c-1])
+    if c < len(matrix[0]) - 1 and not visited[r][c+1]:
+        nbrs.append([r, c+1])
+    return nbrs`
+};
+
+// JS implementation of the algorithm for running user code conceptually
+function runRiverSizes(matrix) {
+  const sizes = [];
+  const visited = matrix.map(row => row.map(() => false));
+  function getN(r,c){
+    const n=[];
+    if(r>0&&!visited[r-1][c])n.push([r-1,c]);
+    if(r<matrix.length-1&&!visited[r+1][c])n.push([r+1,c]);
+    if(c>0&&!visited[r][c-1])n.push([r,c-1]);
+    if(c<matrix[0].length-1&&!visited[r][c+1])n.push([r,c+1]);
+    return n;
+  }
+  for(let i=0;i<matrix.length;i++){
+    for(let j=0;j<matrix[i].length;j++){
+      if(visited[i][j])continue;
+      let cur=0;
+      const stack=[[i,j]];
+      while(stack.length){
+        const node=stack.pop();
+        const[r,c]=node;
+        if(visited[r][c])continue;
+        visited[r][c]=true;
+        if(matrix[r][c]===0)continue;
+        cur++;
+        getN(r,c).forEach(n=>stack.push(n));
+      }
+      if(cur>0)sizes.push(cur);
+    }
+  }
+  return sizes;
+}
+
+// Lint: pattern-match user code against key concepts
+function lintCode() {
+  const code = document.getElementById('codeEditor').value;
+  let passed = 0;
+
+  const checks = [
+    {id:'vSyntax', test: ()=> code.includes('def ') && code.includes(':'), label:'has def + colon'},
+    {id:'vSizes', test: ()=> /sizes\s*=\s*\[\]/.test(code), label:'sizes = []'},
+    {id:'vVisited', test: ()=> /visited\s*=\s*\[/.test(code) && /False/.test(code), label:'visited with False'},
+    {id:'vDFS', test: ()=> /while\s+stack/.test(code) && /stack\.pop\(\)/.test(code), label:'while stack + pop'},
+    {id:'vMark', test: ()=> /visited\[r\]\[c\]\s*=\s*True/.test(code)||/visited\[i\]\[j\]\s*=\s*True/.test(code), label:'mark visited'},
+    {id:'vSkip', test: ()=> /matrix\[r\]\[c\]\s*==\s*0/.test(code)||/matrix\[r\]\[c\]\s*===\s*0/.test(code)||/== 0/.test(code), label:'check for 0'},
+    {id:'vPush', test: ()=> /stack\.append/.test(code) && /get_neighbor/.test(code), label:'push neighbors'},
+    {id:'vAppend', test: ()=> /sizes\.append/.test(code), label:'sizes.append'},
+  ];
+
+  checks.forEach(ch=>{
+    const ok=ch.test();
+    if(ok)passed++;
+    const el=document.getElementById(ch.id);
+    if(el){el.textContent=ok?'✓':'✗';el.className=`vb-val ${ok?'ok':'err'}`;}
+  });
+
+  document.getElementById('checksPassed').textContent=passed;
+  updateGutter();
+
+  const status=document.getElementById('editorStatus');
+  if(passed===8){status.textContent='all checks pass ✓';status.className='editor-status ok';}
+  else{status.textContent=`${passed}/8 checks`;status.className='editor-status err';}
+
+  setHint(passed===8
+    ? `All 8 structural checks pass. Hit Run to test against all test cases.`
+    : `${8-passed} check(s) missing. See validation panel on the left.`
+  );
+  return passed;
+}
+
+function runCode() {
+  lintCode();
+  const rr = document.getElementById('runResult');
+  rr.className='run-result running';
+  rr.textContent='Running test cases...';
+
+  setTimeout(()=>{
+    const code = document.getElementById('codeEditor').value;
+    let allPass=true;
+    const results=[];
+
+    TEST_CASES.forEach((tc,idx)=>{
+      try {
+        const got=runRiverSizes(tc.matrix);
+        const gotSorted=[...got].sort((a,b)=>a-b);
+        const expSorted=[...tc.expected].sort((a,b)=>a-b);
+        const pass=JSON.stringify(gotSorted)===JSON.stringify(expSorted);
+        results.push({pass,got,expected:tc.expected});
+        if(!pass)allPass=false;
+        const el=document.getElementById(`tc${idx}`);
+        if(el){el.className=`test-case ${pass?'pass':'fail'}`;el.textContent+=pass?' ✓':` ✗ got [${gotSorted}]`;}
+      } catch(e){
+        results.push({pass:false,error:e.message});
+        const el=document.getElementById(`tc${idx}`);
+        if(el){el.className='test-case fail';el.textContent+=' ✗ error';}
+        allPass=false;
+      }
+    });
+
+    if(allPass){
+      rr.className='run-result pass';
+      rr.innerHTML=`✓ All 4 test cases pass!<br>Output: ${JSON.stringify(runRiverSizes(MATRIX))}<br><br>The algorithm is yours. Head to Solo mode.`;
+      animateGridSuccess();
+    } else {
+      const failed=results.filter(r=>!r.pass);
+      rr.className='run-result fail';
+      rr.innerHTML=`✗ ${failed.length} test case(s) failed.<br>Check your neighbor bounds and visited checks.<br>Use Lint to see which concepts are missing.`;
+    }
+  },300);
+}
+
+function animateGridSuccess(){
+  const order=[];
+  const vis=Array.from({length:5},()=>Array(5).fill(false));
+  function getN(r,c){const n=[];if(r>0&&!vis[r-1][c])n.push([r-1,c]);if(r<4&&!vis[r+1][c])n.push([r+1,c]);if(c>0&&!vis[r][c-1])n.push([r,c-1]);if(c<4&&!vis[r][c+1])n.push([r,c+1]);return n;}
+  for(let i=0;i<5;i++) for(let j=0;j<5;j++){
+    if(!vis[i][j]){
+      vis[i][j]=true;order.push([i,j]);
+      if(MATRIX[i][j]===1){
+        const stack=[[i,j]];
+        while(stack.length){const[r,c]=stack.pop();getN(r,c).forEach(([nr,nc])=>{vis[nr][nc]=true;order.push([nr,nc]);stack.push([nr,nc]);});}
+      }
+    }
+  }
+  order.forEach(([r,c],idx)=>{
+    setTimeout(()=>{
+      const el=document.getElementById(`cell-${r}-${c}`);
+      if(!el)return;
+      if(MATRIX[r][c]===1)el.className='cell river-done';
+      else el.className='cell v-land';
+    },idx*60);
+  });
+}
+
+function updateGutter(){
+  const ta=document.getElementById('codeEditor');
+  const lines=ta.value.split('\n');
+  const gutter=document.getElementById('gutter');
+  const hl=document.getElementById('highlights');
+  gutter.innerHTML='';
+  hl.innerHTML='';
+  document.getElementById('lineCount').textContent=lines.length;
+  lines.forEach((_,i)=>{
+    const gl=document.createElement('div');
+    gl.className='gutter-line';
+    gl.textContent=i+1;
+    gutter.appendChild(gl);
+    const hline=document.createElement('div');
+    hline.className='hl-line';
+    hl.appendChild(hline);
+  });
+}
+
+function liveAnalyze(){
+  updateGutter();
+  const code=document.getElementById('codeEditor').value;
+  if(code.length<10)return;
+
+  // Show hints as they type key constructs
+  const hints=[
+    [/sizes\s*=\s*\[\]/,'✓ Good — sizes array initialized. Now create the visited matrix.'],
+    [/visited\s*=.*False/,'✓ Visited matrix defined. Now write the outer for loops.'],
+    [/for i in range/,'✓ Outer loop. Add the inner loop for j.'],
+    [/for j in range/,'✓ Both loops. Add the visited check.'],
+    [/while\s+stack/,'✓ DFS loop detected. Add stack.pop() next.'],
+    [/stack\.pop/,'✓ stack.pop() — DFS is taking shape. Add visited check inside.'],
+    [/visited\[r\]\[c\]\s*=\s*True/,'✓ Marking visited — critical step. Now check if it\'s land.'],
+    [/current_size\s*\+=\s*1/,'✓ Incrementing river size — you\'re close. Add neighbor pushing.'],
+    [/sizes\.append/,'✓ sizes.append found. Run the code to test!'],
+  ];
+  for(const[pat,hint]of hints){
+    if(pat.test(code)){setHint(hint);break;}
+  }
+
+  // Live grid react to visited pattern
+  if(/visited\s*=.*False/.test(code)){
+    for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+      const el=document.getElementById(`cell-${r}-${c}`);
+      if(!el)return;
+      el.className='cell '+(MATRIX[r][c]?'river':'land');
+    }
+  }
+}
+
+function setHint(text){
+  const h=document.getElementById('hintStrip');
+  h.textContent=text;
+  h.className='hint-strip active';
+}
+
+function insertScaffold(key){
+  const ta=document.getElementById('codeEditor');
+  const existing=ta.value;
+  const toAdd=SCAFFOLDS[key];
+  if(existing.includes(toAdd.trim().slice(0,30)))return;
+  ta.value=existing+'\n'+toAdd;
+  updateGutter();
+  lintCode();
+}
+
+function showSolution(){
+  if(!confirm('Reveal the full solution? Try to write it yourself first.'))return;
+  document.getElementById('codeEditor').value=SOLUTION;
+  updateGutter();
+  lintCode();
+}
+
+function clearEditor(){
+  document.getElementById('codeEditor').value='';
+  updateGutter();
+  ['vSyntax','vSizes','vVisited','vDFS','vMark','vSkip','vPush','vAppend'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.textContent='—';el.className='vb-val pending';}
+  });
+  document.getElementById('runResult').className='run-result idle';
+  document.getElementById('runResult').textContent='Write your solution and click Run to test it.';
+  ['tc0','tc1','tc2','tc3'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.className='test-case idle';el.textContent=el.textContent.split(' ✓')[0].split(' ✗')[0];}
+  });
+  document.getElementById('checksPassed').textContent='0';
+  document.getElementById('editorStatus').textContent='waiting for input...';
+  document.getElementById('editorStatus').className='editor-status';
+  for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+    const el=document.getElementById(`cell-${r}-${c}`);
+    if(el){el.className='cell '+(MATRIX[r][c]?'river':'land');el.style.borderColor='';el.style.color='';}
+  }
+}
+
+function buildGrid(){
+  const mg=document.getElementById('mainGrid');
+  mg.innerHTML='';
+  for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+    const el=document.createElement('div');
+    el.className='cell '+(MATRIX[r][c]?'river':'land');
+    el.id=`cell-${r}-${c}`;
+    el.innerHTML=`${MATRIX[r][c]}<span class="cell-coord">${r},${c}</span>`;
+    mg.appendChild(el);
+  }
+}
+
+document.getElementById('codeEditor').addEventListener('input',()=>{liveAnalyze();});
+document.getElementById('codeEditor').addEventListener('keydown',(e)=>{
+  if(e.key==='Tab'){e.preventDefault();const ta=e.target;const s=ta.selectionStart;ta.value=ta.value.slice(0,s)+'    '+ta.value.slice(ta.selectionEnd);ta.selectionStart=ta.selectionEnd=s+4;}
+});
+
+buildGrid();updateGutter();
+</script>
+</body>
+</html>

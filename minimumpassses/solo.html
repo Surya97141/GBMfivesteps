@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo — Minimum Passes</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f5f2eb;--surface:#fff;--surface2:#f0ede6;--border:#e0dbd0;--border2:#c8c0b0;
+  --text:#1a1814;--muted:#8a8278;--accent:#e63d00;
+  --pos:#1a6b3c;--pos-bg:#e8f5ee;--pos-border:#6dbf8a;
+  --neg:#c0392b;--neg-bg:#fdecea;--neg-border:#e87b72;
+  --zero:#5a7a8a;--zero-bg:#eaf2f5;--zero-border:#8ab4c4;
+  --right:#1a6b3c;--wrong:#c0392b;--amber:#e67e00;
+}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;height:100vh;display:grid;grid-template-rows:56px 1fr 56px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--text);display:flex;align-items:center;justify-content:space-between;background:var(--text);}
+.logo{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:#f5f2eb;letter-spacing:.08em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 14px;font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5);text-decoration:none;border-right:1px solid rgba(255,255,255,.15);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+main{display:grid;grid-template-columns:1fr 320px;overflow:hidden;}
+
+.center{padding:2.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;border-right:2px solid var(--border2);position:relative;overflow:hidden;}
+.solo-prompt{text-align:center;}
+.solo-prompt h2{font-family:'Syne',sans-serif;font-size:1.9rem;font-weight:700;color:var(--text);margin-bottom:.4rem;}
+.solo-prompt p{font-size:.75rem;color:var(--muted);line-height:1.65;}
+
+.matrix-grid{display:grid;grid-template-columns:repeat(5,64px);gap:5px;}
+.cell{width:64px;height:64px;border:2px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;transition:all .3s;position:relative;cursor:pointer;user-select:none;}
+.cell-val{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;line-height:1;}
+.cell-coord{font-size:.42rem;color:var(--muted);margin-top:2px;}
+.cell.pos{background:var(--pos-bg);border-color:var(--pos-border);color:var(--pos);}
+.cell.neg{background:var(--neg-bg);border-color:var(--neg-border);color:var(--neg);}
+.cell.zero{background:var(--zero-bg);border-color:var(--zero-border);color:var(--zero);}
+.cell.user-marked{background:rgba(230,61,0,.1);border-color:var(--accent);color:var(--accent);transform:scale(1.05);}
+.cell.replay-ok{background:var(--pos-bg);border-color:var(--pos-border);color:var(--pos);animation:rp .4s ease;}
+.cell.replay-miss{background:var(--neg-bg);border-color:var(--neg-border);color:var(--wrong);}
+@keyframes rp{0%{transform:scale(1.1);}100%{transform:scale(1);}}
+
+.answer-area{width:100%;max-width:360px;display:flex;flex-direction:column;gap:.65rem;}
+.answer-label{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.answer-input{font-family:'Syne',sans-serif;font-size:2rem;font-weight:700;background:var(--surface);border:2px solid var(--border2);color:var(--text);padding:8px 16px;border-radius:3px;width:140px;outline:none;text-align:center;transition:border-color .2s;}
+.answer-input:focus{border-color:var(--accent);}
+.answer-input.correct{border-color:var(--right);color:var(--right);}
+.answer-input.wrong{border-color:var(--wrong);color:var(--wrong);}
+.answer-row{display:flex;align-items:center;gap:1rem;}
+.answer-hint{font-size:.65rem;color:var(--muted);}
+
+.overlay{position:absolute;inset:0;background:rgba(245,242,235,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;opacity:0;pointer-events:none;transition:opacity .35s;z-index:10;text-align:center;padding:2rem;}
+.overlay.show{opacity:1;pointer-events:all;}
+.overlay-title{font-family:'Syne',sans-serif;font-size:2.8rem;font-weight:700;}
+.overlay-title.win{color:var(--right);}
+.overlay-title.partial{color:var(--amber);}
+.overlay-title.fail{color:var(--wrong);}
+.overlay-sub{font-size:.8rem;color:var(--muted);line-height:1.7;max-width:380px;}
+.overlay-btns{display:flex;gap:.75rem;margin-top:.5rem;}
+.ob{font-family:'IBM Plex Mono',monospace;font-size:.7rem;padding:8px 20px;border-radius:2px;border:2px solid var(--text);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-decoration:none;text-transform:uppercase;letter-spacing:.1em;display:inline-block;}
+.ob:hover{background:var(--text);color:var(--bg);}
+.ob.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.55rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+
+.pass-trace{display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;}
+.pass-item{font-size:.68rem;padding:4px 8px;border-radius:2px;border:1px solid var(--border2);display:flex;justify-content:space-between;color:var(--muted);}
+.pass-item.flip{border-color:var(--flipped-border,var(--amber));color:var(--amber);}
+
+.score-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.score-title{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.score-row{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.score-row:last-child{border-bottom:none;}
+.score-k{color:var(--muted);}
+.score-v{font-weight:500;}
+
+.diff-legend{display:flex;flex-direction:column;gap:5px;font-size:.65rem;}
+.dleg{display:flex;align-items:center;gap:8px;color:var(--muted);}
+.dswatch{width:24px;height:14px;border-radius:2px;}
+
+.clock{font-size:.68rem;color:var(--muted);}
+.clock span{color:var(--text);font-weight:500;}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--text);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--text);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+.mode-note{font-size:.65rem;color:var(--wrong);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">ALGO · LEARN</div>
+  <nav class="nav-tabs">
+    <a href="mp_watch.html" class="nav-tab">01 Watch</a>
+    <a href="mp_guide.html" class="nav-tab">02 Guide</a>
+    <a href="mp_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="mp_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="mp_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="mp_solo.html" class="nav-tab active">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Minimum Passes · Solo</div>
+</header>
+<main>
+  <div class="center" id="centerPanel">
+    <div class="overlay" id="resultOverlay">
+      <div class="overlay-title" id="overlayTitle">—</div>
+      <div class="overlay-sub" id="overlaySub"></div>
+      <div class="overlay-btns">
+        <button class="ob" onclick="closeOverlay()">See diff</button>
+        <button class="ob" onclick="resetAll()">Try again</button>
+        <a href="mp_watch.html" class="ob">Re-watch</a>
+      </div>
+    </div>
+
+    <div class="solo-prompt">
+      <h2>No hints. No queue.</h2>
+      <p>Click cells you think get flipped pass by pass.<br>Then enter your answer: how many passes does it take?</p>
+    </div>
+
+    <div class="matrix-grid" id="mainGrid"></div>
+
+    <div class="answer-area">
+      <div class="answer-label">Your answer — number of passes</div>
+      <div class="answer-row">
+        <input type="number" class="answer-input" id="answerInput" placeholder="?" min="-1" max="99" />
+        <span class="answer-hint">Enter -1 if impossible</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Your flips log</div>
+    <div class="pass-trace" id="passTrace">
+      <div style="font-size:.65rem;color:var(--muted);">Click cells to begin...</div>
+    </div>
+
+    <div class="panel-label">Result</div>
+    <div class="score-block">
+      <div class="score-title">After checking</div>
+      <div class="score-row"><span class="score-k">Your answer</span><span class="score-v" id="srUser">—</span></div>
+      <div class="score-row"><span class="score-k">Correct answer</span><span class="score-v" id="srCorrect">—</span></div>
+      <div class="score-row"><span class="score-k">Cells clicked</span><span class="score-v" id="srClicked">0</span></div>
+      <div class="score-row"><span class="score-k">Verdict</span><span class="score-v" id="srVerdict">—</span></div>
+    </div>
+
+    <div class="panel-label">Diff legend</div>
+    <div class="diff-legend">
+      <div class="dleg"><div class="dswatch" style="background:var(--pos-bg);border:1px solid var(--pos-border);"></div>Correctly identified flip</div>
+      <div class="dleg"><div class="dswatch" style="background:var(--neg-bg);border:1px solid var(--neg-border);"></div>Missed flip</div>
+    </div>
+
+    <div class="panel-label">Timer</div>
+    <div class="clock">Elapsed: <span id="clock">00:00</span></div>
+  </div>
+</main>
+<footer>
+  <div class="mode-note">No hints. Memory only.</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn btn-accent" onclick="checkAnswer()">Check →</button>
+    <button class="btn" onclick="ghostReplay()">Ghost Replay</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="mp_watch.html" class="btn">Re-watch</a>
+  </div>
+</footer>
+<script>
+const MATRIX_INIT=[[ 0,-1,-3, 2, 0],[ 1,-2,-1,-3,-4],[ 3, 0, 1,-1,-2],[ 0,-4, 0, 0,-3]];
+const ROWS=4,COLS=5;
+const CORRECT_ANSWER=3;
+
+function computeFlipOrder(){
+  const mat=MATRIX_INIT.map(r=>[...r]);
+  const flips=[];
+  function getN(r,c){const n=[];if(r>0)n.push([r-1,c]);if(r<ROWS-1)n.push([r+1,c]);if(c>0)n.push([r,c-1]);if(c<COLS-1)n.push([r,c+1]);return n;}
+  let nextQ=[];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(mat[r][c]>0)nextQ.push([r,c]);
+  let pass=0;
+  while(nextQ.length>0){
+    pass++;let curQ=[...nextQ];nextQ=[];
+    while(curQ.length>0){
+      const[cr,cc]=curQ.shift();
+      getN(cr,cc).forEach(([nr,nc])=>{if(mat[nr][nc]<0){mat[nr][nc]*=-1;nextQ.push([nr,nc]);flips.push({r:nr,c:nc,pass});}});
+    }
+  }
+  return flips;
+}
+
+const CORRECT_FLIPS=computeFlipOrder();
+const CORRECT_FLIP_KEYS=new Set(CORRECT_FLIPS.map(f=>`${f.r},${f.c}`));
+
+let userClicked=new Set();
+let clickLog=[];
+let checked=false;
+let startTime=null;
+let clockTimer=null;
+
+function buildGrid(){
+  const mg=document.getElementById('mainGrid');mg.innerHTML='';
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const val=MATRIX_INIT[r][c];
+    const el=document.createElement('div');
+    let cls='cell ';if(val>0)cls+='pos';else if(val<0)cls+='neg';else cls+='zero';
+    el.className=cls;el.id=`cell-${r}-${c}`;
+    el.innerHTML=`<span class="cell-val">${val}</span><span class="cell-coord">${r},${c}</span>`;
+    el.onclick=()=>handleClick(r,c);
+    mg.appendChild(el);
+  }
+}
+
+function handleClick(r,c){
+  if(checked)return;
+  const key=`${r},${c}`;
+  if(userClicked.has(key)){userClicked.delete(key);const el=document.getElementById(`cell-${r}-${c}`);if(el){let cls='cell ';const v=MATRIX_INIT[r][c];if(v>0)cls+='pos';else if(v<0)cls+='neg';else cls+='zero';el.className=cls;}clickLog=clickLog.filter(k=>k!==key);updateTrace();document.getElementById('srClicked').textContent=userClicked.size;return;}
+  if(!startTime){startTime=Date.now();clockTimer=setInterval(updateClock,1000);}
+  userClicked.add(key);clickLog.push(key);
+  const el=document.getElementById(`cell-${r}-${c}`);
+  if(el)el.className='cell user-marked';
+  addTrace(r,c);
+  document.getElementById('srClicked').textContent=userClicked.size;
+}
+
+function addTrace(r,c){
+  const pt=document.getElementById('passTrace');
+  if(pt.querySelector('div[style]'))pt.innerHTML='';
+  const item=document.createElement('div');
+  const isNeg=MATRIX_INIT[r][c]<0;
+  item.className=`pass-item ${isNeg?'flip':''}`;
+  item.innerHTML=`<span>[${r},${c}] = ${MATRIX_INIT[r][c]}</span><span>${isNeg?'flipped':'?'}</span>`;
+  pt.appendChild(item);pt.scrollTop=pt.scrollHeight;
+}
+
+function updateTrace(){
+  const pt=document.getElementById('passTrace');pt.innerHTML='';
+  if(clickLog.length===0){pt.innerHTML='<div style="font-size:.65rem;color:var(--muted);">Click cells to begin...</div>';return;}
+  clickLog.forEach(key=>{const[r,c]=key.split(',').map(Number);addTrace(r,c);});
+}
+
+function checkAnswer(){
+  if(checked)return;
+  checked=true;
+  clearInterval(clockTimer);
+  const inputVal=parseInt(document.getElementById('answerInput').value);
+  const answerCorrect=inputVal===CORRECT_ANSWER;
+  const userFlipSet=new Set([...userClicked].filter(k=>{const[r,c]=k.split(',').map(Number);return MATRIX_INIT[r][c]<0;}));
+  let hitCount=0,missCount=0;
+  CORRECT_FLIP_KEYS.forEach(k=>{if(userFlipSet.has(k))hitCount++;else missCount++;});
+
+  const ai=document.getElementById('answerInput');
+  ai.className=`answer-input ${answerCorrect?'correct':'wrong'}`;
+
+  document.getElementById('srUser').textContent=isNaN(inputVal)?'—':inputVal;
+  document.getElementById('srCorrect').textContent=CORRECT_ANSWER;
+  document.getElementById('srVerdict').textContent=answerCorrect?'✓ Correct!':'✗ Wrong';
+  document.getElementById('srVerdict').style.color=answerCorrect?'var(--right)':'var(--wrong)';
+
+  const ot=document.getElementById('overlayTitle');
+  const os=document.getElementById('overlaySub');
+  if(answerCorrect&&missCount===0){
+    ot.textContent='Perfect.';ot.className='overlay-title win';
+    os.innerHTML='You traced all flips and got the right answer.<br>The BFS wave is yours to command.';
+  } else if(answerCorrect){
+    ot.textContent='Close.';ot.className='overlay-title partial';
+    os.innerHTML=`Answer correct (${CORRECT_ANSWER}) but missed ${missCount} flip(s).<br>See the diff to find the gap.`;
+  } else {
+    ot.textContent='Not yet.';ot.className='overlay-title fail';
+    ot.style.color='var(--wrong)';
+    os.innerHTML=`Answer was ${isNaN(inputVal)?'missing':inputVal}, correct is ${CORRECT_ANSWER}.<br>Ghost replay shows the correct BFS wave.`;
+  }
+  document.getElementById('resultOverlay').classList.add('show');
+}
+
+function closeOverlay(){document.getElementById('resultOverlay').classList.remove('show');ghostReplay();}
+
+function ghostReplay(){
+  if(!checked){checkAnswer();return;}
+  document.getElementById('resultOverlay').classList.remove('show');
+  buildGrid();
+  const userFlipSet=new Set([...userClicked].filter(k=>{const[r,c]=k.split(',').map(Number);return MATRIX_INIT[r][c]<0;}));
+  CORRECT_FLIPS.forEach(({r,c},idx)=>{
+    setTimeout(()=>{
+      const el=document.getElementById(`cell-${r}-${c}`);if(!el)return;
+      const key=`${r},${c}`;
+      if(userFlipSet.has(key))el.className='cell replay-ok';
+      else el.className='cell replay-miss';
+      el.querySelector('.cell-val').textContent=MATRIX_INIT[r][c]*-1;
+    },idx*180);
+  });
+}
+
+function updateClock(){const e=Math.floor((Date.now()-startTime)/1000);const m=Math.floor(e/60).toString().padStart(2,'0');const s=(e%60).toString().padStart(2,'0');document.getElementById('clock').textContent=`${m}:${s}`;}
+
+function resetAll(){
+  userClicked=new Set();clickLog=[];checked=false;startTime=null;
+  clearInterval(clockTimer);document.getElementById('clock').textContent='00:00';
+  document.getElementById('answerInput').value='';
+  document.getElementById('answerInput').className='answer-input';
+  document.getElementById('passTrace').innerHTML='<div style="font-size:.65rem;color:var(--muted);">Click cells to begin...</div>';
+  document.getElementById('srUser').textContent='—';document.getElementById('srCorrect').textContent='—';
+  document.getElementById('srClicked').textContent='0';document.getElementById('srVerdict').textContent='—';
+  document.getElementById('resultOverlay').classList.remove('show');
+  buildGrid();
+}
+
+buildGrid();
+</script>
+</body>
+</html>

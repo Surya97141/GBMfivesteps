@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide — River Sizes</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --text: #f0ede6;
+    --muted: #555;
+    --accent: #c8f060;
+    --river: #3b82f6;
+    --wrong: #ef4444;
+    --right: #22c55e;
+    --active: #f59e0b;
+    --river-glow: rgba(59,130,246,0.35);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+  }
+
+  header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 300; color: var(--accent); }
+
+  .nav-tabs { display: flex; border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  .nav-tab { padding: 4px 14px; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); text-decoration: none; border-right: 1px solid var(--border); transition: all 0.2s; }
+  .nav-tab:last-child { border-right: none; }
+  .nav-tab.active { background: var(--accent); color: #0d0d0d; }
+  .nav-tab:hover:not(.active) { background: var(--surface); color: var(--text); }
+
+  .mode-badge { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    overflow: hidden;
+  }
+
+  .center-panel {
+    padding: 2rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+
+  .instruction-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .instruction-icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: rgba(200,240,96,0.15);
+    border: 1px solid rgba(200,240,96,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .instruction-text {
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .instruction-text strong { color: var(--accent); font-weight: 500; }
+
+  .teacher-flash {
+    padding: 0.75rem 1rem;
+    border-left: 2px solid var(--accent);
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-style: italic;
+    line-height: 1.5;
+    transition: all 0.3s;
+    min-height: 2.5rem;
+  }
+
+  .teacher-flash.active { color: var(--text); border-color: var(--active); }
+
+  .grid-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .grid-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    align-self: flex-start;
+  }
+
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 58px);
+    gap: 5px;
+  }
+
+  .cell {
+    width: 58px;
+    height: 58px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 500;
+    border-radius: 4px;
+    transition: all 0.25s ease;
+    position: relative;
+    cursor: default;
+    user-select: none;
+  }
+
+  .cell.clickable { cursor: pointer; border-color: #444; }
+  .cell.clickable:hover { border-color: var(--accent); background: rgba(200,240,96,0.06); transform: scale(1.04); }
+
+  .cell.land { color: var(--muted); background: var(--surface); }
+  .cell.river { color: #93c5fd; background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.25); }
+  .cell.visited-land { color: #333; background: #111; border-color: #1a1a1a; cursor: default; }
+  .cell.visited-river { color: var(--river); background: rgba(59,130,246,0.2); border-color: var(--river); box-shadow: 0 0 10px var(--river-glow); cursor: default; }
+  .cell.current { color: var(--active); background: rgba(245,158,11,0.15); border-color: var(--active); box-shadow: 0 0 16px rgba(245,158,11,0.4); transform: scale(1.08); z-index: 2; cursor: default; }
+  .cell.correct-flash { animation: correctFlash 0.5s ease; }
+  .cell.wrong-shake { animation: wrongShake 0.4s ease; }
+  .cell.river-done { background: rgba(59,130,246,0.28); border-color: #60a5fa; color: #bfdbfe; cursor: default; }
+
+  .cell-coord { position: absolute; top: 2px; right: 3px; font-size: 0.45rem; color: #333; }
+
+  @keyframes correctFlash {
+    0% { background: rgba(34,197,94,0.4); border-color: #22c55e; }
+    100% { background: rgba(59,130,246,0.2); border-color: var(--river); }
+  }
+
+  @keyframes wrongShake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-5px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  .sizes-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .sizes-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+
+  .size-pill {
+    padding: 4px 12px;
+    border-radius: 2px;
+    font-size: 0.85rem;
+    animation: popIn 0.3s ease;
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.6); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .right-panel {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow-y: auto;
+  }
+
+  .panel-title {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+  }
+
+  .stack-visual {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 4px;
+    min-height: 120px;
+  }
+
+  .stack-card {
+    background: var(--surface);
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    animation: slideDown 0.25s ease;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stack-card.top {
+    border-color: var(--active);
+    background: rgba(245,158,11,0.08);
+    color: var(--active);
+  }
+
+  .stack-card.top::after {
+    content: '← TOP';
+    font-size: 0.55rem;
+    color: var(--active);
+    opacity: 0.6;
+  }
+
+  .stack-label { font-size: 0.55rem; color: var(--muted); }
+
+  .visited-mini {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+  }
+
+  .v-mini {
+    height: 20px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    transition: all 0.3s;
+  }
+
+  .v-mini.true { background: rgba(200,240,96,0.1); border-color: rgba(200,240,96,0.4); color: var(--accent); }
+
+  .state-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.75rem;
+    font-size: 0.72rem;
+  }
+
+  .state-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    border-bottom: 1px solid #1a1a1a;
+  }
+
+  .state-row:last-child { border-bottom: none; }
+  .state-key { color: var(--muted); }
+  .state-val { color: var(--text); font-weight: 500; }
+  .state-val.accent { color: var(--accent); }
+
+  .hint-box {
+    background: rgba(245,158,11,0.06);
+    border: 1px solid rgba(245,158,11,0.25);
+    border-radius: 3px;
+    padding: 0.75rem;
+    font-size: 0.72rem;
+    color: #d97706;
+    line-height: 1.5;
+    min-height: 60px;
+    transition: all 0.3s;
+  }
+
+  footer {
+    padding: 1rem 2rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    padding: 8px 18px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .btn:hover { background: var(--surface); }
+  .btn-accent { background: var(--accent); color: #0d0d0d; border-color: var(--accent); font-weight: 500; }
+  .btn-accent:hover { opacity: 0.85; }
+
+  .phase-indicator {
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .phase-indicator span { color: var(--accent); }
+
+  .feedback-toast {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-size: 0.8rem;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 100;
+    pointer-events: none;
+    max-width: 400px;
+    text-align: center;
+  }
+
+  .feedback-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .feedback-toast.good { border-color: var(--right); color: var(--right); }
+  .feedback-toast.bad { border-color: var(--wrong); color: var(--wrong); }
+</style>
+</head>
+<body>
+
+<div class="feedback-toast" id="toast"></div>
+
+<header>
+  <div class="logo">algo.learn</div>
+  <nav class="nav-tabs">
+    <a href="watch.html" class="nav-tab">01 Watch</a>
+    <a href="guide.html" class="nav-tab active">02 Guide</a>
+    <a href="solo.html" class="nav-tab">03 Solo</a>
+  </nav>
+  <div class="mode-badge">River Sizes</div>
+</header>
+
+<main>
+  <div class="center-panel">
+    <div class="instruction-box">
+      <div class="instruction-icon">?</div>
+      <div class="instruction-text" id="instructionText">
+        <strong>You're in control.</strong> Click the cell the algorithm should visit next.<br>
+        The DFS stack on the right shows what's queued. Always pick the <strong>TOP of the stack.</strong>
+      </div>
+    </div>
+
+    <div class="teacher-flash" id="teacherFlash">
+      "Start at the top of the matrix and traverse it, applying some kind of variation of DFS."
+    </div>
+
+    <div class="grid-area">
+      <div class="grid-label">Matrix — click to visit</div>
+      <div class="matrix-grid" id="mainGrid"></div>
+    </div>
+
+    <div class="sizes-row">
+      <div class="sizes-label">Rivers found:</div>
+      <div id="riverSizes"></div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-title">DFS Stack — nodes to explore</div>
+    <div class="stack-visual" id="stackVisual"></div>
+
+    <div class="panel-title">Visited Matrix</div>
+    <div class="visited-mini" id="visitedMini"></div>
+
+    <div class="panel-title">Algorithm State</div>
+    <div class="state-block">
+      <div class="state-row"><span class="state-key">Phase</span><span class="state-val accent" id="statePhase">Scanning rows</span></div>
+      <div class="state-row"><span class="state-key">Current river size</span><span class="state-val" id="stateRiverSize">—</span></div>
+      <div class="state-row"><span class="state-key">Rivers complete</span><span class="state-val" id="stateRiversDone">0</span></div>
+      <div class="state-row"><span class="state-key">Nodes visited</span><span class="state-val" id="stateVisited">0</span></div>
+    </div>
+
+    <div class="panel-title">Hint</div>
+    <div class="hint-box" id="hintBox">The algorithm scans row 0 left to right. Cell [0,0] = 1. It's unvisited. Start DFS here.</div>
+  </div>
+</main>
+
+<footer>
+  <div class="phase-indicator">Phase: <span id="footerPhase">Traversal</span></div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn" onclick="showHint()">Show Hint</button>
+    <button class="btn" onclick="autoNext()">Auto Step</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="solo.html" class="btn btn-accent">→ Go Solo</a>
+  </div>
+</footer>
+
+<script>
+const MATRIX = [
+  [1,0,0,1,0],
+  [1,0,1,0,0],
+  [0,0,1,0,1],
+  [1,0,1,0,1],
+  [1,0,1,1,0]
+];
+
+const RIVER_COLORS = ['#3b82f6','#a78bfa','#34d399','#f472b6','#fb923c'];
+
+const TEACHER_QUOTES = {
+  start: `"So we'll start at the top node, the node in the top left corner, and we'll underline it immediately."`,
+  isOne: `"If the node has the value one, then you know that it must be part of a river. Apply DFS."`,
+  isZero: `"Whenever you encounter zeroes, you just stop. You don't go further than that."`,
+  alreadyVisited: `"If we ever encounter a node that we've already visited, we just skip it."`,
+  riverFound: `"Now you've found a river! Grab the current size and add it to your final solutions array."`,
+  pushNeighbors: `"Because we're at a one, we continue exploring the neighboring nodes of this one."`,
+  done: `"Every other node that we will explore in the matrix will have been visited. We're done."`
+};
+
+let visitedMatrix = Array.from({length:5}, () => Array(5).fill(false));
+let dfsStack = [];
+let currentRiverCells = [];
+let currentRiverSize = 0;
+let rivers = [];
+let riverColors = [];
+let phase = 'scan';
+let scanRow = 0, scanCol = 0;
+let expectedNext = null;
+let completedRiverCells = [];
+let totalVisited = 0;
+let done = false;
+
+function getNeighbors(r, c) {
+  const n = [];
+  if (r > 0) n.push([r-1, c]);
+  if (r < 4) n.push([r+1, c]);
+  if (c > 0) n.push([r, c-1]);
+  if (c < 4) n.push([r, c+1]);
+  return n;
+}
+
+function buildUI() {
+  const mg = document.getElementById('mainGrid');
+  const vm = document.getElementById('visitedMini');
+  mg.innerHTML = ''; vm.innerHTML = '';
+  for (let r=0; r<5; r++) {
+    for (let c=0; c<5; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + (MATRIX[r][c] ? 'river' : 'land');
+      cell.id = `cell-${r}-${c}`;
+      cell.innerHTML = `${MATRIX[r][c]}<span class="cell-coord">${r},${c}</span>`;
+      cell.onclick = () => handleCellClick(r, c);
+      mg.appendChild(cell);
+
+      const vc = document.createElement('div');
+      vc.className = 'v-mini';
+      vc.id = `vm-${r}-${c}`;
+      vc.textContent = 'F';
+      vm.appendChild(vc);
+    }
+  }
+  updateExpected();
+  renderStack();
+  updateState();
+}
+
+function updateExpected() {
+  if (done) { expectedNext = null; return; }
+
+  if (phase === 'scan') {
+    while (scanRow < 5) {
+      if (!visitedMatrix[scanRow][scanCol]) {
+        expectedNext = [scanRow, scanCol];
+        setHint(`Scan: Cell [${scanRow},${scanCol}] is unvisited. Click it to check its value.`);
+        highlightClickable([expectedNext]);
+        return;
+      }
+      advanceScan();
+    }
+    done = true;
+    expectedNext = null;
+    setHint(TEACHER_QUOTES.done);
+    document.getElementById('instructionText').innerHTML = `<strong style="color:var(--accent)">All done!</strong> You found all ${rivers.length} rivers: [${rivers.join(', ')}]. Head to Solo mode to test your memory.`;
+    return;
+  }
+
+  if (phase === 'dfs') {
+    if (dfsStack.length === 0) {
+      if (currentRiverSize > 0) {
+        rivers.push(currentRiverSize);
+        riverColors.push(RIVER_COLORS[(rivers.length-1) % RIVER_COLORS.length]);
+        completedRiverCells.push([...currentRiverCells]);
+        currentRiverCells = [];
+        currentRiverSize = 0;
+        renderRivers();
+        showToast(`River of size ${rivers[rivers.length-1]} found!`, 'good');
+        setQuote('riverFound');
+        document.getElementById('instructionText').innerHTML = `<strong style="color:var(--accent)">River complete!</strong> Stack is empty. Now resume scanning rows.`;
+      }
+      phase = 'scan';
+      updateExpected();
+      return;
+    }
+    expectedNext = dfsStack[dfsStack.length - 1];
+    setHint(`Pop from stack: [${expectedNext}]. Click it to explore. It's the TOP of the DFS stack.`);
+    highlightClickable([expectedNext]);
+  }
+}
+
+function advanceScan() {
+  scanCol++;
+  if (scanCol >= 5) { scanCol = 0; scanRow++; }
+}
+
+function handleCellClick(r, c) {
+  if (done || !expectedNext) return;
+  const [er, ec] = expectedNext;
+
+  if (r !== er || c !== ec) {
+    const cell = document.getElementById(`cell-${r}-${c}`);
+    cell.classList.add('wrong-shake');
+    setTimeout(() => cell.classList.remove('wrong-shake'), 400);
+    showToast(`Not quite. Click [${er},${ec}] — that's the ${phase === 'scan' ? 'next unvisited cell in scan order' : 'TOP of the DFS stack'}.`, 'bad');
+    return;
+  }
+
+  executeStep(r, c);
+}
+
+function executeStep(r, c) {
+  const cell = document.getElementById(`cell-${r}-${c}`);
+
+  if (phase === 'scan') {
+    if (visitedMatrix[r][c]) { advanceScan(); updateExpected(); return; }
+    markVisited(r, c);
+    advanceScan();
+
+    if (MATRIX[r][c] === 1) {
+      phase = 'dfs';
+      currentRiverSize = 1;
+      currentRiverCells = [[r,c]];
+      cell.className = 'cell visited-river correct-flash';
+      setTimeout(() => { if (!completedRiverCells.flat(1).some(([rr,cc])=>rr===r&&cc===c)) cell.className = 'cell visited-river'; }, 500);
+      const neighbors = getNeighbors(r, c).filter(([nr,nc]) => !visitedMatrix[nr][nc]);
+      neighbors.forEach(n => dfsStack.push(n));
+      setQuote('isOne');
+      document.getElementById('instructionText').innerHTML = `<strong>[${r},${c}] = 1</strong> → It's a river! DFS begins. Pushed ${neighbors.length} unvisited neighbor(s) onto the stack. Pop the top to continue.`;
+    } else {
+      cell.className = 'cell visited-land';
+      setQuote('isZero');
+      document.getElementById('instructionText').innerHTML = `<strong>[${r},${c}] = 0</strong> → Land. Mark visited, skip. No neighbors pushed. Continue scanning.`;
+    }
+    renderStack();
+    updateState();
+    updateExpected();
+    return;
+  }
+
+  if (phase === 'dfs') {
+    dfsStack.pop();
+
+    if (visitedMatrix[r][c]) {
+      cell.classList.add('wrong-shake');
+      setTimeout(() => cell.classList.remove('wrong-shake'), 400);
+      showToast(`[${r},${c}] already visited — the algorithm would skip this. Good catch!`, 'bad');
+      setQuote('alreadyVisited');
+      renderStack();
+      updateExpected();
+      return;
+    }
+
+    markVisited(r, c);
+
+    if (MATRIX[r][c] === 0) {
+      cell.className = 'cell visited-land';
+      setQuote('isZero');
+      document.getElementById('instructionText').innerHTML = `<strong>[${r},${c}] = 0</strong> → Land. Visited and skipped. Don't push neighbors. Pop next from stack.`;
+    } else {
+      currentRiverSize++;
+      currentRiverCells.push([r,c]);
+      cell.className = 'cell visited-river correct-flash';
+      setTimeout(() => cell.className = 'cell visited-river', 500);
+      const neighbors = getNeighbors(r, c).filter(([nr,nc]) => !visitedMatrix[nr][nc]);
+      neighbors.forEach(n => dfsStack.push(n));
+      setQuote('pushNeighbors');
+      document.getElementById('instructionText').innerHTML = `<strong>[${r},${c}] = 1</strong> → River! Size now ${currentRiverSize}. Pushed ${neighbors.length} neighbor(s). Stack has ${dfsStack.length} items.`;
+    }
+
+    renderStack();
+    updateState();
+    updateExpected();
+  }
+}
+
+function markVisited(r, c) {
+  visitedMatrix[r][c] = true;
+  totalVisited++;
+  const vc = document.getElementById(`vm-${r}-${c}`);
+  vc.className = 'v-mini true';
+  vc.textContent = 'T';
+}
+
+function highlightClickable(cells) {
+  document.querySelectorAll('.cell.clickable').forEach(el => el.classList.remove('clickable'));
+  cells.forEach(([r,c]) => {
+    if (!visitedMatrix[r][c]) {
+      document.getElementById(`cell-${r}-${c}`)?.classList.add('clickable');
+    }
+  });
+}
+
+function renderStack() {
+  const sv = document.getElementById('stackVisual');
+  sv.innerHTML = '';
+  if (dfsStack.length === 0) {
+    sv.innerHTML = '<div style="font-size:0.7rem;color:var(--muted);padding:0.5rem;">Stack empty</div>';
+    return;
+  }
+  dfsStack.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'stack-card' + (i === dfsStack.length - 1 ? ' top' : '');
+    card.innerHTML = `<span>[${item[0]}, ${item[1]}]</span><span class="stack-label">val=${MATRIX[item[0]][item[1]]}</span>`;
+    sv.appendChild(card);
+  });
+  document.getElementById('stackCount') && (document.getElementById('stackCount').textContent = dfsStack.length + ' items');
+}
+
+function renderRivers() {
+  const rs = document.getElementById('riverSizes');
+  rs.innerHTML = '';
+  rivers.forEach((size, i) => {
+    const pill = document.createElement('div');
+    pill.className = 'size-pill';
+    pill.style.cssText = `background:${riverColors[i]}22;border:1px solid ${riverColors[i]}66;color:${riverColors[i]};padding:4px 12px;border-radius:2px;font-size:0.85rem;`;
+    pill.textContent = size;
+    rs.appendChild(pill);
+
+    completedRiverCells[i]?.forEach(([r,c]) => {
+      const el = document.getElementById(`cell-${r}-${c}`);
+      if (el) { el.className = 'cell river-done'; el.style.borderColor = riverColors[i]; el.style.color = riverColors[i]; }
+    });
+  });
+}
+
+function updateState() {
+  document.getElementById('statePhase').textContent = phase === 'scan' ? 'Scanning rows' : 'DFS active';
+  document.getElementById('stateRiverSize').textContent = phase === 'dfs' ? currentRiverSize : '—';
+  document.getElementById('stateRiversDone').textContent = rivers.length;
+  document.getElementById('stateVisited').textContent = totalVisited;
+  document.getElementById('footerPhase').textContent = phase === 'scan' ? 'Row scan' : 'DFS traversal';
+}
+
+function setHint(text) { document.getElementById('hintBox').textContent = text; }
+
+function setQuote(key) {
+  const el = document.getElementById('teacherFlash');
+  el.textContent = TEACHER_QUOTES[key] || '';
+  el.className = 'teacher-flash active';
+  setTimeout(() => el.className = 'teacher-flash', 3000);
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `feedback-toast show ${type}`;
+  setTimeout(() => t.className = 'feedback-toast', 2800);
+}
+
+function showHint() {
+  if (!expectedNext) return;
+  const [r,c] = expectedNext;
+  showToast(`Click cell [${r},${c}] — ${phase === 'scan' ? 'next in scan order' : 'top of DFS stack'}`, 'good');
+  const el = document.getElementById(`cell-${r}-${c}`);
+  if (el) { el.style.outline = '2px solid var(--accent)'; setTimeout(() => el.style.outline = '', 1500); }
+}
+
+function autoNext() {
+  if (!expectedNext || done) return;
+  const [r,c] = expectedNext;
+  executeStep(r, c);
+}
+
+function resetAll() {
+  visitedMatrix = Array.from({length:5}, () => Array(5).fill(false));
+  dfsStack = []; currentRiverCells = []; currentRiverSize = 0;
+  rivers = []; riverColors = []; completedRiverCells = [];
+  phase = 'scan'; scanRow = 0; scanCol = 0;
+  totalVisited = 0; done = false;
+  document.getElementById('riverSizes').innerHTML = '';
+  document.getElementById('instructionText').innerHTML = `<strong>You're in control.</strong> Click the cell the algorithm should visit next.<br>The DFS stack shows what's queued. Always pick the <strong>TOP of the stack.</strong>`;
+  buildUI();
+}
+
+buildUI();
+setQuote('start');
+</script>
+</body>
+</html>

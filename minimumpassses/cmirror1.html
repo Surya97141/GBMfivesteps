@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror A — Minimum Passes</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f5f2eb;--surface:#fff;--surface2:#f0ede6;--border:#e0dbd0;--border2:#c8c0b0;
+  --text:#1a1814;--muted:#8a8278;--accent:#e63d00;
+  --pos:#1a6b3c;--pos-bg:#e8f5ee;--pos-border:#6dbf8a;
+  --neg:#c0392b;--neg-bg:#fdecea;--neg-border:#e87b72;
+  --zero:#5a7a8a;--zero-bg:#eaf2f5;--zero-border:#8ab4c4;
+  --flipped:#e67e00;--flipped-bg:#fff3e0;--flipped-border:#ffab40;
+  --queue-a:#7b3fc4;--queue-b:#1a6b3c;
+  --code-bg:#1a1814;--line-hl:#2a2520;--line-active:#3a3020;
+  --kw:#ff9060;--fn:#ffd080;--st:#90d090;--nm:#ff8070;--cm:#6a6058;--op:#80d0ff;
+}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;height:100vh;display:grid;grid-template-rows:56px 1fr 56px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--text);display:flex;align-items:center;justify-content:space-between;background:var(--text);}
+.logo{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:#f5f2eb;letter-spacing:.08em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 14px;font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5);text-decoration:none;border-right:1px solid rgba(255,255,255,.15);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+main{display:grid;grid-template-columns:260px 1fr 240px;overflow:hidden;}
+
+.grid-panel{border-right:2px solid var(--border2);padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.55rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+.matrix-grid{display:grid;grid-template-columns:repeat(5,42px);gap:3px;}
+.cell{width:42px;height:42px;border:2px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;transition:all .3s;position:relative;}
+.cell-val{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;line-height:1;}
+.cell-coord{font-size:.38rem;color:var(--muted);margin-top:1px;}
+.cell.pos{background:var(--pos-bg);border-color:var(--pos-border);color:var(--pos);}
+.cell.neg{background:var(--neg-bg);border-color:var(--neg-border);color:var(--neg);}
+.cell.zero{background:var(--zero-bg);border-color:var(--zero-border);color:var(--zero);}
+.cell.flipped{background:var(--flipped-bg);border-color:var(--flipped-border);color:var(--flipped);animation:fp .5s ease;}
+.cell.executing{background:rgba(123,63,196,.1);border-color:var(--queue-a);transform:scale(1.1);z-index:2;}
+@keyframes fp{0%{transform:scale(1.15);}100%{transform:scale(1);}}
+
+.q-row{display:flex;align-items:flex-start;gap:.4rem;}
+.q-label{font-size:.55rem;text-transform:uppercase;color:var(--muted);min-width:50px;padding-top:3px;}
+.q-items{display:flex;gap:3px;flex-wrap:wrap;}
+.q-item{padding:2px 6px;border-radius:2px;font-size:.6rem;font-weight:500;}
+.q-item.cur{background:rgba(123,63,196,.1);border:1px solid rgba(123,63,196,.4);color:var(--queue-a);}
+.q-item.nxt{background:rgba(26,107,60,.1);border:1px solid rgba(26,107,60,.4);color:var(--queue-b);}
+
+.passes-display{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:700;color:var(--accent);}
+
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:2px solid var(--border2);}
+.code-header{padding:.5rem 1rem;background:#111;border-bottom:1px solid #2a2520;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:#5a5048;}
+.code-step{font-size:.62rem;color:var(--accent);opacity:.8;}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;color:#d0c8b8;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:#3a3228;flex-shrink:0;line-height:21px;user-select:none;}
+.code-content{flex:1;padding:0 12px 0 4px;font-size:.68rem;line-height:21px;white-space:pre;color:#c0b8a8;}
+.code-line.active-line{background:var(--line-active);border-left:2px solid var(--accent);}
+.code-line.active-line .ln{color:var(--accent);}
+.code-line.just-ran{animation:lr .5s ease;}
+@keyframes lr{0%{background:rgba(230,61,0,.2);}100%{background:var(--line-active);}}
+.kw{color:var(--kw);}.fn{color:var(--fn);}.st{color:var(--st);}.nm{color:var(--nm);}.cm{color:var(--cm);font-style:italic;}.op{color:var(--op);}
+.teacher-bar{padding:.5rem 1rem;background:#111;border-top:1px solid #2a2520;font-size:.65rem;color:#5a5048;font-style:italic;line-height:1.4;flex-shrink:0;min-height:40px;transition:color .3s;}
+.teacher-bar.lit{color:#c0b8a8;}
+
+.vars-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.var-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.var-title{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.var-row{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:6px;}
+.var-row:last-child{border-bottom:none;}
+.var-k{color:var(--muted);}
+.var-v{color:var(--text);font-size:.62rem;text-align:right;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.var-v.chg{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(230,61,0,.15);}100%{background:transparent;}}
+
+.step-log{display:flex;flex-direction:column;gap:2px;max-height:150px;overflow-y:auto;}
+.log-line{font-size:.58rem;padding:2px 6px;border-radius:2px;border-left:2px solid var(--border2);color:var(--muted);}
+.log-line.flip{border-color:var(--flipped);color:var(--flipped);}
+.log-line.pass{border-color:var(--accent);color:var(--accent);}
+.log-line.done{border-color:var(--pos);color:var(--pos);}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--text);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--text);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-accent:hover{opacity:.85;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">ALGO · LEARN</div>
+  <nav class="nav-tabs">
+    <a href="mp_watch.html" class="nav-tab">01 Watch</a>
+    <a href="mp_guide.html" class="nav-tab">02 Guide</a>
+    <a href="mp_cma.html" class="nav-tab active">03 Mirror·A</a>
+    <a href="mp_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="mp_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="mp_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Minimum Passes · Follow</div>
+</header>
+<main>
+  <div class="grid-panel">
+    <div class="panel-label">Matrix</div>
+    <div class="matrix-grid" id="mainGrid"></div>
+    <div class="panel-label">Passes</div>
+    <div class="passes-display" id="passesDisplay">0</div>
+    <div class="panel-label">Current Queue</div>
+    <div class="q-row"><div class="q-items" id="qCur"></div></div>
+    <div class="panel-label">Next Queue</div>
+    <div class="q-row"><div class="q-items" id="qNxt"></div></div>
+  </div>
+
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title">Python · min_passes.py</div>
+      <div class="code-step">step <span id="stepNum">0</span>/<span id="stepTotal">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="teacher-bar" id="teacherBar">"We\'re gonna use a queue to store all of the positions of elements that are positive."</div>
+  </div>
+
+  <div class="vars-panel">
+    <div class="panel-label">Variables</div>
+    <div class="var-block">
+      <div class="var-title">Core</div>
+      <div class="var-row"><span class="var-k">passes</span><span class="var-v" id="vPasses">0</span></div>
+      <div class="var-row"><span class="var-k">cur_size</span><span class="var-v" id="vCurSize">—</span></div>
+      <div class="var-row"><span class="var-k">cur_row</span><span class="var-v" id="vCurRow">—</span></div>
+      <div class="var-row"><span class="var-k">cur_col</span><span class="var-v" id="vCurCol">—</span></div>
+      <div class="var-row"><span class="var-k">value</span><span class="var-v" id="vValue">—</span></div>
+    </div>
+    <div class="var-block">
+      <div class="var-title">Queues</div>
+      <div class="var-row"><span class="var-k">cur_q len</span><span class="var-v" id="vCurQLen">0</span></div>
+      <div class="var-row"><span class="var-k">next_q len</span><span class="var-v" id="vNxtQLen">0</span></div>
+    </div>
+    <div class="var-block">
+      <div class="var-title">Result</div>
+      <div class="var-row"><span class="var-k">neg remaining</span><span class="var-v" id="vNeg">—</span></div>
+      <div class="var-row"><span class="var-k">answer</span><span class="var-v" id="vAnswer">—</span></div>
+    </div>
+    <div class="panel-label">Log</div>
+    <div class="step-log" id="stepLog"></div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.65rem;color:var(--muted);">Step <span id="stepLabel">0</span> of <span id="stepLabelTotal">?</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" id="prevBtn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="toggleAuto()" id="autoBtn">Auto</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="mp_cmb.html" class="btn btn-accent">→ Mirror·B</a>
+  </div>
+</footer>
+<script>
+const MATRIX_INIT=[[ 0,-1,-3, 2, 0],[ 1,-2,-1,-3,-4],[ 3, 0, 1,-1,-2],[ 0,-4, 0, 0,-3]];
+const ROWS=4,COLS=5;
+
+const CODE=[
+  {n:1,t:'<span class="kw">def</span> <span class="fn">minimum_passes</span>(matrix):',id:'def'},
+  {n:2,t:'  passes <span class="op">=</span> convert_negatives(matrix)',id:'call_convert'},
+  {n:3,t:'  <span class="kw">if not</span> contains_negative(matrix):',id:'check_neg'},
+  {n:4,t:'    <span class="kw">return</span> passes <span class="op">-</span> <span class="nm">1</span>      <span class="cm"># one extra pass</span>',id:'return_passes'},
+  {n:5,t:'  <span class="kw">return</span> <span class="op">-</span><span class="nm">1</span>               <span class="cm"># impossible</span>',id:'return_neg1'},
+  {n:6,t:'',id:'b1'},
+  {n:7,t:'<span class="kw">def</span> <span class="fn">convert_negatives</span>(matrix):',id:'def_convert'},
+  {n:8,t:'  next_q <span class="op">=</span> get_all_positive_positions(matrix)',id:'init_queue'},
+  {n:9,t:'  passes <span class="op">=</span> <span class="nm">0</span>',id:'init_passes'},
+  {n:10,t:'  <span class="kw">while</span> <span class="fn">len</span>(next_q) <span class="op">></span> <span class="nm">0</span>:   <span class="cm"># while work remains</span>',id:'while_outer'},
+  {n:11,t:'    cur_q <span class="op">=</span> next_q             <span class="cm"># swap queues</span>',id:'swap_cur'},
+  {n:12,t:'    next_q <span class="op">=</span> []',id:'reset_next'},
+  {n:13,t:'    <span class="kw">while</span> <span class="fn">len</span>(cur_q) <span class="op">></span> <span class="nm">0</span>:',id:'while_inner'},
+  {n:14,t:'      cur_row, cur_col <span class="op">=</span> cur_q.pop(<span class="nm">0</span>)',id:'pop'},
+  {n:15,t:'      adj <span class="op">=</span> get_adjacent(cur_row, cur_col, matrix)',id:'get_adj'},
+  {n:16,t:'      <span class="kw">for</span> pos <span class="kw">in</span> adj:',id:'for_adj'},
+  {n:17,t:'        row, col <span class="op">=</span> pos',id:'unpack'},
+  {n:18,t:'        value <span class="op">=</span> matrix[row][col]',id:'get_val'},
+  {n:19,t:'        <span class="kw">if</span> value <span class="op"><</span> <span class="nm">0</span>:            <span class="cm"># negative neighbor</span>',id:'check_neg_val'},
+  {n:20,t:'          matrix[row][col] <span class="op">*=</span> <span class="op">-</span><span class="nm">1</span>  <span class="cm"># flip to positive</span>',id:'flip'},
+  {n:21,t:'          next_q.append([row, col])',id:'push_next'},
+  {n:22,t:'    passes <span class="op">+=</span> <span class="nm">1</span>',id:'inc_passes'},
+  {n:23,t:'  <span class="kw">return</span> passes',id:'return_passes_fn'},
+];
+
+const QUOTES={
+  init_queue:'"We\'re gonna start our algorithm by looking through every element in the matrix and adding all of the positive values to the queue."',
+  while_outer:'"We loop through this next pass queue — we make sure that it is not empty."',
+  swap_cur:'"The current pass queue is equal to the next pass queue. We\'re kind of swapping those two queues."',
+  pop:'"We pop off elements one at a time — current row, current col is equal to the current pass queue dot pop at index zero."',
+  check_neg_val:'"We look at all of the adjacent positions — if the value is less than zero, then we wanna switch this value to be a positive."',
+  flip:'"Matrix at row, col is equal to whatever it\'s value is multiplied by negative one to swap that."',
+  push_next:'"We add into the next pass queue. That way when we come up to the top of this while loop we\'ll flip the queues once more."',
+  inc_passes:'"As soon as we finish one of these iterations we\'ve completed a pass and so we increment our number of passes."',
+  return_passes:'"We return passes minus one because remember — we\'re always going to have one more pass than is actually required."',
+  return_neg1:'"If this does contain any negatives then we can return negative one because it was impossible to convert all of the negative values."',
+};
+
+function computeSteps(){
+  const steps=[];
+  const mat=MATRIX_INIT.map(r=>[...r]);
+  const log=(line,desc,curQ,nxtQ,cr,cc,val,passes,log)=>
+    steps.push({line,desc,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[...nxtQ],cr,cc,val,passes,logEntry:log});
+
+  function getN(r,c){const n=[];if(r>0)n.push([r-1,c]);if(r<ROWS-1)n.push([r+1,c]);if(c>0)n.push([r,c-1]);if(c<COLS-1)n.push([r,c+1]);return n;}
+
+  steps.push({line:'def',desc:'Function defined',mat:mat.map(r=>[...r]),curQ:[],nxtQ:[],cr:null,cc:null,val:null,passes:0,logEntry:null});
+  steps.push({line:'def_convert',desc:'convert_negatives called',mat:mat.map(r=>[...r]),curQ:[],nxtQ:[],cr:null,cc:null,val:null,passes:0,logEntry:null});
+
+  let nextQ=[];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(mat[r][c]>0) nextQ.push([r,c]);
+  steps.push({line:'init_queue',desc:`next_q = ${JSON.stringify(nextQ)}`,mat:mat.map(r=>[...r]),curQ:[],nxtQ:[...nextQ],cr:null,cc:null,val:null,passes:0,logEntry:null});
+
+  let passes=0;
+  steps.push({line:'init_passes',desc:'passes = 0',mat:mat.map(r=>[...r]),curQ:[],nxtQ:[...nextQ],cr:null,cc:null,val:null,passes:0,logEntry:null});
+
+  while(nextQ.length>0){
+    steps.push({line:'while_outer',desc:`next_q has ${nextQ.length} items`,mat:mat.map(r=>[...r]),curQ:[],nxtQ:[...nextQ],cr:null,cc:null,val:null,passes,logEntry:null});
+    let curQ=[...nextQ];
+    nextQ=[];
+    steps.push({line:'swap_cur',desc:`cur_q = ${JSON.stringify(curQ)}`,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[],cr:null,cc:null,val:null,passes,logEntry:null});
+    steps.push({line:'reset_next',desc:'next_q = []',mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[],cr:null,cc:null,val:null,passes,logEntry:null});
+
+    while(curQ.length>0){
+      steps.push({line:'while_inner',desc:`cur_q has ${curQ.length} items`,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[...nextQ],cr:null,cc:null,val:null,passes,logEntry:null});
+      const[cr,cc]=curQ.shift();
+      steps.push({line:'pop',desc:`popped [${cr},${cc}]`,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[...nextQ],cr,cc,val:null,passes,logEntry:null});
+      const adj=getN(cr,cc);
+      steps.push({line:'get_adj',desc:`neighbors of [${cr},${cc}]: ${adj.map(n=>`[${n}]`).join(',')}`,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[...nextQ],cr,cc,val:null,passes,logEntry:null});
+      for(const[nr,nc] of adj){
+        steps.push({line:'for_adj',desc:`checking neighbor [${nr},${nc}]`,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[...nextQ],cr,cc,val:null,passes,logEntry:null});
+        steps.push({line:'unpack',desc:`row=${nr}, col=${nc}`,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[...nextQ],cr:nr,cc:nc,val:null,passes,logEntry:null});
+        const val=mat[nr][nc];
+        steps.push({line:'get_val',desc:`value = ${val}`,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[...nextQ],cr:nr,cc:nc,val,passes,logEntry:null});
+        steps.push({line:'check_neg_val',desc:`${val} < 0 ? ${val<0}`,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[...nextQ],cr:nr,cc:nc,val,passes,logEntry:null});
+        if(val<0){
+          mat[nr][nc]*=-1;
+          steps.push({line:'flip',desc:`matrix[${nr}][${nc}] = ${mat[nr][nc]}`,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[...nextQ],cr:nr,cc:nc,val:mat[nr][nc],passes,logEntry:{t:'flip',msg:`Flipped [${nr},${nc}]: ${val} → ${mat[nr][nc]}`}});
+          nextQ.push([nr,nc]);
+          steps.push({line:'push_next',desc:`next_q.append([${nr},${nc}])`,mat:mat.map(r=>[...r]),curQ:[...curQ],nxtQ:[...nextQ],cr:nr,cc:nc,val:mat[nr][nc],passes,logEntry:null});
+        }
+      }
+    }
+    passes++;
+    steps.push({line:'inc_passes',desc:`passes = ${passes}`,mat:mat.map(r=>[...r]),curQ:[],nxtQ:[...nextQ],cr:null,cc:null,val:null,passes,logEntry:{t:'pass',msg:`Pass ${passes} complete`}});
+  }
+  const negLeft=mat.flat().filter(v=>v<0).length;
+  steps.push({line:'while_outer',desc:'next_q is empty — done',mat:mat.map(r=>[...r]),curQ:[],nxtQ:[],cr:null,cc:null,val:null,passes,logEntry:null});
+  steps.push({line:'check_neg',desc:`contains_negative? ${negLeft>0}`,mat:mat.map(r=>[...r]),curQ:[],nxtQ:[],cr:null,cc:null,val:null,passes,logEntry:null});
+  if(negLeft===0){
+    steps.push({line:'return_passes',desc:`return ${passes} - 1 = ${passes-1}`,mat:mat.map(r=>[...r]),curQ:[],nxtQ:[],cr:null,cc:null,val:null,passes,logEntry:{t:'done',msg:`Answer: passes-1 = ${passes-1}`}});
+  } else {
+    steps.push({line:'return_neg1',desc:'return -1 (impossible)',mat:mat.map(r=>[...r]),curQ:[],nxtQ:[],cr:null,cc:null,val:null,passes,logEntry:{t:'done',msg:'Impossible: return -1'}});
+  }
+  return steps;
+}
+
+const STEPS=computeSteps();
+let cur=0;
+let autoTimer=null;
+
+function buildCode(){
+  const cb=document.getElementById('codeBody');
+  cb.innerHTML='';
+  CODE.forEach(l=>{
+    const d=document.createElement('div');
+    d.className='code-line';d.id=`line-${l.id}`;
+    d.innerHTML=`<span class="ln">${l.n||''}</span><span class="code-content">${l.t}</span>`;
+    cb.appendChild(d);
+  });
+  document.getElementById('stepTotal').textContent=STEPS.length;
+  document.getElementById('stepLabelTotal').textContent=STEPS.length;
+}
+
+function buildGrid(s){
+  const mg=document.getElementById('mainGrid');
+  mg.innerHTML='';
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const val=s.mat[r][c];
+    const el=document.createElement('div');
+    let cls='cell ';
+    if(val>0)cls+='pos';else if(val<0)cls+='neg';else cls+='zero';
+    if(s.cr===r&&s.cc===c)cls+=' executing';
+    el.className=cls;el.id=`mcell-${r}-${c}`;
+    el.innerHTML=`<span class="cell-val">${val}</span><span class="cell-coord">${r},${c}</span>`;
+    mg.appendChild(el);
+  }
+}
+
+function renderQ(id,items,type){
+  const el=document.getElementById(id);el.innerHTML='';
+  if(!items||!items.length){el.innerHTML='<span style="font-size:.58rem;color:var(--muted)">empty</span>';return;}
+  items.forEach(([r,c])=>{const d=document.createElement('div');d.className=`q-item ${type}`;d.textContent=`[${r},${c}]`;el.appendChild(d);});
+}
+
+function setVar(id,val){
+  const el=document.getElementById(id);if(!el)return;
+  const prev=el.textContent;el.textContent=String(val);
+  if(prev!==String(val)){el.className='var-v chg';setTimeout(()=>el.className='var-v',600);}
+}
+
+function applyStep(s){
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('active-line','just-ran'));
+  const lel=document.getElementById(`line-${s.line}`);
+  if(lel){lel.classList.add('active-line','just-ran');lel.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  buildGrid(s);
+  renderQ('qCur',s.curQ,'cur');
+  renderQ('qNxt',s.nxtQ,'nxt');
+  setVar('vPasses',s.passes);
+  setVar('vCurRow',s.cr!==null?s.cr:'—');
+  setVar('vCurCol',s.cc!==null?s.cc:'—');
+  setVar('vValue',s.val!==null?s.val:'—');
+  setVar('vCurQLen',s.curQ.length);
+  setVar('vNxtQLen',s.nxtQ.length);
+  const neg=s.mat.flat().filter(v=>v<0).length;
+  setVar('vNeg',neg);
+  setVar('vAnswer',s.line==='return_passes'?s.passes-1:s.line==='return_neg1'?-1:'—');
+  document.getElementById('passesDisplay').textContent=s.passes;
+  document.getElementById('stepNum').textContent=cur;
+  document.getElementById('stepLabel').textContent=cur;
+  const tb=document.getElementById('teacherBar');
+  const q=QUOTES[s.line];
+  if(q){tb.textContent=q;tb.className='teacher-bar lit';}else{tb.className='teacher-bar';}
+  if(s.logEntry){
+    const sl=document.getElementById('stepLog');
+    const li=document.createElement('div');
+    li.className=`log-line ${s.logEntry.t}`;li.textContent=`${cur}: ${s.logEntry.msg}`;
+    sl.appendChild(li);sl.scrollTop=sl.scrollHeight;
+  }
+}
+
+function nextStep(){if(cur<STEPS.length-1){cur++;applyStep(STEPS[cur]);}}
+function prevStep(){if(cur>0){cur--;applyStep(STEPS[cur]);}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}
+  else{document.getElementById('autoBtn').textContent='Stop';autoTimer=setInterval(()=>{if(cur<STEPS.length-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}},450);}
+}
+function resetAll(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}cur=0;document.getElementById('stepLog').innerHTML='';buildCode();applyStep(STEPS[0]);}
+
+buildCode();applyStep(STEPS[0]);
+</script>
+</body>
+</html>

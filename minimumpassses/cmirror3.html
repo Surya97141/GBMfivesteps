@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror C — Minimum Passes</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f5f2eb;--surface:#fff;--surface2:#f0ede6;--border:#e0dbd0;--border2:#c8c0b0;
+  --text:#1a1814;--muted:#8a8278;--accent:#e63d00;
+  --pos:#1a6b3c;--pos-bg:#e8f5ee;--pos-border:#6dbf8a;
+  --neg:#c0392b;--neg-bg:#fdecea;--neg-border:#e87b72;
+  --zero:#5a7a8a;--zero-bg:#eaf2f5;--zero-border:#8ab4c4;
+  --flipped:#e67e00;--right:#1a6b3c;--wrong:#c0392b;
+  --code-bg:#1a1814;
+  --kw:#ff9060;--fn:#ffd080;--st:#90d090;--nm:#ff8070;--cm:#6a6058;--op:#80d0ff;
+}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;height:100vh;display:grid;grid-template-rows:56px 1fr 56px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--text);display:flex;align-items:center;justify-content:space-between;background:var(--text);}
+.logo{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:#f5f2eb;letter-spacing:.08em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 14px;font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5);text-decoration:none;border-right:1px solid rgba(255,255,255,.15);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+main{display:grid;grid-template-columns:260px 1fr 260px;overflow:hidden;}
+
+.grid-panel{border-right:2px solid var(--border2);padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.55rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+.matrix-grid{display:grid;grid-template-columns:repeat(5,42px);gap:3px;}
+.cell{width:42px;height:42px;border:2px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;transition:all .3s;position:relative;}
+.cell-val{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;line-height:1;}
+.cell-coord{font-size:.38rem;color:var(--muted);margin-top:1px;}
+.cell.pos{background:var(--pos-bg);border-color:var(--pos-border);color:var(--pos);}
+.cell.neg{background:var(--neg-bg);border-color:var(--neg-border);color:var(--neg);}
+.cell.zero{background:var(--zero-bg);border-color:var(--zero-border);color:var(--zero);}
+.cell.done{background:rgba(26,107,60,.2);border-color:var(--pos);animation:pulse .6s ease;}
+@keyframes pulse{0%{transform:scale(1.1);}100%{transform:scale(1);}}
+
+.vb{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.vb-title{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vb-row{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vb-row:last-child{border-bottom:none;}
+.vb-k{color:var(--muted);}
+.vb-v{font-weight:500;}
+.vb-v.ok{color:var(--right);}
+.vb-v.err{color:var(--wrong);}
+.vb-v.pending{color:var(--muted);}
+
+.run-result{padding:.75rem;border:1px solid var(--border2);border-radius:3px;font-size:.7rem;line-height:1.6;min-height:60px;transition:all .3s;}
+.run-result.idle{color:var(--muted);}
+.run-result.pass{border-color:var(--right);background:var(--pos-bg);color:var(--right);}
+.run-result.fail{border-color:var(--wrong);background:var(--neg-bg);color:var(--wrong);}
+
+.editor-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:2px solid var(--border2);}
+.editor-header{padding:.5rem 1rem;background:#111;border-bottom:1px solid #2a2520;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.editor-title{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:#5a5048;}
+.editor-status{font-size:.6rem;color:#5a5048;transition:color .3s;}
+.editor-status.ok{color:var(--right);}
+.editor-status.err{color:var(--wrong);}
+.editor-wrap{flex:1;display:grid;grid-template-columns:36px 1fr;overflow:hidden;}
+.gutter{background:#111;border-right:1px solid #2a2520;padding:.5rem 0;overflow:hidden;}
+.gl{height:21px;text-align:right;padding:0 7px;font-size:.58rem;color:#3a3228;line-height:21px;user-select:none;}
+.gl.ok{color:var(--right);}
+.editor-area{position:relative;overflow:hidden;}
+.editor-hl{position:absolute;top:0;left:0;right:0;padding:.5rem 0;pointer-events:none;z-index:1;}
+.hl-line{height:21px;}
+.hl-line.ok{background:rgba(26,107,60,.07);}
+textarea#codeEd{position:absolute;top:0;left:0;right:0;bottom:0;background:transparent;color:#c0b8a8;font-family:'IBM Plex Mono',monospace;font-size:.68rem;line-height:21px;border:none;outline:none;resize:none;padding:.5rem .75rem;z-index:2;caret-color:var(--accent);white-space:pre;overflow-wrap:normal;overflow:auto;tab-size:2;}
+.hint-strip{padding:.4rem 1rem;background:#0d0d0b;border-top:1px solid #1a1814;font-size:.65rem;color:#4a4038;line-height:1.4;flex-shrink:0;min-height:38px;font-style:italic;transition:color .3s;}
+.hint-strip.lit{color:#c0b8a8;}
+
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.scaffold-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.scaffold-title{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.scaffold-content{padding:.5rem .7rem;font-size:.65rem;line-height:1.75;color:var(--muted);}
+.scaffold-content code{color:var(--accent);background:rgba(230,61,0,.07);padding:1px 4px;border-radius:2px;}
+.scaffold-content strong{color:var(--text);font-weight:500;}
+.ins-btn{font-family:'IBM Plex Mono',monospace;font-size:.55rem;padding:2px 7px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;border-radius:2px;transition:all .2s;}
+.ins-btn:hover{border-color:var(--accent);color:var(--accent);}
+.tc-list{display:flex;flex-direction:column;gap:3px;}
+.tc{font-size:.65rem;padding:4px 8px;border-radius:2px;border:1px solid var(--border2);display:flex;justify-content:space-between;}
+.tc.pass{border-color:var(--pos-border);color:var(--right);}
+.tc.fail{border-color:var(--neg-border);color:var(--wrong);}
+.tc.idle{color:var(--muted);}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--text);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--text);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-danger{border-color:rgba(192,57,43,.5);color:var(--wrong);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">ALGO · LEARN</div>
+  <nav class="nav-tabs">
+    <a href="mp_watch.html" class="nav-tab">01 Watch</a>
+    <a href="mp_guide.html" class="nav-tab">02 Guide</a>
+    <a href="mp_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="mp_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="mp_cmc.html" class="nav-tab active">05 Mirror·C</a>
+    <a href="mp_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Minimum Passes · Write</div>
+</header>
+<main>
+  <div class="grid-panel">
+    <div class="panel-label">Matrix (live)</div>
+    <div class="matrix-grid" id="mainGrid"></div>
+    <div class="panel-label">Checks</div>
+    <div class="vb">
+      <div class="vb-title">Structure</div>
+      <div class="vb-row"><span class="vb-k">minimum_passes def</span><span class="vb-v pending" id="c1">—</span></div>
+      <div class="vb-row"><span class="vb-k">convert_negatives def</span><span class="vb-v pending" id="c2">—</span></div>
+      <div class="vb-row"><span class="vb-k">initial positive queue</span><span class="vb-v pending" id="c3">—</span></div>
+      <div class="vb-row"><span class="vb-k">outer while loop</span><span class="vb-v pending" id="c4">—</span></div>
+      <div class="vb-row"><span class="vb-k">queue swap</span><span class="vb-v pending" id="c5">—</span></div>
+      <div class="vb-row"><span class="vb-k">inner while loop</span><span class="vb-v pending" id="c6">—</span></div>
+      <div class="vb-row"><span class="vb-k">flip negative (×-1)</span><span class="vb-v pending" id="c7">—</span></div>
+      <div class="vb-row"><span class="vb-k">passes += 1</span><span class="vb-v pending" id="c8">—</span></div>
+      <div class="vb-row"><span class="vb-k">return passes - 1</span><span class="vb-v pending" id="c9">—</span></div>
+    </div>
+    <div class="panel-label">Run</div>
+    <div class="run-result idle" id="runResult">Write your solution and click Run.</div>
+  </div>
+
+  <div class="editor-panel">
+    <div class="editor-header">
+      <div class="editor-title">solution.py — write from memory</div>
+      <div class="editor-status" id="edStatus">0/9 checks</div>
+    </div>
+    <div class="editor-wrap">
+      <div class="gutter" id="gutter"></div>
+      <div class="editor-area">
+        <div class="editor-hl" id="edHl"></div>
+        <textarea id="codeEd" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
+placeholder="# Write minimum_passes(matrix) from memory.
+#
+# Key functions needed:
+#   minimum_passes(matrix)
+#   convert_negatives(matrix)
+#   get_all_positive_positions(matrix)
+#   get_adjacent(row, col, matrix)
+#   contains_negative(matrix)
+"></textarea>
+      </div>
+    </div>
+    <div class="hint-strip" id="hintStrip">Start typing. The checks light up as you write each key concept.</div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Scaffold</div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>minimum_passes()</span><button class="ins-btn" onclick="ins('main')">Insert</button></div>
+      <div class="scaffold-content">
+        1. <code>passes = convert_negatives(matrix)</code><br>
+        2. <code>if not contains_negative(matrix):</code><br>
+        3. &nbsp;&nbsp;<code>return passes - 1</code><br>
+        4. <code>return -1</code>
+      </div>
+    </div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>convert_negatives()</span><button class="ins-btn" onclick="ins('convert')">Insert</button></div>
+      <div class="scaffold-content">
+        1. <code>next_q = get_all_positive_positions(matrix)</code><br>
+        2. <code>passes = 0</code><br>
+        3. <code>while len(next_q) &gt; 0:</code><br>
+        4. &nbsp;&nbsp;<code>cur_q = next_q; next_q = []</code><br>
+        5. &nbsp;&nbsp;<code>while len(cur_q) &gt; 0:</code><br>
+        6. &nbsp;&nbsp;&nbsp;&nbsp;pop, get adjacent, flip negatives<br>
+        7. &nbsp;&nbsp;<code>passes += 1</code><br>
+        8. <code>return passes</code>
+      </div>
+    </div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>Key insight</span></div>
+      <div class="scaffold-content">
+        <strong>BFS not DFS.</strong> Use <code>pop(0)</code> not <code>pop()</code>.<br>
+        Two queues: current pass, next pass.<br>
+        Zero is <strong>neutral</strong> — never flip it.<br>
+        Return <code>passes - 1</code> (one extra pass always added).
+      </div>
+    </div>
+    <div class="panel-label">Test Cases</div>
+    <div class="tc-list">
+      <div class="tc idle" id="tc0">TC1: all zeros → 0</div>
+      <div class="tc idle" id="tc1">TC2: [[1,-1]] → 1</div>
+      <div class="tc idle" id="tc2">TC3: main matrix → 3</div>
+      <div class="tc idle" id="tc3">TC4: [[-1]] → -1</div>
+    </div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.65rem;color:var(--muted);">Lines: <span id="lineCount">0</span> | Checks: <span id="checkCount">0</span>/9</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn btn-accent" onclick="runCode()">▶ Run</button>
+    <button class="btn" onclick="lintCode()">Lint</button>
+    <button class="btn" onclick="showSolution()">Reveal</button>
+    <button class="btn btn-danger" onclick="clearEd()">Clear</button>
+    <a href="mp_solo.html" class="btn btn-accent">→ Solo</a>
+  </div>
+</footer>
+<script>
+const MATRIX_INIT=[[ 0,-1,-3, 2, 0],[ 1,-2,-1,-3,-4],[ 3, 0, 1,-1,-2],[ 0,-4, 0, 0,-3]];
+const ROWS=4,COLS=5;
+
+const SOLUTION=`def minimum_passes(matrix):
+    passes = convert_negatives(matrix)
+    if not contains_negative(matrix):
+        return passes - 1
+    return -1
+
+def convert_negatives(matrix):
+    next_q = get_all_positive_positions(matrix)
+    passes = 0
+    while len(next_q) > 0:
+        cur_q = next_q
+        next_q = []
+        while len(cur_q) > 0:
+            cur_row, cur_col = cur_q.pop(0)
+            adj = get_adjacent(cur_row, cur_col, matrix)
+            for pos in adj:
+                row, col = pos
+                value = matrix[row][col]
+                if value < 0:
+                    matrix[row][col] *= -1
+                    next_q.append([row, col])
+        passes += 1
+    return passes
+
+def get_all_positive_positions(matrix):
+    positive_positions = []
+    for row in range(len(matrix)):
+        for col in range(len(matrix[row])):
+            value = matrix[row][col]
+            if value > 0:
+                positive_positions.append([row, col])
+    return positive_positions
+
+def get_adjacent(row, col, matrix):
+    adjacent = []
+    if row > 0:
+        adjacent.append([row - 1, col])
+    if row < len(matrix) - 1:
+        adjacent.append([row + 1, col])
+    if col > 0:
+        adjacent.append([row, col - 1])
+    if col < len(matrix[0]) - 1:
+        adjacent.append([row, col + 1])
+    return adjacent
+
+def contains_negative(matrix):
+    for row in matrix:
+        for value in row:
+            if value < 0:
+                return True
+    return False`;
+
+const SCAFFOLDS={
+  main:`def minimum_passes(matrix):
+    passes = convert_negatives(matrix)
+    if not contains_negative(matrix):
+        return passes - 1
+    return -1
+
+`,
+  convert:`def convert_negatives(matrix):
+    next_q = get_all_positive_positions(matrix)
+    passes = 0
+    while len(next_q) > 0:
+        cur_q = next_q
+        next_q = []
+        while len(cur_q) > 0:
+            cur_row, cur_col = cur_q.pop(0)
+            adj = get_adjacent(cur_row, cur_col, matrix)
+            for pos in adj:
+                row, col = pos
+                value = matrix[row][col]
+                if value < 0:
+                    matrix[row][col] *= -1
+                    next_q.append([row, col])
+        passes += 1
+    return passes
+
+`
+};
+
+function runMinPasses(matrix){
+  const mat=matrix.map(r=>[...r]);
+  function getPos(){const p=[];for(let r=0;r<mat.length;r++) for(let c=0;c<mat[r].length;c++) if(mat[r][c]>0)p.push([r,c]);return p;}
+  function getAdj(r,c){const a=[];if(r>0)a.push([r-1,c]);if(r<mat.length-1)a.push([r+1,c]);if(c>0)a.push([r,c-1]);if(c<mat[0].length-1)a.push([r,c+1]);return a;}
+  let nextQ=getPos(),passes=0;
+  while(nextQ.length>0){
+    let curQ=[...nextQ];nextQ=[];
+    while(curQ.length>0){
+      const[cr,cc]=curQ.shift();
+      getAdj(cr,cc).forEach(([nr,nc])=>{if(mat[nr][nc]<0){mat[nr][nc]*=-1;nextQ.push([nr,nc]);}});
+    }
+    passes++;
+  }
+  const hasNeg=mat.flat().some(v=>v<0);
+  return hasNeg?-1:passes-1;
+}
+
+const TC=[
+  {matrix:[[0,0],[0,0]],expected:0},
+  {matrix:[[1,-1]],expected:1},
+  {matrix:MATRIX_INIT,expected:3},
+  {matrix:[[-1]],expected:-1},
+];
+const TC_LABELS=['TC1: all zeros → 0','TC2: [[1,-1]] → 1','TC3: main matrix → 3','TC4: [[-1]] → -1'];
+
+function lintCode(){
+  const code=document.getElementById('codeEd').value;
+  let passed=0;
+  const checks=[
+    {id:'c1',test:()=>/def minimum_passes/.test(code)},
+    {id:'c2',test:()=>/def convert_negatives/.test(code)},
+    {id:'c3',test:()=>/get_all_positive/.test(code)||(/positive_positions/.test(code)&&/append/.test(code))},
+    {id:'c4',test:()=>/while.*len.*next_q/.test(code)||/while.*next_q/.test(code)},
+    {id:'c5',test:()=>/cur_q\s*=\s*next_q/.test(code)&&/next_q\s*=\s*\[\]/.test(code)},
+    {id:'c6',test:()=>/while.*len.*cur_q/.test(code)||/while.*cur_q/.test(code)},
+    {id:'c7',test:()=>(/\*=\s*-1/.test(code)||/\*\s*-1/.test(code))&&/matrix/.test(code)},
+    {id:'c8',test:()=>/passes\s*\+=\s*1/.test(code)},
+    {id:'c9',test:()=>/return\s+passes\s*-\s*1/.test(code)},
+  ];
+  checks.forEach(ch=>{
+    const ok=ch.test();if(ok)passed++;
+    const el=document.getElementById(ch.id);
+    if(el){el.textContent=ok?'✓':'✗';el.className=`vb-v ${ok?'ok':'err'}`;}
+  });
+  document.getElementById('checkCount').textContent=passed;
+  const st=document.getElementById('edStatus');
+  st.textContent=`${passed}/9 checks`;
+  st.className=passed===9?'editor-status ok':'editor-status err';
+  updateGutter();
+  return passed;
+}
+
+function runCode(){
+  lintCode();
+  const rr=document.getElementById('runResult');
+  rr.className='run-result idle';rr.textContent='Running...';
+  setTimeout(()=>{
+    let allPass=true;
+    TC.forEach((tc,i)=>{
+      try{
+        const got=runMinPasses(tc.matrix);
+        const pass=got===tc.expected;
+        const el=document.getElementById(`tc${i}`);
+        if(!pass)allPass=false;
+        if(el){el.className=`tc ${pass?'pass':'fail'}`;el.textContent=TC_LABELS[i]+(pass?' ✓':` ✗ got ${got}`);}
+      }catch(e){
+        allPass=false;
+        const el=document.getElementById(`tc${i}`);
+        if(el){el.className='tc fail';el.textContent=TC_LABELS[i]+' ✗ error';}
+      }
+    });
+    if(allPass){
+      rr.className='run-result pass';
+      rr.innerHTML='✓ All 4 test cases pass!<br>Result: minimum_passes(matrix) = 3<br>Go to Solo mode to test from memory.';
+      animateDone();
+    } else {
+      rr.className='run-result fail';
+      rr.textContent='✗ Some tests failed. Check your queue swap and the passes-1 return.';
+    }
+  },300);
+}
+
+function animateDone(){
+  const mg=document.getElementById('mainGrid');
+  const cells=mg.querySelectorAll('.cell');
+  cells.forEach((el,i)=>setTimeout(()=>{el.classList.add('done');setTimeout(()=>el.classList.remove('done'),500);},i*40));
+}
+
+function liveAnalyze(){
+  const code=document.getElementById('codeEd').value;
+  if(code.length<10)return;
+  const hints=[
+    [/def minimum_passes/,'✓ Entry function defined. Now write convert_negatives().'],
+    [/def convert_negatives/,'✓ Core function defined. Initialize your queue first.'],
+    [/get_all_positive_positions/,'✓ Queue initialized with all positives. Now write the outer while loop.'],
+    [/while.*next_q/,'✓ Outer loop detected. Swap queues next: cur_q = next_q.'],
+    [/cur_q\s*=\s*next_q/,'✓ Queue swap in place. Write the inner while loop now.'],
+    [/cur_q.pop\(0\)/,'✓ BFS pop(0) — correct! It\'s a queue (FIFO), not a stack.'],
+    [/\*=\s*-1/,'✓ Flip found (×-1). Remember to append to next_q. Then passes += 1.'],
+    [/passes\s*\+=\s*1/,'✓ passes increments. Return passes - 1 at the end!'],
+    [/return passes - 1/,'✓ All key concepts detected. Run to test!'],
+  ];
+  for(const[pat,hint]of hints){if(pat.test(code)){setHint(hint);break;}}
+  updateGutter();
+}
+
+function setHint(t){const h=document.getElementById('hintStrip');h.textContent=t;h.className='hint-strip lit';}
+function updateGutter(){
+  const ta=document.getElementById('codeEd');
+  const lines=ta.value.split('\n');
+  const g=document.getElementById('gutter');
+  const hl=document.getElementById('edHl');
+  g.innerHTML='';hl.innerHTML='';
+  document.getElementById('lineCount').textContent=lines.length;
+  lines.forEach((_,i)=>{
+    const gl=document.createElement('div');gl.className='gl';gl.textContent=i+1;g.appendChild(gl);
+    const hline=document.createElement('div');hline.className='hl-line';hl.appendChild(hline);
+  });
+}
+function ins(key){
+  const ta=document.getElementById('codeEd');
+  const ex=ta.value;const add=SCAFFOLDS[key];
+  if(ex.includes(add.trim().slice(0,20)))return;
+  ta.value=ex+'\n'+add;updateGutter();lintCode();
+}
+function showSolution(){if(!confirm('Reveal solution?'))return;document.getElementById('codeEd').value=SOLUTION;updateGutter();lintCode();}
+function clearEd(){
+  document.getElementById('codeEd').value='';
+  ['c1','c2','c3','c4','c5','c6','c7','c8','c9'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='—';el.className='vb-v pending';}});
+  document.getElementById('runResult').className='run-result idle';
+  document.getElementById('runResult').textContent='Write your solution and click Run.';
+  TC_LABELS.forEach((l,i)=>{const el=document.getElementById(`tc${i}`);if(el){el.className='tc idle';el.textContent=l;}});
+  document.getElementById('checkCount').textContent='0';
+  document.getElementById('edStatus').textContent='0/9 checks';
+  document.getElementById('edStatus').className='editor-status';
+  buildGrid();updateGutter();
+}
+function buildGrid(){
+  const mg=document.getElementById('mainGrid');mg.innerHTML='';
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const val=MATRIX_INIT[r][c];
+    const el=document.createElement('div');
+    let cls='cell ';if(val>0)cls+='pos';else if(val<0)cls+='neg';else cls+='zero';
+    el.className=cls;
+    el.innerHTML=`<span class="cell-val">${val}</span><span class="cell-coord">${r},${c}</span>`;
+    mg.appendChild(el);
+  }
+}
+
+document.getElementById('codeEd').addEventListener('input',liveAnalyze);
+document.getElementById('codeEd').addEventListener('keydown',(e)=>{
+  if(e.key==='Tab'){e.preventDefault();const ta=e.target,s=ta.selectionStart;ta.value=ta.value.slice(0,s)+'    '+ta.value.slice(ta.selectionEnd);ta.selectionStart=ta.selectionEnd=s+4;}
+});
+
+buildGrid();updateGutter();
+</script>
+</body>
+</html>

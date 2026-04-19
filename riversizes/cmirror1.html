@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Mirror A — Follow</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#080b0f;
+  --surface:#0f1419;
+  --surface2:#161d26;
+  --border:#1e2832;
+  --border2:#2a3848;
+  --text:#e8dcc8;
+  --muted:#4a5568;
+  --muted2:#667080;
+  --accent:#c8f060;
+  --accent2:#a8d040;
+  --river:#4a9eff;
+  --active:#f5a623;
+  --active-bg:rgba(245,166,35,0.12);
+  --right:#3ecf7a;
+  --wrong:#ff5c5c;
+  --code-bg:#0a0e13;
+  --line-hl:#1a2a15;
+  --line-active:#2a3a18;
+  --kw:#c792ea;
+  --fn:#82aaff;
+  --str:#c3e88d;
+  --num:#f78c6c;
+  --cmt:#546e7a;
+  --var-text:#eeffff;
+}
+
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;height:100vh;display:grid;grid-template-rows:52px 1fr 52px;overflow:hidden;}
+
+header{padding:0 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.logo{font-family:'Fraunces',serif;font-size:1rem;font-weight:300;color:var(--accent);letter-spacing:.04em;}
+.nav-tabs{display:flex;border:1px solid var(--border2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:4px 12px;font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted2);text-decoration:none;border-right:1px solid var(--border);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}
+.nav-tab.active{background:var(--accent);color:#080b0f;font-weight:500;}
+.nav-tab:hover:not(.active){background:var(--surface2);color:var(--text);}
+.mode-pill{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);border:1px solid rgba(200,240,96,.3);padding:3px 10px;border-radius:2px;background:rgba(200,240,96,.06);}
+
+main{display:grid;grid-template-columns:300px 1fr 260px;overflow:hidden;}
+
+/* LEFT — GRID PANEL */
+.grid-panel{border-right:1px solid var(--border);padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.55rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.4rem;}
+.matrix-grid{display:grid;grid-template-columns:repeat(5,48px);gap:4px;}
+.cell{width:48px;height:48px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:500;border-radius:3px;transition:all .25s ease;position:relative;cursor:default;}
+.cell-coord{position:absolute;top:2px;right:3px;font-size:.42rem;color:#2a3848;line-height:1;}
+.cell.land{color:var(--muted);background:var(--surface);}
+.cell.river{color:#6ab4ff;background:rgba(74,158,255,.07);border-color:rgba(74,158,255,.2);}
+.cell.v-land{color:#2a3848;background:#080b0f;border-color:#111820;}
+.cell.v-river{color:var(--river);background:rgba(74,158,255,.18);border-color:var(--river);box-shadow:0 0 10px rgba(74,158,255,.3);}
+.cell.scanning{border-color:var(--active);box-shadow:0 0 12px var(--active-bg);animation:scanPulse .8s ease infinite;}
+.cell.executing{color:var(--active);background:var(--active-bg);border-color:var(--active);transform:scale(1.1);z-index:2;box-shadow:0 0 18px rgba(245,166,35,.4);}
+.cell.river-done{color:#82c4ff;background:rgba(74,158,255,.25);border-color:#4a9eff;}
+@keyframes scanPulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+
+.stack-mini{display:flex;flex-direction:column;gap:3px;}
+.stack-item-mini{background:var(--surface2);border:1px solid var(--border2);border-radius:2px;padding:4px 8px;font-size:.68rem;display:flex;justify-content:space-between;animation:slideIn .2s ease;}
+.stack-item-mini.top{border-color:var(--active);color:var(--active);background:var(--active-bg);}
+@keyframes slideIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+
+.river-pills{display:flex;gap:5px;flex-wrap:wrap;}
+.river-pill{padding:3px 10px;border-radius:2px;font-size:.75rem;font-weight:500;animation:popIn .3s ease;}
+@keyframes popIn{from{opacity:0;transform:scale(.6);}to{opacity:1;transform:scale(1);}}
+
+/* CENTER — CODE PANEL */
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);}
+.code-header{padding:.6rem 1rem;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted2);}
+.code-file{font-size:.65rem;color:var(--accent);opacity:.7;}
+.code-body{flex:1;overflow-y:auto;padding:.75rem 0;}
+.code-line{display:flex;gap:0;min-height:22px;transition:background .2s;position:relative;}
+.code-line:hover{background:rgba(255,255,255,.02);}
+.code-line.hl{background:var(--line-hl);}
+.code-line.active-line{background:var(--line-active);border-left:2px solid var(--accent);}
+.code-line.just-ran{animation:lineFlash .6s ease;}
+@keyframes lineFlash{0%{background:rgba(200,240,96,.2);}100%{background:var(--line-active);}}
+.ln{width:36px;text-align:right;padding:0 10px;font-size:.65rem;color:var(--muted);flex-shrink:0;line-height:22px;user-select:none;}
+.code-line.active-line .ln{color:var(--accent);}
+.code-content{flex:1;padding:0 16px 0 4px;font-size:.72rem;line-height:22px;white-space:pre;}
+.kw{color:var(--kw);}
+.fn{color:var(--fn);}
+.st{color:var(--str);}
+.nm{color:var(--num);}
+.cm{color:var(--cmt);font-style:italic;}
+.vr{color:var(--var-text);}
+.op{color:#89ddff;}
+
+.teacher-bar{padding:.5rem 1rem;background:var(--surface);border-top:1px solid var(--border);font-size:.7rem;color:var(--muted2);font-style:italic;line-height:1.4;flex-shrink:0;min-height:44px;transition:color .3s;}
+.teacher-bar.lit{color:var(--text);}
+.teacher-bar span{color:var(--accent);}
+
+/* RIGHT — VARIABLES PANEL */
+.vars-panel{padding:1rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.var-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.var-block-title{padding:4px 8px;background:var(--surface2);font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.var-row{padding:5px 8px;font-size:.68rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.var-row:last-child{border-bottom:none;}
+.var-name{color:var(--muted2);flex-shrink:0;}
+.var-val{color:var(--var-text);text-align:right;font-size:.65rem;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.var-val.changed{color:var(--accent);animation:valPop .4s ease;}
+@keyframes valPop{0%{background:rgba(200,240,96,.2);}100%{background:transparent;}}
+.var-arrow{color:var(--muted);font-size:.6rem;flex-shrink:0;}
+
+.step-log{display:flex;flex-direction:column;gap:2px;max-height:160px;overflow-y:auto;}
+.log-item{font-size:.62rem;padding:3px 6px;border-radius:2px;border-left:2px solid var(--border2);color:var(--muted2);line-height:1.4;}
+.log-item.log-river{border-color:var(--river);color:#6ab4ff;}
+.log-item.log-land{border-color:var(--border2);}
+.log-item.log-skip{border-color:var(--muted);color:var(--muted);}
+.log-item.log-complete{border-color:var(--right);color:var(--right);}
+
+footer{padding:0 1.5rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;padding:6px 16px;border-radius:2px;border:1px solid var(--border2);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#080b0f;border-color:var(--accent);font-weight:500;}
+.btn-accent:hover{opacity:.85;}
+.step-info{font-size:.65rem;color:var(--muted);display:flex;align-items:center;gap:12px;}
+.step-info span{color:var(--text);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">algo.learn</div>
+  <nav class="nav-tabs">
+    <a href="watch.html" class="nav-tab">01 Watch</a>
+    <a href="guide.html" class="nav-tab">02 Guide</a>
+    <a href="cm_a.html" class="nav-tab active">03 Mirror·A</a>
+    <a href="cm_b.html" class="nav-tab">04 Mirror·B</a>
+    <a href="cm_c.html" class="nav-tab">05 Mirror·C</a>
+    <a href="solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Follow Mode</div>
+</header>
+
+<main>
+  <!-- LEFT: GRID -->
+  <div class="grid-panel">
+    <div class="panel-label">Matrix</div>
+    <div class="matrix-grid" id="mainGrid"></div>
+
+    <div class="panel-label">DFS Stack</div>
+    <div class="stack-mini" id="stackMini"><div style="font-size:.65rem;color:var(--muted);">empty</div></div>
+
+    <div class="panel-label">Rivers Found</div>
+    <div class="river-pills" id="riverPills"><div style="font-size:.65rem;color:var(--muted);">none yet</div></div>
+  </div>
+
+  <!-- CENTER: CODE -->
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title">Python · river_sizes.py</div>
+      <div class="code-file">step <span id="stepNum">0</span> / <span id="stepTotal">0</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="teacher-bar" id="teacherBar">"Start at the top of the matrix and traverse it applying some kind of variation of DFS."</div>
+  </div>
+
+  <!-- RIGHT: VARIABLES -->
+  <div class="vars-panel">
+    <div class="panel-label">Live Variables</div>
+
+    <div class="var-block">
+      <div class="var-block-title">Outer Loop</div>
+      <div class="var-row"><span class="var-name">i (row)</span><span class="var-val" id="vi">—</span></div>
+      <div class="var-row"><span class="var-name">j (col)</span><span class="var-val" id="vj">—</span></div>
+      <div class="var-row"><span class="var-name">visited[i][j]</span><span class="var-val" id="vvis">—</span></div>
+      <div class="var-row"><span class="var-name">matrix[i][j]</span><span class="var-val" id="vmat">—</span></div>
+    </div>
+
+    <div class="var-block">
+      <div class="var-block-title">DFS State</div>
+      <div class="var-row"><span class="var-name">node (popped)</span><span class="var-val" id="vnode">—</span></div>
+      <div class="var-row"><span class="var-name">current_size</span><span class="var-val" id="vsize">—</span></div>
+      <div class="var-row"><span class="var-name">stack length</span><span class="var-val" id="vstacklen">0</span></div>
+      <div class="var-row"><span class="var-name">neighbors pushed</span><span class="var-val" id="vnpushed">—</span></div>
+    </div>
+
+    <div class="var-block">
+      <div class="var-block-title">Output</div>
+      <div class="var-row"><span class="var-name">sizes</span><span class="var-val" id="vsizes">[]</span></div>
+      <div class="var-row"><span class="var-name">rivers count</span><span class="var-val" id="vrcount">0</span></div>
+    </div>
+
+    <div class="panel-label">Step Log</div>
+    <div class="step-log" id="stepLog"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="step-info">
+    Phase: <span id="phaseLabel">scanning</span>
+    &nbsp;|&nbsp; Visited: <span id="visitedCount">0</span>/25
+  </div>
+  <div style="display:flex;gap:6px;">
+    <button class="btn" id="prevBtn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" id="nextBtn" onclick="nextStep()">Next Step →</button>
+    <button class="btn" onclick="toggleAuto()" id="autoBtn">Auto</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="cm_b.html" class="btn btn-accent">→ Predict Mode</a>
+  </div>
+</footer>
+
+<script>
+const MATRIX = [[1,0,0,1,0],[1,0,1,0,0],[0,0,1,0,1],[1,0,1,0,1],[1,0,1,1,0]];
+const RC = ['#4a9eff','#a78bfa','#3ecf7a','#f472b6','#fb923c'];
+
+// Code lines with syntax highlighting
+const CODE_LINES = [
+  {n:1,  t:'<span class="kw">def</span> <span class="fn">river_sizes</span>(matrix):',                                                        id:'def'},
+  {n:2,  t:'  sizes <span class="op">=</span> []                                       <span class="cm"># output array</span>',            id:'init_sizes'},
+  {n:3,  t:'  visited <span class="op">=</span> [[<span class="kw">False</span>]<span class="op">*</span><span class="fn">len</span>(matrix[<span class="nm">0</span>]) <span class="kw">for</span> _ <span class="kw">in</span> matrix]',id:'init_visited'},
+  {n:4,  t:'',                                                                                                                               id:'blank1'},
+  {n:5,  t:'  <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="fn">len</span>(matrix)):         <span class="cm"># scan rows</span>',  id:'for_i'},
+  {n:6,  t:'    <span class="kw">for</span> j <span class="kw">in</span> <span class="fn">range</span>(<span class="fn">len</span>(matrix[i])):   <span class="cm"># scan cols</span>',  id:'for_j'},
+  {n:7,  t:'      <span class="kw">if</span> visited[i][j]: <span class="kw">continue</span>      <span class="cm"># skip if seen</span>',   id:'check_visited'},
+  {n:8,  t:'      <span class="fn">traverse_node</span>(i, j, matrix, visited, sizes)',                                                         id:'call_traverse'},
+  {n:9,  t:'',                                                                                                                               id:'blank2'},
+  {n:10, t:'  <span class="kw">return</span> sizes',                                                                                              id:'return'},
+  {n:11, t:'',                                                                                                                               id:'blank3'},
+  {n:12, t:'<span class="kw">def</span> <span class="fn">traverse_node</span>(i, j, matrix, visited, sizes):',                                               id:'def_traverse'},
+  {n:13, t:'  current_size <span class="op">=</span> <span class="nm">0</span>',                                                                    id:'init_size'},
+  {n:14, t:'  stack <span class="op">=</span> [[i, j]]                           <span class="cm"># start DFS</span>',              id:'init_stack'},
+  {n:15, t:'',                                                                                                                               id:'blank4'},
+  {n:16, t:'  <span class="kw">while</span> stack:                              <span class="cm"># DFS loop</span>',              id:'while'},
+  {n:17, t:'    node <span class="op">=</span> stack.pop()                    <span class="cm"># pop TOP</span>',               id:'pop'},
+  {n:18, t:'    r, c <span class="op">=</span> node[<span class="nm">0</span>], node[<span class="nm">1</span>]',                                                         id:'unpack'},
+  {n:19, t:'    <span class="kw">if</span> visited[r][c]: <span class="kw">continue</span>          <span class="cm"># already seen</span>',          id:'check_vis2'},
+  {n:20, t:'    visited[r][c] <span class="op">=</span> <span class="kw">True</span>                 <span class="cm"># mark visited</span>',          id:'mark'},
+  {n:21, t:'    <span class="kw">if</span> matrix[r][c] <span class="op">==</span> <span class="nm">0</span>: <span class="kw">continue</span>     <span class="cm"># land — stop</span>',          id:'check_land'},
+  {n:22, t:'    current_size <span class="op">+=</span> <span class="nm">1</span>                  <span class="cm"># it\'s a river cell</span>',    id:'inc_size'},
+  {n:23, t:'    nbrs <span class="op">=</span> <span class="fn">get_neighbors</span>(r, c, matrix, visited)',                                              id:'get_nbrs'},
+  {n:24, t:'    <span class="kw">for</span> nbr <span class="kw">in</span> nbrs: stack.append(nbr) <span class="cm"># push neighbors</span>',        id:'push'},
+  {n:25, t:'',                                                                                                                               id:'blank5'},
+  {n:26, t:'  <span class="kw">if</span> current_size <span class="op">></span> <span class="nm">0</span>:',                                                                    id:'check_size'},
+  {n:27, t:'    sizes.append(current_size)            <span class="cm"># save river</span>',              id:'append'},
+];
+
+const QUOTES = {
+  init_sizes:    '"The first thing we\'re gonna wanna do is initialize our sizes array."',
+  init_visited:  '"Initialize our auxiliary matrix — every value is False because we haven\'t visited any node."',
+  for_i:         '"So this is just gonna be done in a couple of for loops. For i in range len of matrix."',
+  for_j:         '"For j in range len of matrix at index i — the matrix doesn\'t necessarily have the same width and height."',
+  check_visited: '"If visited at index i and index j — then we just continue."',
+  call_traverse: '"Otherwise we can call a helper function, traverse_node."',
+  def_traverse:  '"So what do we do here? Well, remember when we call traverse_node, we\'re potentially dealing with a brand new river."',
+  init_size:     '"Immediately we wanna initialize our current river size to be equal to zero."',
+  init_stack:    '"We\'ll declare an array of nodes that we have to explore — the first node is at indices i and j."',
+  while:         '"While the length of nodes to explore is truthy — while we still have nodes to explore."',
+  pop:           '"The current node is gonna be nodes_to_explore.pop — so we\'re treating this as a stack, depth-first search."',
+  unpack:        '"So our current i index is gonna be current_node at index zero. J is gonna be current_node at index one."',
+  check_vis2:    '"This is the critical part — if it\'s visited, then continue. We don\'t wanna do anything else."',
+  mark:          '"We set them as visited — this is exactly what we were doing when we were underlining the values."',
+  check_land:    '"If matrix of i of j is equal to zero then continue. If it\'s land, skip it."',
+  inc_size:      '"We can update current_river_size by one — we\'re dealing with a previously unvisited one."',
+  get_nbrs:      '"Get all of the unvisited neighbors of our current node — this is an O(1) operation."',
+  push:          '"We append every neighbor to our nodes_to_explore — we\'re adding up to four unvisited neighbors."',
+  check_size:    '"When we finally get out of the while loop — if current_river_size is greater than zero."',
+  append:        '"Then sizes.append current_river_size. If we have an actual river, add it to our sizes array."',
+};
+
+// Pre-compute all algorithm steps
+function computeSteps() {
+  const steps = [];
+  const vis = Array.from({length:5},()=>Array(5).fill(false));
+  const sizes = [];
+  const rivers = [];
+
+  function getN(r,c){
+    const n=[];
+    if(r>0&&!vis[r-1][c])n.push([r-1,c]);
+    if(r<4&&!vis[r+1][c])n.push([r+1,c]);
+    if(c>0&&!vis[r][c-1])n.push([r,c-1]);
+    if(c<4&&!vis[r][c+1])n.push([r,c+1]);
+    return n;
+  }
+
+  steps.push({line:'def', desc:'Function defined', vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i:null,j:null,node:null,size:0,phase:'init',log:null,npushed:null});
+  steps.push({line:'init_sizes', desc:'sizes = []', vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i:null,j:null,node:null,size:0,phase:'init',log:null,npushed:null});
+  steps.push({line:'init_visited', desc:'visited matrix created (all False)', vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i:null,j:null,node:null,size:0,phase:'init',log:null,npushed:null});
+
+  for(let i=0;i<5;i++){
+    steps.push({line:'for_i', desc:`i = ${i}`, vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i,j:null,node:null,size:0,phase:'scan',log:null,npushed:null});
+    for(let j=0;j<5;j++){
+      steps.push({line:'for_j', desc:`j = ${j}`, vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i,j,node:null,size:0,phase:'scan',log:null,npushed:null});
+      if(vis[i][j]){
+        steps.push({line:'check_visited', desc:`visited[${i}][${j}] = True → skip`, vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i,j,node:null,size:0,phase:'scan',log:{t:'skip',msg:`[${i},${j}] already visited`},npushed:null});
+        continue;
+      }
+      steps.push({line:'check_visited', desc:`visited[${i}][${j}] = False → traverse`, vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i,j,node:null,size:0,phase:'scan',log:null,npushed:null});
+      steps.push({line:'call_traverse', desc:`traverse_node(${i}, ${j}, ...)`, vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i,j,node:null,size:0,phase:'scan',log:null,npushed:null});
+
+      // traverse_node
+      steps.push({line:'def_traverse', desc:`traverse_node called at [${i},${j}]`, vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i,j,node:null,size:0,phase:'dfs',log:null,npushed:null});
+      let cur_size=0;
+      const stack=[[i,j]];
+      steps.push({line:'init_size', desc:'current_size = 0', vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:null,size:cur_size,phase:'dfs',log:null,npushed:null});
+      steps.push({line:'init_stack', desc:`stack = [[${i},${j}]]`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:null,size:cur_size,phase:'dfs',log:null,npushed:null});
+
+      while(stack.length){
+        steps.push({line:'while', desc:`stack has ${stack.length} item(s)`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:null,size:cur_size,phase:'dfs',log:null,npushed:null});
+        const node=stack.pop();
+        const [r,c]=node;
+        steps.push({line:'pop', desc:`node = stack.pop() → [${r},${c}]`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:[r,c],size:cur_size,phase:'dfs',log:null,npushed:null});
+        steps.push({line:'unpack', desc:`r=${r}, c=${c}`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:[r,c],size:cur_size,phase:'dfs',log:null,npushed:null});
+        if(vis[r][c]){
+          steps.push({line:'check_vis2', desc:`visited[${r}][${c}] = True → skip`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:[r,c],size:cur_size,phase:'dfs',log:{t:'skip',msg:`[${r},${c}] already visited, skip`},npushed:null});
+          continue;
+        }
+        steps.push({line:'check_vis2', desc:`visited[${r}][${c}] = False → proceed`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:[r,c],size:cur_size,phase:'dfs',log:null,npushed:null});
+        vis[r][c]=true;
+        steps.push({line:'mark', desc:`visited[${r}][${c}] = True`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:[r,c],size:cur_size,phase:'dfs',log:null,npushed:null});
+        if(MATRIX[r][c]===0){
+          steps.push({line:'check_land', desc:`matrix[${r}][${c}] = 0 → land, skip`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:[r,c],size:cur_size,phase:'dfs',log:{t:'land',msg:`[${r},${c}] = 0, land`},npushed:null});
+          continue;
+        }
+        steps.push({line:'check_land', desc:`matrix[${r}][${c}] = 1 → river!`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:[r,c],size:cur_size,phase:'dfs',log:null,npushed:null});
+        cur_size++;
+        steps.push({line:'inc_size', desc:`current_size = ${cur_size}`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:[r,c],size:cur_size,phase:'dfs',log:{t:'river',msg:`[${r},${c}] river cell, size=${cur_size}`},npushed:null});
+        const nbrs=getN(r,c);
+        steps.push({line:'get_nbrs', desc:`neighbors: ${nbrs.map(n=>`[${n}]`).join(', ')||'none'}`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:[r,c],size:cur_size,phase:'dfs',log:null,npushed:nbrs.length});
+        nbrs.forEach(n=>stack.push(n));
+        steps.push({line:'push', desc:`pushed ${nbrs.length} neighbor(s)`, vis:JSON.parse(JSON.stringify(vis)), stack:[...stack], sizes:[...sizes], i,j,node:[r,c],size:cur_size,phase:'dfs',log:null,npushed:nbrs.length});
+      }
+      steps.push({line:'check_size', desc:`current_size = ${cur_size}, ${cur_size>0?'river found':'no river'}`, vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i,j,node:null,size:cur_size,phase:'dfs',log:null,npushed:null});
+      if(cur_size>0){
+        sizes.push(cur_size);
+        rivers.push(cur_size);
+        steps.push({line:'append', desc:`sizes.append(${cur_size}) → sizes=${JSON.stringify(sizes)}`, vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i,j,node:null,size:cur_size,phase:'dfs',log:{t:'complete',msg:`River of size ${cur_size} found!`},npushed:null});
+      }
+    }
+  }
+  steps.push({line:'return', desc:`return ${JSON.stringify(sizes)}`, vis:JSON.parse(JSON.stringify(vis)), stack:[], sizes:[...sizes], i:null,j:null,node:null,size:0,phase:'done',log:{t:'complete',msg:`Done! sizes = ${JSON.stringify(sizes)}`},npushed:null});
+  return steps;
+}
+
+const STEPS = computeSteps();
+let cur = 0;
+let autoTimer = null;
+const RIVER_COLORS_MAP = ['#4a9eff','#a78bfa','#3ecf7a','#f472b6','#fb923c'];
+let riverColorIdx = 0;
+const riverCellColors = {};
+
+function buildGrid(){
+  const mg=document.getElementById('mainGrid');
+  mg.innerHTML='';
+  for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+    const el=document.createElement('div');
+    el.className='cell '+(MATRIX[r][c]?'river':'land');
+    el.id=`cell-${r}-${c}`;
+    el.innerHTML=`${MATRIX[r][c]}<span class="cell-coord">${r},${c}</span>`;
+    mg.appendChild(el);
+  }
+}
+
+function buildCode(){
+  const cb=document.getElementById('codeBody');
+  cb.innerHTML='';
+  CODE_LINES.forEach(l=>{
+    const line=document.createElement('div');
+    line.className='code-line';
+    line.id=`line-${l.id}`;
+    line.innerHTML=`<span class="ln">${l.n||''}</span><span class="code-content">${l.t}</span>`;
+    cb.appendChild(line);
+  });
+  document.getElementById('stepTotal').textContent=STEPS.length;
+}
+
+function setVar(id, val, changed=false){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const prev=el.textContent;
+  el.textContent=val;
+  if(changed&&prev!==val){el.className='var-val changed';setTimeout(()=>el.className='var-val',600);}
+}
+
+function applyStep(s){
+  // Code highlighting
+  document.querySelectorAll('.code-line').forEach(el=>{el.classList.remove('active-line','just-ran');});
+  const lineEl=document.getElementById(`line-${s.line}`);
+  if(lineEl){lineEl.classList.add('active-line','just-ran');lineEl.scrollIntoView({block:'nearest',behavior:'smooth'});}
+
+  // Grid
+  for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+    const el=document.getElementById(`cell-${r}-${c}`);
+    const isVis=s.vis[r][c];
+    const isRiver=MATRIX[r][c]===1;
+    if(riverCellColors[`${r},${c}`]&&isVis&&isRiver){
+      el.className='cell river-done';
+      el.style.borderColor=riverCellColors[`${r},${c}`];
+      el.style.color=riverCellColors[`${r},${c}`];
+    } else if(isVis&&isRiver){el.className='cell v-river';el.style.borderColor='';el.style.color='';}
+    else if(isVis){el.className='cell v-land';el.style.borderColor='';el.style.color='';}
+    else{el.className='cell '+(isRiver?'river':'land');el.style.borderColor='';el.style.color='';}
+  }
+
+  // Highlight active cell
+  if(s.node){
+    const [r,c]=s.node;
+    const el=document.getElementById(`cell-${r}-${c}`);
+    el.className='cell executing';
+    el.style.borderColor='';el.style.color='';
+  }
+  if(s.i!==null&&s.j!==null&&s.phase==='scan'&&!s.node){
+    const el=document.getElementById(`cell-${s.i}-${s.j}`);
+    if(el&&!s.vis[s.i][s.j])el.classList.add('scanning');
+  }
+
+  // Stack
+  const sm=document.getElementById('stackMini');
+  if(s.stack&&s.stack.length){
+    sm.innerHTML='';
+    [...s.stack].reverse().forEach((item,idx)=>{
+      const d=document.createElement('div');
+      d.className='stack-item-mini'+(idx===0?' top':'');
+      d.innerHTML=`<span>[${item[0]}, ${item[1]}]</span><span style="font-size:.58rem;color:var(--muted)">val=${MATRIX[item[0]][item[1]]}</span>`;
+      sm.appendChild(d);
+    });
+  } else {
+    sm.innerHTML='<div style="font-size:.65rem;color:var(--muted);">empty</div>';
+  }
+
+  // River pills — color completed rivers
+  if(s.line==='append'&&s.sizes.length){
+    const rp=document.getElementById('riverPills');
+    if(rp.querySelector('div[style]'))rp.innerHTML='';
+    const col=RIVER_COLORS_MAP[(s.sizes.length-1)%RIVER_COLORS_MAP.length];
+    const pill=document.createElement('div');
+    pill.className='river-pill';
+    pill.style.cssText=`background:${col}22;border:1px solid ${col}66;color:${col};padding:3px 10px;border-radius:2px;font-size:.75rem;font-weight:500;`;
+    pill.textContent=s.sizes[s.sizes.length-1];
+    document.getElementById('riverPills').appendChild(pill);
+  }
+  if(s.sizes.length===0){document.getElementById('riverPills').innerHTML='<div style="font-size:.65rem;color:var(--muted);">none yet</div>';}
+
+  // Variables
+  setVar('vi', s.i!==null?s.i:'—', true);
+  setVar('vj', s.j!==null?s.j:'—', true);
+  setVar('vvis', (s.i!==null&&s.j!==null)?`${s.vis[s.i][s.j]}`:'—', true);
+  setVar('vmat', (s.i!==null&&s.j!==null)?`${MATRIX[s.i][s.j]}`:'—', true);
+  setVar('vnode', s.node?`[${s.node[0]}, ${s.node[1]}]`:'—', true);
+  setVar('vsize', s.size!==undefined?s.size:'—', true);
+  setVar('vstacklen', s.stack?s.stack.length:0, true);
+  setVar('vnpushed', s.npushed!==null&&s.npushed!==undefined?s.npushed:'—', true);
+  setVar('vsizes', JSON.stringify(s.sizes), true);
+  setVar('vrcount', s.sizes.length, true);
+
+  // Teacher quote
+  const tb=document.getElementById('teacherBar');
+  const q=QUOTES[s.line];
+  if(q){tb.innerHTML=q;tb.className='teacher-bar lit';}
+  else{tb.className='teacher-bar';}
+
+  // Log
+  if(s.log){
+    const sl=document.getElementById('stepLog');
+    const item=document.createElement('div');
+    item.className=`log-item log-${s.log.t}`;
+    item.textContent=`${cur}: ${s.log.msg}`;
+    sl.appendChild(item);
+    sl.scrollTop=sl.scrollHeight;
+  }
+
+  // Footer
+  document.getElementById('stepNum').textContent=cur;
+  document.getElementById('phaseLabel').textContent=s.phase;
+  document.getElementById('visitedCount').textContent=s.vis.flat().filter(Boolean).length;
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').disabled=cur===STEPS.length-1;
+}
+
+function nextStep(){if(cur<STEPS.length-1){cur++;applyStep(STEPS[cur]);}}
+function prevStep(){if(cur>0){cur--;applyStep(STEPS[cur]);}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}
+  else{document.getElementById('autoBtn').textContent='Stop';autoTimer=setInterval(()=>{if(cur<STEPS.length-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}},400);}
+}
+function resetAll(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}
+  cur=0;
+  document.getElementById('riverPills').innerHTML='<div style="font-size:.65rem;color:var(--muted);">none yet</div>';
+  document.getElementById('stepLog').innerHTML='';
+  applyStep(STEPS[0]);
+}
+
+buildGrid();buildCode();applyStep(STEPS[0]);
+</script>
+</body>
+</html>

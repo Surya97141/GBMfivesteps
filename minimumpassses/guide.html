@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide — Minimum Passes</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f5f2eb;--surface:#fff;--surface2:#f0ede6;--border:#e0dbd0;--border2:#c8c0b0;
+  --text:#1a1814;--muted:#8a8278;--accent:#e63d00;--accent2:#ff5522;
+  --pos:#1a6b3c;--pos-bg:#e8f5ee;--pos-border:#6dbf8a;
+  --neg:#c0392b;--neg-bg:#fdecea;--neg-border:#e87b72;
+  --zero:#5a7a8a;--zero-bg:#eaf2f5;--zero-border:#8ab4c4;
+  --flipped:#e67e00;--flipped-bg:#fff3e0;--flipped-border:#ffab40;
+  --queue-a:#7b3fc4;--queue-b:#1a6b3c;
+  --right:#1a6b3c;--wrong:#c0392b;
+}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;height:100vh;display:grid;grid-template-rows:56px 1fr 56px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--text);display:flex;align-items:center;justify-content:space-between;background:var(--text);}
+.logo{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:#f5f2eb;letter-spacing:.08em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 14px;font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5);text-decoration:none;border-right:1px solid rgba(255,255,255,.15);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+main{display:grid;grid-template-columns:1fr 380px;overflow:hidden;}
+
+.center{padding:2rem 2.5rem;display:flex;flex-direction:column;gap:1.25rem;border-right:2px solid var(--border2);overflow-y:auto;}
+.instruction-box{background:var(--surface);border:2px solid var(--text);border-radius:3px;padding:.9rem 1.1rem;display:flex;gap:.9rem;align-items:flex-start;}
+.inst-icon{width:28px;height:28px;border-radius:50%;background:var(--text);display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--bg);flex-shrink:0;font-weight:700;}
+.inst-text{font-size:.75rem;line-height:1.65;color:var(--text);}
+.inst-text strong{color:var(--accent);}
+
+.teacher-flash{padding:.6rem .9rem;border-left:3px solid var(--accent);font-size:.72rem;color:var(--muted);font-style:italic;line-height:1.5;min-height:2.5rem;transition:all .3s;}
+.teacher-flash.lit{color:var(--text);border-color:var(--flipped);}
+
+.matrix-grid{display:grid;grid-template-columns:repeat(5,58px);gap:5px;align-self:center;justify-self:center;}
+.cell{width:58px;height:58px;border:2px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;transition:all .25s;position:relative;cursor:default;user-select:none;}
+.cell-val{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;line-height:1;}
+.cell-coord{font-size:.42rem;color:var(--muted);margin-top:2px;}
+.cell.pos{background:var(--pos-bg);border-color:var(--pos-border);color:var(--pos);}
+.cell.neg{background:var(--neg-bg);border-color:var(--neg-border);color:var(--neg);}
+.cell.zero{background:var(--zero-bg);border-color:var(--zero-border);color:var(--zero);}
+.cell.flipped{background:var(--flipped-bg);border-color:var(--flipped-border);color:var(--flipped);animation:fp .4s ease;}
+.cell.clickable{cursor:pointer;border-color:var(--queue-a);box-shadow:0 0 0 3px rgba(123,63,196,.25);animation:qp .9s ease infinite;}
+.cell.clickable:hover{transform:scale(1.07);background:rgba(123,63,196,.08);}
+.cell.wrong-shake{animation:ws .35s ease;}
+.cell.correct-flash{animation:cf .4s ease;}
+@keyframes fp{0%{transform:scale(1.12);}100%{transform:scale(1);}}
+@keyframes qp{0%,100%{box-shadow:0 0 0 3px rgba(123,63,196,.25);}50%{box-shadow:0 0 0 5px rgba(123,63,196,.4);}}
+@keyframes ws{0%,100%{transform:translateX(0);}25%{transform:translateX(-5px);}75%{transform:translateX(5px);}}
+@keyframes cf{0%{background:rgba(26,107,60,.3);}100%{background:var(--flipped-bg);}}
+
+.pass-counter{display:flex;align-items:center;gap:12px;}
+.pass-big{font-family:'Syne',sans-serif;font-size:2rem;font-weight:700;color:var(--accent);}
+.pass-info{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;line-height:1.5;}
+
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.55rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+
+.queue-visual{display:flex;flex-direction:column;gap:.4rem;}
+.q-row{display:flex;align-items:center;gap:.4rem;min-height:24px;}
+.q-label{font-size:.58rem;text-transform:uppercase;color:var(--muted);min-width:72px;letter-spacing:.08em;}
+.q-items{display:flex;gap:3px;flex-wrap:wrap;}
+.q-item{padding:3px 7px;border-radius:2px;font-size:.65rem;font-weight:500;animation:qi .2s ease;}
+@keyframes qi{from{opacity:0;transform:scale(.7);}to{opacity:1;transform:scale(1);}}
+.q-item.cur{background:rgba(123,63,196,.1);border:1px solid rgba(123,63,196,.4);color:var(--queue-a);}
+.q-item.nxt{background:rgba(26,107,60,.1);border:1px solid rgba(26,107,60,.4);color:var(--queue-b);}
+
+.state-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.state-title{padding:4px 8px;background:var(--surface2);font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.state-row{padding:5px 8px;font-size:.68rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.state-row:last-child{border-bottom:none;}
+.state-key{color:var(--muted);}
+.state-val{font-weight:500;}
+.state-val.accent{color:var(--accent);}
+.state-val.pos{color:var(--pos);}
+.state-val.neg{color:var(--neg);}
+
+.hint-box{background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--flipped);border-radius:3px;padding:.65rem .75rem;font-size:.7rem;color:var(--muted);line-height:1.6;min-height:3rem;}
+
+.toast{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-16px);background:var(--surface);border:2px solid var(--border2);border-radius:3px;padding:8px 18px;font-size:.75rem;opacity:0;transition:all .25s;z-index:100;pointer-events:none;max-width:380px;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.good{border-color:var(--right);color:var(--right);}
+.toast.bad{border-color:var(--wrong);color:var(--wrong);}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--text);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--text);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-accent:hover{background:var(--accent2);border-color:var(--accent2);}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header>
+  <div class="logo">ALGO · LEARN</div>
+  <nav class="nav-tabs">
+    <a href="mp_watch.html" class="nav-tab">01 Watch</a>
+    <a href="mp_guide.html" class="nav-tab active">02 Guide</a>
+    <a href="mp_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="mp_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="mp_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="mp_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Minimum Passes · Guide</div>
+</header>
+<main>
+  <div class="center">
+    <div class="instruction-box">
+      <div class="inst-icon">Q</div>
+      <div class="inst-text" id="instText"><strong>You drive the BFS.</strong> The current queue shows which cell to pop next. Click it to process it. Its negative neighbors will be flipped and added to the next queue.</div>
+    </div>
+    <div class="teacher-flash" id="teacherFlash">"We start by looking at this element — we pop it off of the queue. We look at all of the adjacent elements and see if any of them are negative."</div>
+    <div class="pass-counter">
+      <div class="pass-big" id="passBig">0</div>
+      <div class="pass-info">passes<br>completed</div>
+      <div style="margin-left:1rem;font-size:.65rem;color:var(--muted);" id="phaseLabel">Phase: initializing</div>
+    </div>
+    <div class="matrix-grid" id="mainGrid"></div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">BFS Queues</div>
+    <div class="queue-visual">
+      <div class="q-row"><span class="q-label">Current →</span><div class="q-items" id="qCur"></div></div>
+      <div class="q-row"><span class="q-label">Next →</span><div class="q-items" id="qNxt"></div></div>
+    </div>
+
+    <div class="panel-label">State</div>
+    <div class="state-block">
+      <div class="state-title">Algorithm</div>
+      <div class="state-row"><span class="state-key">Phase</span><span class="state-val accent" id="sPhase">Init</span></div>
+      <div class="state-row"><span class="state-key">Passes</span><span class="state-val" id="sPasses">0</span></div>
+      <div class="state-row"><span class="state-key">Negatives left</span><span class="state-val neg" id="sNeg">—</span></div>
+      <div class="state-row"><span class="state-key">Queue size</span><span class="state-val" id="sQSize">0</span></div>
+      <div class="state-row"><span class="state-key">Next queue</span><span class="state-val" id="sNQSize">0</span></div>
+      <div class="state-row"><span class="state-key">Flipped this pass</span><span class="state-val pos" id="sFlipped">0</span></div>
+    </div>
+
+    <div class="panel-label">Hint</div>
+    <div class="hint-box" id="hintBox">Scanning matrix for all positive values. They go into the current queue to start BFS.</div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.65rem;color:var(--muted);" id="footerStatus">Pop from the current queue</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="showHint()">Hint</button>
+    <button class="btn" onclick="autoStep()">Auto Step</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="mp_cma.html" class="btn btn-accent">→ Mirror·A</a>
+  </div>
+</footer>
+<script>
+const MATRIX_INIT=[[ 0,-1,-3, 2, 0],[ 1,-2,-1,-3,-4],[ 3, 0, 1,-1,-2],[ 0,-4, 0, 0,-3]];
+const ROWS=4,COLS=5;
+const QUOTES={
+  init:'"We\'re gonna start our algorithm by looking through every element in the matrix and adding all of the positive values to the queue."',
+  pop:'"We start by popping off the element from the front of the queue — we look at all adjacent positions."',
+  flip:'"If they are negative, we\'ll convert them to positive and then add the position of this new positive value to the secondary queue."',
+  swap:'"We indicate that we did actually perform one pass. So we say passes equals one. Then we swap our queues."',
+  noflip:'"All of its neighbors are positive or zero so there\'s nothing we need to do."',
+  done:'"Now that we\'re done, what we need to check is if any of the values in this matrix are still negative."',
+  impossible:'"If any negative values remain — it is going to be impossible to switch that negative value to a positive. Return negative one."'
+};
+
+let matrix=[];
+let curQueue=[], nextQueue=[];
+let passes=0, flippedThisPass=0;
+let phase='init'; // init, popping, swapping, done
+let done=false;
+let expectedCell=null;
+
+function deepCopy(m){return m.map(r=>[...r]);}
+function getNeighbors(r,c){
+  const n=[];
+  if(r>0)n.push([r-1,c]);if(r<ROWS-1)n.push([r+1,c]);
+  if(c>0)n.push([r,c-1]);if(c<COLS-1)n.push([r,c+1]);
+  return n;
+}
+function countNeg(){return matrix.flat().filter(v=>v<0).length;}
+
+function init(){
+  matrix=deepCopy(MATRIX_INIT);
+  curQueue=[];nextQueue=[];passes=0;flippedThisPass=0;done=false;phase='init';
+  // collect positives
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(matrix[r][c]>0) curQueue.push([r,c]);
+  phase='popping';
+  expectedCell=curQueue[0]||null;
+  buildGrid();renderQueues();updateState();
+  setHint('The current queue holds all positive cell positions. Click the first one to begin BFS.');
+  setQuote('init');
+}
+
+function buildGrid(){
+  const mg=document.getElementById('mainGrid');
+  mg.innerHTML='';
+  const curSet=new Set(curQueue.map(([r,c])=>`${r},${c}`));
+  const nxtSet=new Set(nextQueue.map(([r,c])=>`${r},${c}`));
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const val=matrix[r][c];
+    const el=document.createElement('div');
+    const key=`${r},${c}`;
+    let cls='cell ';
+    if(val>0)cls+='pos';else if(val<0)cls+='neg';else cls+='zero';
+    el.className=cls;
+    el.id=`cell-${r}-${c}`;
+    el.innerHTML=`<span class="cell-val">${val}</span><span class="cell-coord">${r},${c}</span>`;
+    el.onclick=()=>handleClick(r,c);
+    mg.appendChild(el);
+  }
+  highlightExpected();
+}
+
+function highlightExpected(){
+  document.querySelectorAll('.cell.clickable').forEach(el=>el.classList.remove('clickable'));
+  if(expectedCell&&!done){
+    const[r,c]=expectedCell;
+    const el=document.getElementById(`cell-${r}-${c}`);
+    if(el)el.classList.add('clickable');
+  }
+}
+
+function handleClick(r,c){
+  if(done||!expectedCell)return;
+  const[er,ec]=expectedCell;
+  if(r!==er||c!==ec){
+    const el=document.getElementById(`cell-${r}-${c}`);
+    el.classList.add('wrong-shake');
+    setTimeout(()=>el.classList.remove('wrong-shake'),400);
+    showToast(`Not that one. Pop [${er},${ec}] — it\'s the front of the current queue.`,'bad');
+    return;
+  }
+  processCell(r,c);
+}
+
+function processCell(r,c){
+  curQueue.shift();
+  const nbrs=getNeighbors(r,c);
+  let flippedAny=false;
+  nbrs.forEach(([nr,nc])=>{
+    if(matrix[nr][nc]<0){
+      matrix[nr][nc]*=-1;
+      nextQueue.push([nr,nc]);
+      flippedAny=true;
+      flippedThisPass++;
+      const el=document.getElementById(`cell-${nr}-${nc}`);
+      if(el){el.className='cell flipped';el.querySelector('.cell-val').textContent=matrix[nr][nc];}
+    }
+  });
+  const pEl=document.getElementById(`cell-${r}-${c}`);
+  if(pEl)pEl.classList.add('correct-flash');
+
+  if(flippedAny){
+    setQuote('flip');
+    document.getElementById('instText').innerHTML=`<strong>[${r},${c}] processed.</strong> Flipped ${flippedThisPass} cell(s) this pass. Negative neighbors moved to next queue. Pop next from current queue.`;
+  } else {
+    setQuote('noflip');
+    document.getElementById('instText').innerHTML=`<strong>[${r},${c}] processed.</strong> No negative neighbors — nothing flipped. Pop next.`;
+  }
+
+  if(curQueue.length===0){
+    // pass complete — swap
+    passes++;
+    flippedThisPass=0;
+    phase='swapping';
+    expectedCell=null;
+    buildGrid();renderQueues();updateState();
+    setHint(`Pass ${passes} complete. Current queue empty. Click "Swap Queues" or Auto Step to continue.`);
+    setQuote('swap');
+    document.getElementById('instText').innerHTML=`<strong>Pass ${passes} complete.</strong> Current queue exhausted. Swapping: next queue becomes current. ${nextQueue.length===0&&countNeg()===0?'All done!':'Continue to next pass.'}`;
+    setTimeout(()=>swapQueues(),800);
+    return;
+  }
+
+  expectedCell=curQueue[0];
+  buildGrid();renderQueues();updateState();
+  setHint(`Pop [${expectedCell[0]},${expectedCell[1]}] next — it\'s the front of the current queue.`);
+  setQuote('pop');
+}
+
+function swapQueues(){
+  curQueue=[...nextQueue];
+  nextQueue=[];
+  if(curQueue.length===0){
+    done=true;
+    phase='done';
+    const negLeft=countNeg();
+    buildGrid();renderQueues();updateState();
+    if(negLeft>0){
+      setQuote('impossible');
+      document.getElementById('instText').innerHTML=`<strong style="color:var(--wrong)">Impossible!</strong> ${negLeft} negative(s) remain. Isolated from positives. Return <strong>-1</strong>.`;
+      setHint('Some negatives can never be reached. Return -1.');
+    } else {
+      setQuote('done');
+      document.getElementById('instText').innerHTML=`<strong style="color:var(--pos)">Done!</strong> No negatives remain. Answer = passes − 1 = <strong>${passes-1}</strong>. The last pass only empties the queue.`;
+      setHint(`All negatives flipped. Return passes − 1 = ${passes-1}.`);
+    }
+    return;
+  }
+  expectedCell=curQueue[0];
+  phase='popping';
+  buildGrid();renderQueues();updateState();
+  setHint(`Pass ${passes+1} begins. Current queue has ${curQueue.length} cell(s). Pop [${expectedCell[0]},${expectedCell[1]}].`);
+}
+
+function renderQueues(){
+  const qc=document.getElementById('qCur');
+  const qn=document.getElementById('qNxt');
+  qc.innerHTML='';qn.innerHTML='';
+  if(curQueue.length===0)qc.innerHTML='<span style="font-size:.62rem;color:var(--muted);">empty</span>';
+  else curQueue.forEach(([r,c],i)=>{const d=document.createElement('div');d.className='q-item cur'+(i===0?' ':('')); d.textContent=`[${r},${c}]`;qc.appendChild(d);});
+  if(nextQueue.length===0)qn.innerHTML='<span style="font-size:.62rem;color:var(--muted);">empty</span>';
+  else nextQueue.forEach(([r,c])=>{const d=document.createElement('div');d.className='q-item nxt';d.textContent=`[${r},${c}]`;qn.appendChild(d);});
+}
+
+function updateState(){
+  document.getElementById('passBig').textContent=passes;
+  document.getElementById('sPhase').textContent=phase;
+  document.getElementById('sPasses').textContent=passes;
+  document.getElementById('sNeg').textContent=countNeg();
+  document.getElementById('sQSize').textContent=curQueue.length;
+  document.getElementById('sNQSize').textContent=nextQueue.length;
+  document.getElementById('sFlipped').textContent=flippedThisPass;
+  document.getElementById('phaseLabel').textContent=`Phase: ${phase}`;
+  document.getElementById('footerStatus').textContent=done?`Result: ${countNeg()>0?-1:passes-1}`:`Queue: ${curQueue.length} remaining`;
+}
+
+function setHint(t){document.getElementById('hintBox').textContent=t;}
+function setQuote(k){
+  const el=document.getElementById('teacherFlash');
+  el.textContent=QUOTES[k]||'';
+  el.className='teacher-flash lit';
+  setTimeout(()=>el.className='teacher-flash',3500);
+}
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=`toast show ${type}`;
+  setTimeout(()=>t.className='toast',2800);
+}
+function showHint(){
+  if(!expectedCell||done)return;
+  const[r,c]=expectedCell;
+  showToast(`Click cell [${r},${c}] — front of current queue`,'good');
+  const el=document.getElementById(`cell-${r}-${c}`);
+  if(el){el.style.outline='3px solid var(--accent)';setTimeout(()=>el.style.outline='',1500);}
+}
+function autoStep(){if(expectedCell&&!done){const[r,c]=expectedCell;processCell(r,c);}}
+function resetAll(){init();}
+
+init();
+</script>
+</body>
+</html>
