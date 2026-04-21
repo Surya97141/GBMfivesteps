@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo — Youngest Common Ancestor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#faf6ef;--surface:#fff8f0;--surface2:#f2ebe0;--border:#d4c5a9;--border2:#b8a888;
+  --ink:#2c1f0e;--muted:#8a7560;--muted2:#6a5840;--accent:#c45c00;
+  --d1:#c45c00;--d1bg:#fff3e0;--d1b:#e07020;
+  --d2:#2a5ba4;--d2bg:#e8f0fe;--d2b:#4a7bc4;
+  --lca:#1b5e20;--lcabg:#e8f5e9;--lcab:#2e7d32;
+  --right:#1b5e20;--wrong:#c0392b;--amber:#c45c00;--line:#b8a888;
+  --user-sel:#f3e5f5;--user-selb:#9c27b0;
+}
+body{background:var(--bg);color:var(--ink);font-family:'Courier Prime',monospace;height:100vh;display:grid;grid-template-rows:58px 1fr 56px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;}
+
+.center{padding:2rem 2.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.75rem;border-right:2px solid var(--border2);position:relative;}
+.solo-prompt{text-align:center;}
+.solo-prompt h2{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;color:var(--ink);margin-bottom:.4rem;}
+.solo-prompt p{font-size:.75rem;color:var(--muted);line-height:1.65;}
+
+svg.tree{overflow:visible;}
+.tree-edge{stroke:var(--line);stroke-width:1.5;fill:none;}
+.tree-node circle{fill:var(--surface);stroke:var(--border2);stroke-width:1.5;cursor:pointer;transition:all .2s;}
+.tree-node circle:hover{stroke:var(--accent);stroke-width:2.5;}
+.tree-node text{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:middle;pointer-events:none;}
+.tree-node.d1 circle{fill:var(--d1bg);stroke:var(--d1b);stroke-width:2.5;cursor:default;}
+.tree-node.d1 text{fill:var(--d1);}
+.tree-node.d2 circle{fill:var(--d2bg);stroke:var(--d2b);stroke-width:2.5;cursor:default;}
+.tree-node.d2 text{fill:var(--d2);}
+.tree-node.selected circle{fill:var(--user-sel);stroke:var(--user-selb);stroke-width:2.5;}
+.tree-node.selected text{fill:var(--user-selb);}
+.tree-node.correct-lca circle{fill:var(--lcabg);stroke:var(--lcab);stroke-width:3;filter:drop-shadow(0 0 10px rgba(46,125,50,.5));}
+.tree-node.correct-lca text{fill:var(--lca);}
+.tree-node.wrong-sel circle{fill:rgba(192,57,43,.1);stroke:var(--wrong);stroke-width:2.5;}
+.tree-node.wrong-sel text{fill:var(--wrong);}
+
+.desc-selector{display:flex;gap:1.5rem;align-items:center;}
+.desc-btn{display:flex;flex-direction:column;align-items:center;gap:.35rem;}
+.desc-label{font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);}
+.desc-pick{background:var(--surface);border:2px solid var(--border2);border-radius:3px;padding:.35rem 1rem;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;cursor:pointer;transition:all .2s;}
+.desc-pick.d1{color:var(--d1);border-color:var(--d1b);background:var(--d1bg);}
+.desc-pick.d2{color:var(--d2);border-color:var(--d2b);background:var(--d2bg);}
+.desc-pick.active{transform:scale(1.08);}
+.vs{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--muted);font-style:italic;}
+
+.answer-area{display:flex;flex-direction:column;gap:.5rem;align-items:center;}
+.answer-label{font-size:.58rem;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);}
+.answer-hint{font-size:.65rem;color:var(--muted2);text-align:center;max-width:340px;line-height:1.5;}
+
+.overlay{position:absolute;inset:0;background:rgba(250,246,239,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;opacity:0;pointer-events:none;transition:opacity .35s;z-index:10;text-align:center;padding:2rem;}
+.overlay.show{opacity:1;pointer-events:all;}
+.overlay-title{font-family:'Playfair Display',serif;font-size:2.8rem;font-weight:700;}
+.overlay-sub{font-size:.8rem;color:var(--muted);line-height:1.7;max-width:380px;}
+.overlay-btns{display:flex;gap:.75rem;margin-top:.5rem;}
+.ob{font-family:'Courier Prime',monospace;font-size:.7rem;padding:8px 20px;border-radius:2px;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-decoration:none;text-transform:uppercase;letter-spacing:.1em;display:inline-block;}
+.ob:hover{background:var(--ink);color:var(--bg);}
+.ob.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.54rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+
+.challenge-list{display:flex;flex-direction:column;gap:.5rem;}
+.challenge{border:1px solid var(--border2);border-radius:3px;padding:.6rem .75rem;font-size:.7rem;cursor:pointer;transition:all .2s;line-height:1.5;}
+.challenge:hover{border-color:var(--accent);background:var(--surface2);}
+.challenge.active{border-color:var(--accent);background:var(--d1bg);}
+.challenge.solved{border-color:var(--lcab);background:var(--lcabg);}
+.challenge.wrong{border-color:var(--wrong);background:rgba(192,57,43,.05);}
+.ch-nodes{font-weight:700;color:var(--ink);}
+.ch-note{font-size:.6rem;color:var(--muted);margin-top:2px;}
+
+.score-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.score-t{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.score-row{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.score-row:last-child{border-bottom:none;}
+.sk{color:var(--muted);}
+.sv{font-weight:700;}
+.sv.g{color:var(--right);}
+.sv.r{color:var(--wrong);}
+
+.clock{font-size:.68rem;color:var(--muted);}
+.clock span{color:var(--ink);font-weight:700;}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'Courier Prime',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--ink);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+.mode-note{font-size:.65rem;color:var(--wrong);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="yca_watch.html" class="nav-tab">01 Watch</a>
+    <a href="yca_guide.html" class="nav-tab">02 Guide</a>
+    <a href="yca_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="yca_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="yca_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="yca_solo.html" class="nav-tab active">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Youngest Common Ancestor · Solo</div>
+</header>
+<main>
+  <div class="center" id="centerPanel">
+    <div class="overlay" id="resultOverlay">
+      <div class="overlay-title" id="overlayTitle">—</div>
+      <div class="overlay-sub" id="overlaySub"></div>
+      <div class="overlay-btns">
+        <button class="ob" onclick="closeOverlay()">Next challenge</button>
+        <button class="ob" onclick="resetCurrent()">Try again</button>
+        <a href="yca_watch.html" class="ob">Re-watch</a>
+      </div>
+    </div>
+
+    <div class="solo-prompt">
+      <h2>No hints.</h2>
+      <p>Click the <strong>Youngest Common Ancestor</strong> of the two highlighted nodes.<br>Work it out in your head first.</p>
+    </div>
+
+    <svg class="tree" id="treeSvg" width="400" height="290" viewBox="0 0 400 290"></svg>
+
+    <div class="answer-hint" id="answerHint">Click the node you think is the YCA of <strong id="hintD1">I</strong> and <strong id="hintD2">T</strong>.</div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Challenges</div>
+    <div class="challenge-list" id="challengeList"></div>
+
+    <div class="panel-label">Score</div>
+    <div class="score-block">
+      <div class="score-t">Results</div>
+      <div class="score-row"><span class="sk">Correct</span><span class="sv g" id="scC">0</span></div>
+      <div class="score-row"><span class="sk">Wrong</span><span class="sv r" id="scW">0</span></div>
+      <div class="score-row"><span class="sk">Accuracy</span><span class="sv" id="scA">—</span></div>
+    </div>
+
+    <div class="panel-label">Timer</div>
+    <div class="clock">Elapsed: <span id="clock">00:00</span></div>
+  </div>
+</main>
+<footer>
+  <div class="mode-note">No hints. Click the LCA node.</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="skipChallenge()">Skip →</button>
+    <button class="btn" onclick="resetAll()">Reset All</button>
+    <a href="yca_watch.html" class="btn">Re-watch</a>
+  </div>
+</footer>
+<script>
+const NODES_POS={A:{x:200,y:24},B:{x:90,y:82},C:{x:160,y:82},D:{x:230,y:82},E:{x:300,y:82},F:{x:365,y:82},G:{x:48,y:148},H:{x:100,y:148},I:{x:148,y:148},J:{x:215,y:148},K:{x:262,y:148},L:{x:318,y:148},P:{x:84,y:210},M:{x:135,y:210},T:{x:66,y:268}};
+const EDGES=[['A','B'],['A','C'],['A','D'],['A','E'],['A','F'],['B','G'],['B','H'],['B','I'],['D','J'],['D','K'],['E','L'],['H','P'],['I','M'],['P','T']];
+const ANCESTORS_MAP={B:'A',C:'A',D:'A',E:'A',F:'A',G:'B',H:'B',I:'B',J:'D',K:'D',L:'E',P:'H',M:'I',T:'P',A:null};
+
+const CHALLENGES=[
+  {d1:'I',d2:'T',answer:'B',note:'Classic — different depths'},
+  {d1:'G',d2:'I',answer:'B',note:'Same parent, same level'},
+  {d1:'G',d2:'L',answer:'A',note:'Opposite subtrees → A'},
+  {d1:'T',d2:'H',answer:'H',note:'One is ancestor of other'},
+  {d1:'M',d2:'T',answer:'B',note:'Deep nodes, shared branch'},
+  {d1:'J',d2:'K',answer:'D',note:'Same parent D'},
+  {d1:'T',d2:'K',answer:'A',note:'Far apart → A'},
+  {d1:'I',d2:'I',answer:'I',note:'Same node → itself'},
+];
+
+function computeYCA(d1,d2){
+  function getDepth(node){let d=0,cur=node;while(ANCESTORS_MAP[cur]){cur=ANCESTORS_MAP[cur];d++;}return d;}
+  function backtrack(lower,higher,diff){
+    while(diff>0){lower=ANCESTORS_MAP[lower];diff--;}
+    while(lower!==higher){lower=ANCESTORS_MAP[lower];higher=ANCESTORS_MAP[higher];}
+    return lower;
+  }
+  const dep1=getDepth(d1),dep2=getDepth(d2);
+  if(dep1>dep2)return backtrack(d1,d2,dep1-dep2);
+  return backtrack(d2,d1,dep2-dep1);
+}
+
+let curChallenge=0;
+let correct=0,wrong=0;
+let startTime=null,clockTimer=null;
+let answered=false;
+const results=new Array(CHALLENGES.length).fill(null);
+
+function buildTree(d1,d2,showLCA=null,showWrong=null){
+  const svg=document.getElementById('treeSvg');svg.innerHTML='';
+  EDGES.forEach(([a,b])=>{
+    const na=NODES_POS[a],nb=NODES_POS[b];
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',na.x);line.setAttribute('y1',na.y);line.setAttribute('x2',nb.x);line.setAttribute('y2',nb.y);
+    line.setAttribute('class','tree-edge');svg.appendChild(line);
+  });
+  Object.entries(NODES_POS).forEach(([key,n])=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',18);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=key;
+    g.appendChild(circle);g.appendChild(text);svg.appendChild(g);
+    g.onclick=()=>handleNodeClick(key);
+    let cls='tree-node';
+    if(showLCA&&key===showLCA)cls+=' correct-lca';
+    else if(showWrong&&key===showWrong)cls+=' wrong-sel';
+    else if(key===d1)cls+=' d1';
+    else if(key===d2&&d2!==d1)cls+=' d2';
+    g.setAttribute('class',cls);
+  });
+}
+
+function handleNodeClick(key){
+  if(answered)return;
+  const ch=CHALLENGES[curChallenge];
+  if(key===ch.d1||key===ch.d2)return; // can't click on the descendants
+  if(!startTime){startTime=Date.now();clockTimer=setInterval(updateClock,1000);}
+  answered=true;
+  const isCorrect=key===ch.answer;
+
+  if(isCorrect){
+    correct++;results[curChallenge]='correct';
+    buildTree(ch.d1,ch.d2,key,null);
+    showOverlay(true,key,ch);
+  } else {
+    wrong++;results[curChallenge]='wrong';
+    buildTree(ch.d1,ch.d2,ch.answer,key);
+    showOverlay(false,key,ch);
+  }
+  updateScore();updateChallengeList();
+}
+
+function showOverlay(isCorrect,clicked,ch){
+  const ot=document.getElementById('overlayTitle');
+  const os=document.getElementById('overlaySub');
+  if(isCorrect){
+    ot.textContent='Correct.';ot.style.color='var(--lca)';
+    os.innerHTML=`<strong>${ch.answer}</strong> is the youngest common ancestor of <strong>${ch.d1}</strong> and <strong>${ch.d2}</strong>.<br>${ch.note}.`;
+  } else {
+    ot.textContent='Not quite.';ot.style.color='var(--wrong)';
+    os.innerHTML=`You clicked <strong>${clicked}</strong>. The answer is <strong>${ch.answer}</strong>.<br>Hint: calculate depths — ${ch.d1} and ${ch.d2} ${ch.note.toLowerCase()}.`;
+  }
+  document.getElementById('resultOverlay').classList.add('show');
+}
+
+function closeOverlay(){
+  document.getElementById('resultOverlay').classList.remove('show');
+  if(curChallenge<CHALLENGES.length-1){curChallenge++;loadChallenge();}
+  else showFinalScore();
+}
+
+function resetCurrent(){
+  answered=false;
+  document.getElementById('resultOverlay').classList.remove('show');
+  loadChallenge();
+}
+
+function loadChallenge(){
+  answered=false;
+  const ch=CHALLENGES[curChallenge];
+  buildTree(ch.d1,ch.d2);
+  document.getElementById('hintD1').textContent=ch.d1;
+  document.getElementById('hintD2').textContent=ch.d2;
+  document.getElementById('answerHint').innerHTML=`Click the node you think is the YCA of <strong id="hintD1">${ch.d1}</strong> and <strong id="hintD2">${ch.d2}</strong>.`;
+  updateChallengeList();
+}
+
+function buildChallengeList(){
+  const cl=document.getElementById('challengeList');cl.innerHTML='';
+  CHALLENGES.forEach((ch,i)=>{
+    const d=document.createElement('div');
+    let cls='challenge';
+    if(i===curChallenge)cls+=' active';
+    if(results[i]==='correct')cls+=' solved';
+    if(results[i]==='wrong')cls+=' wrong';
+    d.className=cls;
+    d.innerHTML=`<div class="ch-nodes">${ch.d1} &amp; ${ch.d2} → ?</div><div class="ch-note">${ch.note}</div>`;
+    d.onclick=()=>{if(!answered){curChallenge=i;loadChallenge();}};
+    cl.appendChild(d);
+  });
+}
+
+function updateChallengeList(){
+  const items=document.querySelectorAll('.challenge');
+  items.forEach((item,i)=>{
+    let cls='challenge';
+    if(i===curChallenge)cls+=' active';
+    if(results[i]==='correct')cls+=' solved';
+    if(results[i]==='wrong')cls+=' wrong';
+    item.className=cls;
+  });
+}
+
+function updateScore(){
+  document.getElementById('scC').textContent=correct;
+  document.getElementById('scW').textContent=wrong;
+  const tot=correct+wrong;
+  document.getElementById('scA').textContent=tot?Math.round(correct/tot*100)+'%':'—';
+}
+
+function skipChallenge(){
+  if(curChallenge<CHALLENGES.length-1){curChallenge++;answered=false;document.getElementById('resultOverlay').classList.remove('show');loadChallenge();}
+}
+
+function showFinalScore(){
+  const ot=document.getElementById('overlayTitle');
+  ot.textContent=`${correct}/${CHALLENGES.length}`;
+  ot.style.color=correct>=CHALLENGES.length*0.75?'var(--lca)':'var(--wrong)';
+  document.getElementById('overlaySub').innerHTML=`You solved ${correct} of ${CHALLENGES.length} challenges.<br>${correct===CHALLENGES.length?'Perfect — the ancestral tree bows to you.':'Keep practicing. Come back to Re-watch for the ones you missed.'}`;
+  document.getElementById('resultOverlay').classList.add('show');
+}
+
+function updateClock(){const e=Math.floor((Date.now()-startTime)/1000);const m=Math.floor(e/60).toString().padStart(2,'0');const s=(e%60).toString().padStart(2,'0');document.getElementById('clock').textContent=`${m}:${s}`;}
+
+function resetAll(){
+  curChallenge=0;correct=0;wrong=0;answered=false;
+  results.fill(null);startTime=null;clearInterval(clockTimer);
+  document.getElementById('clock').textContent='00:00';
+  document.getElementById('resultOverlay').classList.remove('show');
+  updateScore();buildChallengeList();loadChallenge();
+}
+
+buildChallengeList();loadChallenge();
+</script>
+</body>
+</html>

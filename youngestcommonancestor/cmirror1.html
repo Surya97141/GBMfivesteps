@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror A — Youngest Common Ancestor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#faf6ef;--surface:#fff8f0;--surface2:#f2ebe0;--border:#d4c5a9;--border2:#b8a888;
+  --ink:#2c1f0e;--muted:#8a7560;--muted2:#6a5840;--accent:#c45c00;
+  --d1:#c45c00;--d1bg:#fff3e0;--d1b:#e07020;
+  --d2:#2a5ba4;--d2bg:#e8f0fe;--d2b:#4a7bc4;
+  --lca:#1b5e20;--lcabg:#e8f5e9;--lcab:#2e7d32;
+  --eq:#7b3fc4;--eqbg:#f3e5f5;--eqb:#9c27b0;
+  --active:#f59e0b;--line:#b8a888;
+  --code-bg:#1e1508;--line-hl:#2a1e08;--line-active:#3a2810;
+  --kw:#ffb86c;--fn:#f8c291;--st:#a8d080;--nm:#ff9580;--cm:#6a5840;--op:#80c8ff;
+}
+body{background:var(--bg);color:var(--ink);font-family:'Courier Prime',monospace;height:100vh;display:grid;grid-template-rows:58px 1fr 56px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+main{display:grid;grid-template-columns:280px 1fr 240px;overflow:hidden;}
+
+.tree-panel{border-right:2px solid var(--border2);padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.54rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+svg.tree{overflow:visible;}
+.tree-edge{stroke:var(--line);stroke-width:1.5;fill:none;}
+.tree-node circle{fill:var(--surface);stroke:var(--border2);stroke-width:1.5;}
+.tree-node text{font-family:'Playfair Display',serif;font-size:12px;font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:middle;}
+.tree-node.d1 circle{fill:var(--d1bg);stroke:var(--d1b);stroke-width:2.5;}
+.tree-node.d1 text{fill:var(--d1);}
+.tree-node.d2 circle{fill:var(--d2bg);stroke:var(--d2b);stroke-width:2.5;}
+.tree-node.d2 text{fill:var(--d2);}
+.tree-node.lca circle{fill:var(--lcabg);stroke:var(--lcab);stroke-width:3;filter:drop-shadow(0 0 6px rgba(46,125,50,.5));}
+.tree-node.lca text{fill:var(--lca);}
+.tree-node.executing circle{fill:var(--d1bg);stroke:var(--active);stroke-width:2.5;filter:drop-shadow(0 0 8px rgba(245,158,11,.5));}
+.tree-node.executing2 circle{fill:var(--d2bg);stroke:var(--active);stroke-width:2.5;}
+.tree-node.eq circle{fill:var(--eqbg);stroke:var(--eqb);stroke-width:2.5;}
+.tree-node.eq text{fill:var(--eq);}
+.depth-l{font-family:'Courier Prime',monospace;font-size:9px;fill:var(--muted);}
+
+.ptr-track{display:flex;flex-direction:column;gap:.4rem;}
+.ptr-row{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;}
+.pt-label{font-size:.55rem;color:var(--muted);min-width:50px;text-transform:uppercase;}
+.pt-node{padding:2px 6px;border-radius:2px;font-size:.62rem;font-weight:700;border:1px solid;}
+.pt-node.d1{background:var(--d1bg);border-color:var(--d1b);color:var(--d1);}
+.pt-node.d2{background:var(--d2bg);border-color:var(--d2b);color:var(--d2);}
+.pt-arr{font-size:.58rem;color:var(--muted);}
+
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:2px solid var(--border2);}
+.code-header{padding:.5rem 1rem;background:#120e04;border-bottom:1px solid #2a1e08;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--cm);}
+.code-step{font-size:.6rem;color:var(--accent);opacity:.8;}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:#4a3820;flex-shrink:0;line-height:21px;user-select:none;}
+.code-content{flex:1;padding:0 12px 0 4px;font-size:.68rem;line-height:21px;white-space:pre;color:#c8b888;}
+.code-line.active-line{background:var(--line-active);border-left:2px solid var(--accent);}
+.code-line.active-line .ln{color:var(--accent);}
+.code-line.just-ran{animation:lr .5s ease;}
+@keyframes lr{0%{background:rgba(196,92,0,.25);}100%{background:var(--line-active);}}
+.kw{color:var(--kw);}.fn{color:var(--fn);}.st{color:var(--st);}.nm{color:var(--nm);}.cm{color:var(--cm);font-style:italic;}.op{color:var(--op);}
+.teacher-bar{padding:.5rem 1rem;background:#120e04;border-top:1px solid #2a1e08;font-size:.65rem;color:#4a3820;font-style:italic;line-height:1.4;flex-shrink:0;min-height:40px;transition:color .3s;}
+.teacher-bar.lit{color:#c8b888;}
+
+.vars-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.var-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.var-title{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.var-row{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.var-row:last-child{border-bottom:none;}
+.vk{color:var(--muted);}
+.vv{color:var(--ink);font-size:.62rem;font-weight:700;}
+.vv.chg{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(196,92,0,.15);}100%{background:transparent;}}
+.vv.d1c{color:var(--d1);}
+.vv.d2c{color:var(--d2);}
+.vv.lca{color:var(--lca);}
+
+.log-block{display:flex;flex-direction:column;gap:2px;max-height:140px;overflow-y:auto;}
+.log-line{font-size:.58rem;padding:2px 6px;border-radius:2px;border-left:2px solid var(--border2);color:var(--muted);}
+.log-line.eq{border-color:var(--eq);color:var(--eq);}
+.log-line.lca{border-color:var(--lca);color:var(--lca);}
+.log-line.info{border-color:var(--accent);color:var(--accent);}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'Courier Prime',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--ink);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="yca_watch.html" class="nav-tab">01 Watch</a>
+    <a href="yca_guide.html" class="nav-tab">02 Guide</a>
+    <a href="yca_cma.html" class="nav-tab active">03 Mirror·A</a>
+    <a href="yca_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="yca_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="yca_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Youngest Common Ancestor · Follow</div>
+</header>
+<main>
+  <div class="tree-panel">
+    <div class="panel-label">Tree State</div>
+    <svg class="tree" id="treeSvg" width="250" height="280" viewBox="0 0 360 280"></svg>
+    <div class="panel-label">Pointers</div>
+    <div class="ptr-track">
+      <div class="ptr-row"><span class="pt-label">lower:</span><div id="ptrl" style="display:flex;gap:3px;flex-wrap:wrap;"></div></div>
+      <div class="ptr-row"><span class="pt-label">higher:</span><div id="ptrh" style="display:flex;gap:3px;flex-wrap:wrap;"></div></div>
+    </div>
+    <div class="panel-label">Passes</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--accent);" id="passesD">—</div>
+  </div>
+
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title">Python · yca.py</div>
+      <div class="code-step">step <span id="stepNum">0</span>/<span id="stepTotal">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="teacher-bar" id="teacherBar">"We have to get our two descendants on a sort of level playing field."</div>
+  </div>
+
+  <div class="vars-panel">
+    <div class="panel-label">Variables</div>
+    <div class="var-block">
+      <div class="var-title">Inputs</div>
+      <div class="var-row"><span class="vk">descendant_1</span><span class="vv d1c">I</span></div>
+      <div class="var-row"><span class="vk">descendant_2</span><span class="vv d2c">T</span></div>
+      <div class="var-row"><span class="vk">top_ancestor</span><span class="vv">A</span></div>
+    </div>
+    <div class="var-block">
+      <div class="var-title">Computed</div>
+      <div class="var-row"><span class="vk">depth_1</span><span class="vv" id="vD1">—</span></div>
+      <div class="var-row"><span class="vk">depth_2</span><span class="vv" id="vD2">—</span></div>
+      <div class="var-row"><span class="vk">diff</span><span class="vv" id="vDiff">—</span></div>
+    </div>
+    <div class="var-block">
+      <div class="var-title">Walking</div>
+      <div class="var-row"><span class="vk">lower_desc</span><span class="vv d1c" id="vLower">—</span></div>
+      <div class="var-row"><span class="vk">higher_desc</span><span class="vv d2c" id="vHigher">—</span></div>
+      <div class="var-row"><span class="vk">result</span><span class="vv lca" id="vResult">—</span></div>
+    </div>
+    <div class="panel-label">Log</div>
+    <div class="log-block" id="logBlock"></div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.65rem;color:var(--muted);">Step <span id="stepLabel">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" id="prevBtn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="toggleAuto()" id="autoBtn">Auto</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="yca_cmb.html" class="btn btn-accent">→ Mirror·B</a>
+  </div>
+</footer>
+<script>
+const NODES_POS={A:{x:180,y:24},B:{x:80,y:80},C:{x:145,y:80},D:{x:210,y:80},E:{x:270,y:80},F:{x:330,y:80},G:{x:40,y:140},H:{x:90,y:140},I:{x:130,y:140},J:{x:195,y:140},K:{x:240,y:140},L:{x:285,y:140},P:{x:75,y:200},M:{x:120,y:200},T:{x:60,y:258}};
+const EDGES=[['A','B'],['A','C'],['A','D'],['A','E'],['A','F'],['B','G'],['B','H'],['B','I'],['D','J'],['D','K'],['E','L'],['H','P'],['I','M'],['P','T']];
+const ANCESTORS={B:'A',C:'A',D:'A',E:'A',F:'A',G:'B',H:'B',I:'B',J:'D',K:'D',L:'E',P:'H',M:'I',T:'P',A:null};
+const TOP='A',D1='I',D2='T';
+
+const CODE=[
+  {n:1,t:'<span class="kw">def</span> <span class="fn">get_youngest_common_ancestor</span>(top, d1, d2):',id:'def'},
+  {n:2,t:'  depth_1 <span class="op">=</span> <span class="fn">get_depth</span>(d1, top)',id:'calc_d1'},
+  {n:3,t:'  depth_2 <span class="op">=</span> <span class="fn">get_depth</span>(d2, top)',id:'calc_d2'},
+  {n:4,t:'  <span class="kw">if</span> depth_1 <span class="op">></span> depth_2:           <span class="cm"># d1 deeper</span>',id:'check_depth'},
+  {n:5,t:'    <span class="kw">return</span> <span class="fn">backtrack</span>(d1, d2, depth_1 <span class="op">-</span> depth_2)',id:'ret_d1lower'},
+  {n:6,t:'  <span class="kw">else</span>:                          <span class="cm"># d2 deeper or equal</span>',id:'else_depth'},
+  {n:7,t:'    <span class="kw">return</span> <span class="fn">backtrack</span>(d2, d1, depth_2 <span class="op">-</span> depth_1)',id:'ret_d2lower'},
+  {n:8,t:'',id:'b1'},
+  {n:9,t:'<span class="kw">def</span> <span class="fn">get_depth</span>(descendant, top_ancestor):',id:'def_depth'},
+  {n:10,t:'  depth <span class="op">=</span> <span class="nm">0</span>',id:'init_depth'},
+  {n:11,t:'  <span class="kw">while</span> descendant <span class="op">!=</span> top_ancestor:',id:'while_depth'},
+  {n:12,t:'    depth <span class="op">+=</span> <span class="nm">1</span>',id:'inc_depth'},
+  {n:13,t:'    descendant <span class="op">=</span> descendant.ancestor',id:'move_up_depth'},
+  {n:14,t:'  <span class="kw">return</span> depth',id:'ret_depth'},
+  {n:15,t:'',id:'b2'},
+  {n:16,t:'<span class="kw">def</span> <span class="fn">backtrack</span>(lower, higher, diff):',id:'def_backtrack'},
+  {n:17,t:'  <span class="kw">while</span> diff <span class="op">></span> <span class="nm">0</span>:             <span class="cm"># equalize levels</span>',id:'while_eq'},
+  {n:18,t:'    lower <span class="op">=</span> lower.ancestor',id:'move_lower'},
+  {n:19,t:'    diff <span class="op">-=</span> <span class="nm">1</span>',id:'dec_diff'},
+  {n:20,t:'  <span class="kw">while</span> lower <span class="op">!=</span> higher:        <span class="cm"># tandem walk</span>',id:'while_tandem'},
+  {n:21,t:'    lower <span class="op">=</span> lower.ancestor',id:'move_lower2'},
+  {n:22,t:'    higher <span class="op">=</span> higher.ancestor',id:'move_higher'},
+  {n:23,t:'  <span class="kw">return</span> lower                  <span class="cm"># LCA found</span>',id:'ret_lca'},
+];
+
+const QUOTES={
+  calc_d1:'"We start by calculating the first depth and then the second depth with a helper method — get_descendant_depth."',
+  while_depth:'"While descendant is not equal to top ancestor, we\'re gonna keep going up, incrementing the depth."',
+  move_up_depth:'"Descendant is gonna be equal to descendant.ancestor — this is where we access the dot ancestor property."',
+  ret_depth:'"Once we get out of the while loop we just return the depth."',
+  check_depth:'"If depth one is greater than depth two then that means our first descendant is lower and has to be brought up."',
+  while_eq:'"So long as the diff is greater than zero, we\'re gonna iterate upwards from our lower descendant until we get to the higher one\'s level."',
+  while_tandem:'"Now we say — let\'s keep going upwards until we\'re at the same spot, until we\'re at the youngest common ancestor."',
+  ret_lca:'"We return lower descendant. At this point we know we\'re at the youngest common ancestor."',
+};
+
+function computeSteps(){
+  const steps=[];
+  function getDepth(node){let d=0,cur=node;while(ANCESTORS[cur]){cur=ANCESTORS[cur];d++;}return d;}
+  const d1=D1,d2=D2;
+
+  steps.push({line:'def',d1node:d1,d2node:d2,lca:null,lower:null,higher:null,depth1:null,depth2:null,diff:null,log:null});
+  steps.push({line:'calc_d1',d1node:d1,d2node:d2,lca:null,lower:null,higher:null,depth1:null,depth2:null,diff:null,log:null});
+  // simulate get_depth for d1
+  steps.push({line:'def_depth',d1node:d1,d2node:d2,lca:null,lower:null,higher:null,depth1:null,depth2:null,diff:null,log:{t:'info',m:'get_depth(I, A)'}});
+  steps.push({line:'init_depth',d1node:d1,d2node:d2,lca:null,lower:null,higher:null,depth1:0,depth2:null,diff:null,log:null});
+  let cur1=d1,dep1=0;
+  while(ANCESTORS[cur1]){
+    steps.push({line:'while_depth',d1node:cur1,d2node:d2,lca:null,lower:null,higher:null,depth1:dep1,depth2:null,diff:null,log:null});
+    dep1++;cur1=ANCESTORS[cur1];
+    steps.push({line:'inc_depth',d1node:cur1,d2node:d2,lca:null,lower:null,higher:null,depth1:dep1,depth2:null,diff:null,log:null});
+    steps.push({line:'move_up_depth',d1node:cur1,d2node:d2,lca:null,lower:null,higher:null,depth1:dep1,depth2:null,diff:null,log:{t:'info',m:`depth_1 counting: now at ${cur1}`}});
+  }
+  steps.push({line:'while_depth',d1node:cur1,d2node:d2,lca:null,lower:null,higher:null,depth1:dep1,depth2:null,diff:null,log:null});
+  steps.push({line:'ret_depth',d1node:d1,d2node:d2,lca:null,lower:null,higher:null,depth1:dep1,depth2:null,diff:null,log:{t:'info',m:`depth_1 = ${dep1}`}});
+
+  steps.push({line:'calc_d2',d1node:d1,d2node:d2,lca:null,lower:null,higher:null,depth1:dep1,depth2:null,diff:null,log:null});
+  steps.push({line:'def_depth',d1node:d1,d2node:d2,lca:null,lower:null,higher:null,depth1:dep1,depth2:null,diff:null,log:{t:'info',m:'get_depth(T, A)'}});
+  steps.push({line:'init_depth',d1node:d1,d2node:d2,lca:null,lower:null,higher:null,depth1:dep1,depth2:0,diff:null,log:null});
+  let cur2=d2,dep2=0;
+  while(ANCESTORS[cur2]){
+    steps.push({line:'while_depth',d1node:d1,d2node:cur2,lca:null,lower:null,higher:null,depth1:dep1,depth2:dep2,diff:null,log:null});
+    dep2++;cur2=ANCESTORS[cur2];
+    steps.push({line:'inc_depth',d1node:d1,d2node:cur2,lca:null,lower:null,higher:null,depth1:dep1,depth2:dep2,diff:null,log:null});
+    steps.push({line:'move_up_depth',d1node:d1,d2node:cur2,lca:null,lower:null,higher:null,depth1:dep1,depth2:dep2,diff:null,log:{t:'info',m:`depth_2 counting: now at ${cur2}`}});
+  }
+  steps.push({line:'while_depth',d1node:d1,d2node:cur2,lca:null,lower:null,higher:null,depth1:dep1,depth2:dep2,diff:null,log:null});
+  steps.push({line:'ret_depth',d1node:d1,d2node:d2,lca:null,lower:null,higher:null,depth1:dep1,depth2:dep2,diff:null,log:{t:'info',m:`depth_2 = ${dep2}`}});
+
+  const diff=dep2-dep1;
+  const lower=dep1>dep2?d1:d2,higher=dep1>dep2?d2:d1;
+  steps.push({line:'check_depth',d1node:d1,d2node:d2,lca:null,lower,higher,depth1:dep1,depth2:dep2,diff,log:{t:'eq',m:`depth_1=${dep1}, depth_2=${dep2} → diff=${diff}, lower=${lower}`}});
+  if(dep1>dep2)steps.push({line:'ret_d1lower',d1node:d1,d2node:d2,lca:null,lower,higher,depth1:dep1,depth2:dep2,diff,log:null});
+  else steps.push({line:'ret_d2lower',d1node:d1,d2node:d2,lca:null,lower,higher,depth1:dep1,depth2:dep2,diff,log:null});
+
+  steps.push({line:'def_backtrack',d1node:lower,d2node:higher,lca:null,lower,higher,depth1:dep1,depth2:dep2,diff,log:null});
+  let lo=lower,hi=higher,d=diff;
+  while(d>0){
+    steps.push({line:'while_eq',d1node:lo,d2node:hi,lca:null,lower:lo,higher:hi,depth1:dep1,depth2:dep2,diff:d,log:null});
+    lo=ANCESTORS[lo];d--;
+    steps.push({line:'move_lower',d1node:lo,d2node:hi,lca:null,lower:lo,higher:hi,depth1:dep1,depth2:dep2,diff:d,log:{t:'eq',m:`lower moved to ${lo}, diff now ${d}`}});
+    steps.push({line:'dec_diff',d1node:lo,d2node:hi,lca:null,lower:lo,higher:hi,depth1:dep1,depth2:dep2,diff:d,log:null});
+  }
+  steps.push({line:'while_eq',d1node:lo,d2node:hi,lca:null,lower:lo,higher:hi,depth1:dep1,depth2:dep2,diff:0,log:null});
+  while(lo!==hi){
+    steps.push({line:'while_tandem',d1node:lo,d2node:hi,lca:null,lower:lo,higher:hi,depth1:dep1,depth2:dep2,diff:0,log:null});
+    lo=ANCESTORS[lo];hi=ANCESTORS[hi];
+    steps.push({line:'move_lower2',d1node:lo,d2node:hi,lca:null,lower:lo,higher:hi,depth1:dep1,depth2:dep2,diff:0,log:null});
+    steps.push({line:'move_higher',d1node:lo,d2node:hi,lca:null,lower:lo,higher:hi,depth1:dep1,depth2:dep2,diff:0,log:null});
+  }
+  steps.push({line:'while_tandem',d1node:lo,d2node:hi,lca:lo,lower:lo,higher:hi,depth1:dep1,depth2:dep2,diff:0,log:{t:'lca',m:`LCA found: ${lo}`}});
+  steps.push({line:'ret_lca',d1node:lo,d2node:hi,lca:lo,lower:lo,higher:hi,depth1:dep1,depth2:dep2,diff:0,log:{t:'lca',m:`Return ${lo}`}});
+  return steps;
+}
+
+const STEPS=computeSteps();
+let cur=0,autoTimer=null;
+
+function buildCode(){
+  const cb=document.getElementById('codeBody');cb.innerHTML='';
+  CODE.forEach(l=>{
+    const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;
+    d.innerHTML=`<span class="ln">${l.n||''}</span><span class="code-content">${l.t}</span>`;
+    cb.appendChild(d);
+  });
+  document.getElementById('stepTotal').textContent=STEPS.length;
+}
+
+function buildTree(s){
+  const svg=document.getElementById('treeSvg');svg.innerHTML='';
+  EDGES.forEach(([a,b])=>{
+    const na=NODES_POS[a],nb=NODES_POS[b];
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',na.x);line.setAttribute('y1',na.y);line.setAttribute('x2',nb.x);line.setAttribute('y2',nb.y);
+    line.setAttribute('class','tree-edge');svg.appendChild(line);
+  });
+  Object.entries(NODES_POS).forEach(([key,n])=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',15);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=key;
+    g.appendChild(circle);g.appendChild(text);svg.appendChild(g);
+    let cls='tree-node';
+    if(s.lca&&key===s.lca)cls+=' lca';
+    else if(key===s.d1node&&!s.lca)cls+=' d1';
+    else if(key===s.d2node&&key!==s.d1node&&!s.lca)cls+=' d2';
+    g.setAttribute('class',cls);
+  });
+}
+
+function setV(id,val,extra=''){
+  const el=document.getElementById(id);if(!el)return;
+  const prev=el.textContent;el.textContent=String(val);
+  if(prev!==String(val)){el.className=`vv${extra} chg`;setTimeout(()=>el.className=`vv${extra}`,600);}
+}
+
+function renderPtr(id,val,cls){
+  const el=document.getElementById(id);el.innerHTML='';
+  if(!val){el.innerHTML='<span style="font-size:.6rem;color:var(--muted)">—</span>';return;}
+  const d=document.createElement('div');d.className=`pt-node ${cls}`;d.textContent=val;el.appendChild(d);
+}
+
+function applyStep(s){
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('active-line','just-ran'));
+  const lel=document.getElementById(`line-${s.line}`);
+  if(lel){lel.classList.add('active-line','just-ran');lel.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  buildTree(s);
+  renderPtr('ptrl',s.lower,'d1');
+  renderPtr('ptrh',s.higher,'d2');
+  document.getElementById('passesD').textContent=s.diff!==null?`diff=${s.diff}`:'—';
+  setV('vD1',s.depth1!==null?s.depth1:'—');
+  setV('vD2',s.depth2!==null?s.depth2:'—');
+  setV('vDiff',s.diff!==null?s.diff:'—');
+  setV('vLower',s.lower||'—',' d1c');
+  setV('vHigher',s.higher||'—',' d2c');
+  setV('vResult',s.lca||'—',' lca');
+  document.getElementById('stepNum').textContent=cur;
+  document.getElementById('stepLabel').textContent=cur;
+  const tb=document.getElementById('teacherBar');
+  const q=QUOTES[s.line];
+  if(q){tb.textContent=q;tb.className='teacher-bar lit';}else{tb.className='teacher-bar';}
+  if(s.log){
+    const lb=document.getElementById('logBlock');
+    const li=document.createElement('div');li.className=`log-line ${s.log.t}`;li.textContent=`${cur}: ${s.log.m}`;
+    lb.appendChild(li);lb.scrollTop=lb.scrollHeight;
+  }
+}
+
+function nextStep(){if(cur<STEPS.length-1){cur++;applyStep(STEPS[cur]);}}
+function prevStep(){if(cur>0){cur--;applyStep(STEPS[cur]);}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}
+  else{document.getElementById('autoBtn').textContent='Stop';autoTimer=setInterval(()=>{if(cur<STEPS.length-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}},450);}
+}
+function resetAll(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}cur=0;document.getElementById('logBlock').innerHTML='';buildCode();applyStep(STEPS[0]);}
+
+buildCode();applyStep(STEPS[0]);
+</script>
+</body>
+</html>

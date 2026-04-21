@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch — Youngest Common Ancestor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#faf6ef;--surface:#fff8f0;--surface2:#f2ebe0;--border:#d4c5a9;--border2:#b8a888;
+  --ink:#2c1f0e;--muted:#8a7560;--muted2:#6a5840;
+  --accent:#c45c00;--accent2:#e07020;
+  --node-default:#fff8f0;--node-border:#b8a888;
+  --node-d1:#fff3e0;--node-d1b:#e07020;--node-d1c:#c45c00;
+  --node-d2:#e8f0fe;--node-d2b:#4a7bc4;--node-d2c:#2a5ba4;
+  --node-lca:#e8f5e9;--node-lcab:#2e7d32;--node-lcac:#1b5e20;
+  --node-active:#fff3cd;--node-activeb:#f59e0b;
+  --node-equalized:#f3e5f5;--node-equalizedb:#7b3fc4;
+  --line:#b8a888;
+}
+body{background:var(--bg);color:var(--ink);font-family:'Courier Prime',monospace;height:100vh;display:grid;grid-template-rows:58px 1fr 56px;overflow:hidden;}
+
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);letter-spacing:.04em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+
+main{display:grid;grid-template-columns:1fr 420px;overflow:hidden;}
+
+.left-panel{padding:2.5rem 3rem;display:flex;flex-direction:column;justify-content:space-between;border-right:2px solid var(--border2);overflow:hidden;}
+.stage-tag{font-size:.56rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;}
+.narrator{font-family:'Playfair Display',serif;font-size:1.85rem;font-weight:400;line-height:1.4;color:var(--ink);min-height:10rem;}
+.narrator .hl{color:var(--accent);font-weight:700;}
+.narrator .d1{color:var(--node-d1c);}
+.narrator .d2{color:var(--node-d2c);}
+.narrator .lca{color:var(--node-lcac);font-weight:700;}
+.concept{display:inline-block;margin-top:1.2rem;font-family:'Courier Prime',monospace;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;background:var(--ink);color:var(--bg);padding:4px 12px;border-radius:1px;}
+.quote{margin-top:1.5rem;padding:.85rem 1.1rem;border-left:3px solid var(--accent);font-size:.72rem;color:var(--muted2);font-style:italic;line-height:1.6;min-height:3.5rem;}
+.quote span{color:var(--ink);}
+.progress-wrap{margin-top:2rem;}
+.progress-bar{height:3px;background:var(--border);}.progress-fill{height:100%;background:var(--accent);transition:width .5s ease;}
+.progress-label{font-size:.56rem;color:var(--muted);margin-top:.35rem;letter-spacing:.1em;}
+
+.right-panel{padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.54rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+
+/* TREE SVG */
+.tree-wrap{display:flex;justify-content:center;}
+svg.tree{overflow:visible;}
+.tree-edge{stroke:var(--line);stroke-width:1.5;fill:none;}
+.tree-node circle{fill:var(--node-default);stroke:var(--node-border);stroke-width:1.5;}
+.tree-node text{font-family:'Playfair Display',serif;font-size:13px;font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:middle;}
+.tree-node.d1 circle{fill:var(--node-d1);stroke:var(--node-d1b);stroke-width:2.5;}
+.tree-node.d1 text{fill:var(--node-d1c);}
+.tree-node.d2 circle{fill:var(--node-d2);stroke:var(--node-d2b);stroke-width:2.5;}
+.tree-node.d2 text{fill:var(--node-d2c);}
+.tree-node.lca circle{fill:var(--node-lca);stroke:var(--node-lcab);stroke-width:3;}
+.tree-node.lca text{fill:var(--node-lcac);}
+.tree-node.active circle{fill:var(--node-active);stroke:var(--node-activeb);stroke-width:2.5;filter:drop-shadow(0 0 6px rgba(245,158,11,.5));}
+.tree-node.equalized circle{fill:var(--node-equalized);stroke:var(--node-equalizedb);stroke-width:2.5;}
+.tree-node.equalized text{fill:var(--node-equalizedb);}
+.depth-label{font-family:'Courier Prime',monospace;font-size:10px;fill:var(--muted);}
+
+.stats-row{display:flex;gap:.75rem;}
+.stat-card{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:.6rem .75rem;}
+.stat-val{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--ink);line-height:1;}
+.stat-val.accent{color:var(--accent);}
+.stat-val.d1c{color:var(--node-d1c);}
+.stat-val.d2c{color:var(--node-d2c);}
+.stat-val.lca{color:var(--node-lcac);}
+.stat-key{font-size:.52rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}
+
+.path-display{display:flex;flex-direction:column;gap:.4rem;}
+.path-row{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;}
+.path-label{font-size:.58rem;color:var(--muted);min-width:60px;text-transform:uppercase;letter-spacing:.08em;}
+.path-node{padding:2px 8px;border-radius:2px;font-size:.65rem;font-weight:700;border:1px solid;}
+.path-node.d1{background:var(--node-d1);border-color:var(--node-d1b);color:var(--node-d1c);}
+.path-node.d2{background:var(--node-d2);border-color:var(--node-d2b);color:var(--node-d2c);}
+.path-arrow{font-size:.65rem;color:var(--muted);}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'Courier Prime',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--ink);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-accent:hover{background:var(--accent2);border-color:var(--accent2);}
+.speed-wrap{display:flex;align-items:center;gap:.75rem;font-size:.6rem;color:var(--muted);}
+.speed-wrap input{accent-color:var(--accent);width:80px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="yca_watch.html" class="nav-tab active">01 Watch</a>
+    <a href="yca_guide.html" class="nav-tab">02 Guide</a>
+    <a href="yca_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="yca_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="yca_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="yca_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Youngest Common Ancestor · Watch</div>
+</header>
+
+<main>
+  <div class="left-panel">
+    <div>
+      <div class="stage-tag" id="stageTag">Stage 1 of 8 — Problem</div>
+      <div class="narrator" id="narrator">A tree where each node knows only its <span class="hl">parent.</span><br>Find the <span class="lca">youngest common ancestor</span><br>of two descendants.</div>
+      <div class="concept" id="concept">KEY CONCEPT: Problem Definition</div>
+      <div class="quote" id="quote"><span>"The first input is the top ancestor. The other two are descendants. We have to find their youngest common ancestor."</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Step 1 / 8</div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Ancestral Tree</div>
+    <div class="tree-wrap">
+      <svg class="tree" id="treeSvg" width="360" height="280" viewBox="0 0 360 280"></svg>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val d1c" id="statD1">I</div><div class="stat-key">Desc 1</div></div>
+      <div class="stat-card"><div class="stat-val d2c" id="statD2">T</div><div class="stat-key">Desc 2</div></div>
+      <div class="stat-card"><div class="stat-val accent" id="statDepth1">2</div><div class="stat-key">Depth 1</div></div>
+      <div class="stat-card"><div class="stat-val accent" id="statDepth2">4</div><div class="stat-key">Depth 2</div></div>
+      <div class="stat-card"><div class="stat-val lca" id="statLCA">?</div><div class="stat-key">LCA</div></div>
+    </div>
+
+    <div class="panel-label">Walk Path</div>
+    <div class="path-display">
+      <div class="path-row">
+        <span class="path-label">Desc 1:</span>
+        <div id="pathD1" style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;"></div>
+      </div>
+      <div class="path-row">
+        <span class="path-label">Desc 2:</span>
+        <div id="pathD2" style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+  </div>
+  <div class="speed-wrap">
+    Speed: <input type="range" id="speedSlider" min="600" max="3000" value="1800" step="100">
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">Auto Play</button>
+  </div>
+  <a href="yca_guide.html" class="btn btn-accent">Guide →</a>
+</footer>
+
+<script>
+// Tree structure: A->B->G,H(->P->T),I | A->C | A->D->J,K | A->E->L | A->F
+// Nodes with positions in SVG
+const NODES = {
+  A:{x:180,y:24,label:'A'},
+  B:{x:80,y:80,label:'B'},
+  C:{x:145,y:80,label:'C'},
+  D:{x:210,y:80,label:'D'},
+  E:{x:270,y:80,label:'E'},
+  F:{x:330,y:80,label:'F'},
+  G:{x:40,y:140,label:'G'},
+  H:{x:90,y:140,label:'H'},
+  I:{x:130,y:140,label:'I'},
+  J:{x:195,y:140,label:'J'},
+  K:{x:240,y:140,label:'K'},
+  L:{x:285,y:140,label:'L'},
+  P:{x:75,y:200,label:'P'},
+  M:{x:120,y:200,label:'M'},
+  T:{x:60,y:258,label:'T'},
+};
+const EDGES=[['A','B'],['A','C'],['A','D'],['A','E'],['A','F'],
+  ['B','G'],['B','H'],['B','I'],['D','J'],['D','K'],['E','L'],
+  ['H','P'],['I','M'],['P','T']];
+const ANCESTORS={B:'A',C:'A',D:'A',E:'A',F:'A',G:'B',H:'B',I:'B',J:'D',K:'D',L:'E',P:'H',M:'I',T:'P',A:null};
+function getDepth(node){let d=0,cur=node;while(ANCESTORS[cur]){cur=ANCESTORS[cur];d++;}return d;}
+
+const STAGES=[
+  {
+    tag:'Stage 1 of 8 — Problem',
+    narrator:'A tree where each node knows only its <span class="hl">parent.</span><br>Find the <span class="lca">youngest common ancestor</span><br>of two descendants.',
+    concept:'KEY CONCEPT: Problem Definition',
+    quote:'"The first input is the top ancestor. The other two are descendants. We have to find their youngest common ancestor."',
+    d1:'I',d2:'T',highlight:[],d1path:[],d2path:[],lca:null,eqNode:null,depth1:null,depth2:null
+  },
+  {
+    tag:'Stage 2 of 8 — Only Parent Pointers',
+    narrator:'Each node has only a <span class="hl">dot ancestor</span> property.<br>You can go <span class="hl">up</span> — never down.<br>No children. No siblings. Just parents.',
+    concept:'KEY CONCEPT: Upward-only traversal',
+    quote:'"You can only go from one node to another by going upwards. You can access A from B, but not B from A."',
+    d1:'I',d2:'T',highlight:['B','I'],d1path:[],d2path:[],lca:null,eqNode:null,depth1:null,depth2:null
+  },
+  {
+    tag:'Stage 3 of 8 — The Naive Problem',
+    narrator:'If we just walk both up simultaneously,<br>the <span class="d2">deeper node</span> never catches up.<br>We\'d overshoot to <span class="hl">A</span>, not the real LCA.',
+    concept:'KEY CONCEPT: Why naive fails',
+    quote:'"The I is gonna get to B way before the T gets to B. We can\'t just naively iterate from our descendants upwards."',
+    d1:'I',d2:'T',highlight:['I','T'],d1path:['I'],d2path:['T'],lca:null,eqNode:null,depth1:null,depth2:null
+  },
+  {
+    tag:'Stage 4 of 8 — Calculate Depths',
+    narrator:'Count hops from each node to <span class="hl">top ancestor.</span><br><span class="d1">I</span> is at depth <span class="hl">2.</span><br><span class="d2">T</span> is at depth <span class="hl">4.</span>',
+    concept:'KEY CONCEPT: Depth calculation',
+    quote:'"We\'ll just iterate upwards, counting how many nodes we count until the top ancestor. I has depth 2, T has depth 4."',
+    d1:'I',d2:'T',highlight:['I','T','B','A','H','P'],d1path:['I','B','A'],d2path:['T','P','H','B','A'],lca:null,eqNode:null,depth1:2,depth2:4
+  },
+  {
+    tag:'Stage 5 of 8 — Level the Playing Field',
+    narrator:'Difference = 4 − 2 = <span class="hl">2.</span><br>Walk <span class="d2">T</span> upward by 2 steps.<br>T → P → <span class="hl">H</span> — now same level as I.',
+    concept:'KEY CONCEPT: Depth equalization',
+    quote:'"We need to bring whichever descendant is lower to the same level as the other one. T goes up by 2 steps to H."',
+    d1:'I',d2:'H',highlight:['I','H','T','P'],d1path:['I'],d2path:['T','→','P','→','H'],lca:null,eqNode:'H',depth1:2,depth2:4
+  },
+  {
+    tag:'Stage 6 of 8 — Walk Up in Tandem',
+    narrator:'Both at depth 2 now.<br>Walk <span class="hl">both upward together</span> until they meet.<br>I → B, H → B. They meet at <span class="lca">B.</span>',
+    concept:'KEY CONCEPT: Tandem walk to LCA',
+    quote:'"Now that we\'re on the same playing field, we keep going upwards until we\'re at the same spot — the youngest common ancestor."',
+    d1:'B',d2:'B',highlight:['I','H','B'],d1path:['I','→','B'],d2path:['H','→','B'],lca:'B',eqNode:null,depth1:2,depth2:4
+  },
+  {
+    tag:'Stage 7 of 8 — Edge Case: Same Level',
+    narrator:'If both descendants are at <span class="hl">same depth,</span><br>skip equalization entirely.<br>Walk up in tandem from the start.',
+    concept:'KEY CONCEPT: Equal depths',
+    quote:'"If depth one and depth two had been equal to each other then this difference here would have been zero, so we would never enter the first while loop."',
+    d1:'I',d2:'T',highlight:['I','T'],d1path:[],d2path:[],lca:null,eqNode:null,depth1:2,depth2:4
+  },
+  {
+    tag:'Stage 8 of 8 — Complexity',
+    narrator:'Time: <span class="hl">O(d)</span> — depth of deepest descendant.<br>Space: <span class="hl">O(1)</span> — just a few variables.<br>No recursion. No extra memory.',
+    concept:'KEY CONCEPT: O(d) time · O(1) space',
+    quote:'"The time complexity is O of D where D is the depth of the lowest descendant. Space is O(1) — just a couple of while loops."',
+    d1:'I',d2:'T',highlight:[],d1path:[],d2path:[],lca:'B',eqNode:null,depth1:2,depth2:4
+  }
+];
+
+let cur=0;
+let autoTimer=null;
+
+function buildTree(stage){
+  const svg=document.getElementById('treeSvg');
+  svg.innerHTML='';
+  // edges
+  EDGES.forEach(([a,b])=>{
+    const na=NODES[a],nb=NODES[b];
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',na.x);line.setAttribute('y1',na.y);
+    line.setAttribute('x2',nb.x);line.setAttribute('y2',nb.y);
+    line.setAttribute('class','tree-edge');
+    svg.appendChild(line);
+  });
+  // nodes
+  Object.entries(NODES).forEach(([key,n])=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','tree-node');
+    g.setAttribute('id',`tnode-${key}`);
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',16);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=key;
+    g.appendChild(circle);g.appendChild(text);
+    svg.appendChild(g);
+    // apply classes
+    let cls='tree-node';
+    if(key===stage.d1&&!stage.lca)cls+=' d1';
+    else if(key===stage.d2&&!stage.lca&&key!==stage.d1)cls+=' d2';
+    if(stage.lca&&key===stage.lca)cls+=' lca';
+    if(stage.eqNode&&key===stage.eqNode)cls+=' equalized';
+    if(stage.highlight&&stage.highlight.includes(key)&&key!==stage.d1&&key!==stage.d2&&key!==stage.lca&&key!==stage.eqNode)cls+=' active';
+    g.setAttribute('class',cls);
+  });
+  // depth labels
+  if(stage.depth1!==null){
+    ['I','T'].forEach(k=>{
+      const n=NODES[k];
+      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',n.x+20);t.setAttribute('y',n.y-6);
+      t.setAttribute('class','depth-label');
+      t.textContent=`d=${k==='I'?stage.depth1:stage.depth2}`;
+      svg.appendChild(t);
+    });
+  }
+}
+
+function renderPath(id,path,cls){
+  const el=document.getElementById(id);el.innerHTML='';
+  if(!path||path.length===0){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">—</span>';return;}
+  path.forEach((p,i)=>{
+    if(p==='→'){const a=document.createElement('span');a.className='path-arrow';a.textContent='→';el.appendChild(a);}
+    else{const d=document.createElement('div');d.className=`path-node ${cls}`;d.textContent=p;el.appendChild(d);}
+  });
+}
+
+function applyStage(s){
+  document.getElementById('stageTag').textContent=s.tag;
+  document.getElementById('narrator').innerHTML=s.narrator;
+  document.getElementById('concept').textContent=s.concept;
+  document.getElementById('quote').innerHTML=`<span>${s.quote}</span>`;
+  buildTree(s);
+  document.getElementById('statD1').textContent=s.d1||'I';
+  document.getElementById('statD2').textContent=s.d2||'T';
+  document.getElementById('statDepth1').textContent=s.depth1!==null?s.depth1:'—';
+  document.getElementById('statDepth2').textContent=s.depth2!==null?s.depth2:'—';
+  document.getElementById('statLCA').textContent=s.lca||'?';
+  renderPath('pathD1',s.d1path,'d1');
+  renderPath('pathD2',s.d2path,'d2');
+  const pct=((cur+1)/STAGES.length*100).toFixed(0);
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressLabel').textContent=`Step ${cur+1} / ${STAGES.length}`;
+}
+
+function nextStep(){if(cur<STAGES.length-1){cur++;applyStage(STAGES[cur]);}}
+function prevStep(){if(cur>0){cur--;applyStage(STAGES[cur]);}}
+function resetAll(){cur=0;applyStage(STAGES[0]);if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+  else{const spd=parseInt(document.getElementById('speedSlider').value);document.getElementById('autoBtn').textContent='Stop';autoTimer=setInterval(()=>{if(cur<STAGES.length-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}},spd);}
+}
+
+applyStage(STAGES[0]);
+</script>
+</body>
+</html>

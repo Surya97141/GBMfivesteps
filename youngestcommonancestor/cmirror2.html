@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror B — Youngest Common Ancestor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#faf6ef;--surface:#fff8f0;--surface2:#f2ebe0;--border:#d4c5a9;--border2:#b8a888;
+  --ink:#2c1f0e;--muted:#8a7560;--muted2:#6a5840;--accent:#c45c00;
+  --d1:#c45c00;--d1bg:#fff3e0;--d1b:#e07020;
+  --d2:#2a5ba4;--d2bg:#e8f0fe;--d2b:#4a7bc4;
+  --lca:#1b5e20;--lcabg:#e8f5e9;--lcab:#2e7d32;
+  --right:#1b5e20;--wrong:#c0392b;--amber:#c45c00;--line:#b8a888;
+  --code-bg:#1e1508;--kw:#ffb86c;--fn:#f8c291;--st:#a8d080;--nm:#ff9580;--cm:#6a5840;--op:#80c8ff;
+}
+body{background:var(--bg);color:var(--ink);font-family:'Courier Prime',monospace;height:100vh;display:grid;grid-template-rows:58px 1fr 56px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+main{display:grid;grid-template-columns:250px 1fr 270px;overflow:hidden;}
+
+.tree-panel{border-right:2px solid var(--border2);padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.54rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+svg.tree{overflow:visible;}
+.tree-edge{stroke:var(--line);stroke-width:1.5;fill:none;}
+.tree-node circle{fill:var(--surface);stroke:var(--border2);stroke-width:1.5;}
+.tree-node text{font-family:'Playfair Display',serif;font-size:12px;font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:middle;}
+.tree-node.d1 circle{fill:var(--d1bg);stroke:var(--d1b);stroke-width:2.5;}
+.tree-node.d1 text{fill:var(--d1);}
+.tree-node.d2 circle{fill:var(--d2bg);stroke:var(--d2b);stroke-width:2.5;}
+.tree-node.d2 text{fill:var(--d2);}
+.tree-node.lca circle{fill:var(--lcabg);stroke:var(--lcab);stroke-width:3;}
+.tree-node.lca text{fill:var(--lca);}
+.tree-node.executing circle{stroke:var(--amber);stroke-width:2.5;fill:var(--d1bg);filter:drop-shadow(0 0 6px rgba(196,92,0,.4));}
+
+.score-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.score-t{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.score-row{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.score-row:last-child{border-bottom:none;}
+.sk{color:var(--muted);}
+.sv{font-weight:700;}
+.sv.g{color:var(--right);}
+.sv.r{color:var(--wrong);}
+.sv.a{color:var(--amber);}
+.streak-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:4px;}
+.streak-fill{height:100%;background:var(--accent);transition:width .4s;}
+
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:2px solid var(--border2);}
+.code-header{padding:.5rem 1rem;background:#120e04;border-bottom:1px solid #2a1e08;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title2{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--cm);}
+.code-q{font-size:.6rem;color:var(--accent);}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:#4a3820;flex-shrink:0;line-height:21px;user-select:none;}
+.code-content{flex:1;padding:0 12px 0 4px;font-size:.68rem;line-height:21px;white-space:pre;color:#c8b888;}
+.code-line.active-line{background:#3a2810;border-left:2px solid var(--accent);}
+.code-line.active-line .ln{color:var(--accent);}
+.code-line.done-ok{background:rgba(27,94,32,.1);border-left:2px solid rgba(46,125,50,.4);}
+.code-line.done-err{background:rgba(192,57,43,.1);border-left:2px solid rgba(192,57,43,.4);}
+.kw{color:var(--kw);}.fn{color:var(--fn);}.st{color:var(--st);}.nm{color:var(--nm);}.cm{color:var(--cm);font-style:italic;}.op{color:var(--op);}
+.predict-zone{flex-shrink:0;padding:.75rem 1rem;background:#120e04;border-top:1px solid #2a1e08;}
+.pq{font-size:.72rem;color:#c8b888;margin-bottom:.5rem;line-height:1.5;}
+.pq strong{color:var(--accent);}
+.popts{display:flex;flex-direction:column;gap:3px;}
+.popt{background:#1e1508;border:1px solid #2a1e08;border-radius:2px;padding:5px 10px;font-size:.67rem;cursor:pointer;transition:all .2s;display:flex;gap:8px;align-items:center;color:#c8b888;}
+.popt:hover{border-color:var(--accent);}
+.popt.sr{border-color:var(--right);background:rgba(27,94,32,.12);color:#6dbf8a;}
+.popt.sw{border-color:var(--wrong);background:rgba(192,57,43,.12);color:#e87b72;}
+.popt.rv{border-color:var(--right);background:rgba(27,94,32,.08);}
+.popt.dis{cursor:default;opacity:.5;}
+.okey{width:16px;height:16px;border:1px solid #3a2810;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:.58rem;color:#4a3820;flex-shrink:0;}
+.pfb{margin-top:.4rem;font-size:.68rem;padding:.4rem .6rem;border-radius:2px;line-height:1.5;display:none;}
+.pfb.show{display:block;}
+.pfb.ok{background:rgba(27,94,32,.1);border:1px solid rgba(46,125,50,.3);color:#6dbf8a;}
+.pfb.err{background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.3);color:#e87b72;}
+.teacher-bar2{padding:.4rem 1rem;background:#0e0a02;border-top:1px solid #1e1508;font-size:.62rem;color:#4a3820;font-style:italic;flex-shrink:0;min-height:36px;transition:color .3s;}
+.teacher-bar2.lit{color:#c8b888;}
+
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.var-block2{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vk{color:var(--muted);}
+.vv{color:var(--ink);font-size:.62rem;font-weight:700;}
+.vv.c{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(196,92,0,.15);}100%{background:transparent;}}
+.hist-log{display:flex;flex-direction:column;gap:2px;max-height:160px;overflow-y:auto;}
+.hi{font-size:.6rem;padding:2px 7px;border-radius:2px;display:flex;justify-content:space-between;}
+.hi.ok{background:rgba(27,94,32,.06);color:var(--right);}
+.hi.err{background:rgba(192,57,43,.06);color:var(--wrong);}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'Courier Prime',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--ink);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="yca_watch.html" class="nav-tab">01 Watch</a>
+    <a href="yca_guide.html" class="nav-tab">02 Guide</a>
+    <a href="yca_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="yca_cmb.html" class="nav-tab active">04 Mirror·B</a>
+    <a href="yca_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="yca_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Youngest Common Ancestor · Predict</div>
+</header>
+<main>
+  <div class="tree-panel">
+    <div class="panel-label">Tree State</div>
+    <svg class="tree" id="treeSvg" width="230" height="275" viewBox="0 0 360 280"></svg>
+    <div class="panel-label">Score</div>
+    <div class="score-block">
+      <div class="score-t">Accuracy</div>
+      <div class="score-row"><span class="sk">Correct</span><span class="sv g" id="scC">0</span></div>
+      <div class="score-row"><span class="sk">Wrong</span><span class="sv r" id="scW">0</span></div>
+      <div class="score-row"><span class="sk">Streak</span><span class="sv a" id="scS">0</span></div>
+      <div class="score-row"><span class="sk">Accuracy</span><span class="sv" id="scA">—</span></div>
+    </div>
+    <div class="streak-bar"><div class="streak-fill" id="sFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title2">Predict what this line produces</div>
+      <div class="code-q">Q <span id="qN">1</span>/<span id="qT">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="predict-zone">
+      <div class="pq" id="pQ">Loading...</div>
+      <div class="popts" id="pOpts"></div>
+      <div class="pfb" id="pFb"></div>
+    </div>
+    <div class="teacher-bar2" id="tBar">Read the highlighted line. What does it produce right now?</div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Variables</div>
+    <div class="var-block2">
+      <div class="vbt">Current State</div>
+      <div class="vbr"><span class="vk">depth_1</span><span class="vv" id="vD1">—</span></div>
+      <div class="vbr"><span class="vk">depth_2</span><span class="vv" id="vD2">—</span></div>
+      <div class="vbr"><span class="vk">diff</span><span class="vv" id="vDiff">—</span></div>
+      <div class="vbr"><span class="vk">lower</span><span class="vv" id="vLower">—</span></div>
+      <div class="vbr"><span class="vk">higher</span><span class="vv" id="vHigher">—</span></div>
+    </div>
+    <div class="panel-label">Answer History</div>
+    <div class="hist-log" id="histLog"></div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.65rem;color:var(--muted);">Best streak: <span id="bestS">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="skipQ()">Skip →</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="yca_cmc.html" class="btn btn-accent">→ Write Mode</a>
+  </div>
+</footer>
+<script>
+const NODES_POS={A:{x:180,y:24},B:{x:80,y:80},C:{x:145,y:80},D:{x:210,y:80},E:{x:270,y:80},F:{x:330,y:80},G:{x:40,y:140},H:{x:90,y:140},I:{x:130,y:140},J:{x:195,y:140},K:{x:240,y:140},L:{x:285,y:140},P:{x:75,y:200},M:{x:120,y:200},T:{x:60,y:258}};
+const EDGES=[['A','B'],['A','C'],['A','D'],['A','E'],['A','F'],['B','G'],['B','H'],['B','I'],['D','J'],['D','K'],['E','L'],['H','P'],['I','M'],['P','T']];
+const ANCESTORS={B:'A',C:'A',D:'A',E:'A',F:'A',G:'B',H:'B',I:'B',J:'D',K:'D',L:'E',P:'H',M:'I',T:'P',A:null};
+
+const CODE=[
+  {n:1,t:'<span class="kw">def</span> <span class="fn">get_youngest_common_ancestor</span>(top, d1, d2):',id:'def'},
+  {n:2,t:'  depth_1 <span class="op">=</span> <span class="fn">get_depth</span>(d1, top)',id:'calc_d1'},
+  {n:3,t:'  depth_2 <span class="op">=</span> <span class="fn">get_depth</span>(d2, top)',id:'calc_d2'},
+  {n:4,t:'  <span class="kw">if</span> depth_1 <span class="op">></span> depth_2:',id:'check_depth'},
+  {n:5,t:'    <span class="kw">return</span> <span class="fn">backtrack</span>(d1, d2, depth_1 <span class="op">-</span> depth_2)',id:'ret_d1lower'},
+  {n:6,t:'  <span class="kw">else</span>:',id:'else_depth'},
+  {n:7,t:'    <span class="kw">return</span> <span class="fn">backtrack</span>(d2, d1, depth_2 <span class="op">-</span> depth_1)',id:'ret_d2lower'},
+  {n:8,t:'',id:'b1'},
+  {n:9,t:'<span class="kw">def</span> <span class="fn">get_depth</span>(descendant, top_ancestor):',id:'def_depth'},
+  {n:10,t:'  depth <span class="op">=</span> <span class="nm">0</span>',id:'init_depth'},
+  {n:11,t:'  <span class="kw">while</span> descendant <span class="op">!=</span> top_ancestor:',id:'while_depth'},
+  {n:12,t:'    depth <span class="op">+=</span> <span class="nm">1</span>',id:'inc_depth'},
+  {n:13,t:'    descendant <span class="op">=</span> descendant.ancestor',id:'move_up_depth'},
+  {n:14,t:'  <span class="kw">return</span> depth',id:'ret_depth'},
+  {n:15,t:'',id:'b2'},
+  {n:16,t:'<span class="kw">def</span> <span class="fn">backtrack</span>(lower, higher, diff):',id:'def_backtrack'},
+  {n:17,t:'  <span class="kw">while</span> diff <span class="op">></span> <span class="nm">0</span>:',id:'while_eq'},
+  {n:18,t:'    lower <span class="op">=</span> lower.ancestor',id:'move_lower'},
+  {n:19,t:'    diff <span class="op">-=</span> <span class="nm">1</span>',id:'dec_diff'},
+  {n:20,t:'  <span class="kw">while</span> lower <span class="op">!=</span> higher:',id:'while_tandem'},
+  {n:21,t:'    lower <span class="op">=</span> lower.ancestor',id:'move_lower2'},
+  {n:22,t:'    higher <span class="op">=</span> higher.ancestor',id:'move_higher'},
+  {n:23,t:'  <span class="kw">return</span> lower',id:'ret_lca'},
+];
+
+function getDepth(node){let d=0,cur=node;while(ANCESTORS[cur]){cur=ANCESTORS[cur];d++;}return d;}
+const D1='I',D2='T',TOP='A';
+const dep1=getDepth(D1),dep2=getDepth(D2),diff=dep2-dep1;
+
+const QUESTIONS=[
+  {
+    line:'while_depth',
+    mkQ:(s)=>({
+      q:`Line 11: <strong>while descendant != top_ancestor</strong> — descendant is currently "${s.d1node}". Does the loop continue?`,
+      opts:[
+        {t:`"${s.d1node}" != "A" is ${s.d1node!=='A'} → ${s.d1node!=='A'?'continue loop':'exit loop'}`,correct:true},
+        {t:`"${s.d1node}" == "A" → exit loop`,correct:s.d1node==='A'},
+        {t:`Always runs until depth reaches 10`,correct:false},
+      ],
+      ex:s.d1node!=='A'?`"${s.d1node}" is not the top ancestor A, so we continue the loop, increment depth, move up.`:`"${s.d1node}" equals top ancestor A. Loop exits. Return depth = ${s.depth1}.`,
+      quote:'"While descendant is not equal to top ancestor, we\'re gonna keep going up by going through all of the ancestors, and we\'re gonna increment the depth."'
+    })
+  },
+  {
+    line:'check_depth',
+    mkQ:(s)=>({
+      q:`Line 4: <strong>if depth_1 > depth_2</strong> — depth_1=${s.depth1}, depth_2=${s.depth2}. Which is lower?`,
+      opts:[
+        {t:`depth_1 (${s.depth1}) ${s.depth1>s.depth2?'>':s.depth1<s.depth2?'<':'=='} depth_2 (${s.depth2}) → lower = ${s.depth1>s.depth2?'d1 (I)':'d2 (T)'}`,correct:true},
+        {t:`depth_1 is always the lower one`,correct:false},
+        {t:`Neither is lower — they're equal`,correct:s.depth1===s.depth2},
+      ],
+      ex:`depth_1=${s.depth1}, depth_2=${s.depth2}. ${s.depth1>s.depth2?'d1 (I) is deeper, so backtrack(d1, d2, depth_1-depth_2).':'d2 (T) is deeper, so backtrack(d2, d1, depth_2-depth_1).'}`,
+      quote:'"If depth one is greater than depth two then that means our first descendant is lower and has to be brought up."'
+    })
+  },
+  {
+    line:'while_eq',
+    mkQ:(s)=>({
+      q:`Line 17: <strong>while diff > 0</strong> — diff is currently ${s.diff}. What happens?`,
+      opts:[
+        {t:`${s.diff} > 0 is ${s.diff>0} → ${s.diff>0?'move lower up one step':'skip equalization'}`,correct:true},
+        {t:`diff > 0 means we found the LCA`,correct:false},
+        {t:`This loop runs exactly once`,correct:false},
+      ],
+      ex:s.diff>0?`diff=${s.diff} > 0 → move lower up one step. Repeat until diff=0 (levels equalized).`:`diff=0 → skip equalization. Both already at same level.`,
+      quote:'"So long as the diff is greater than zero, we\'re gonna iterate upwards from our lower descendant until we get to the same level as the higher."'
+    })
+  },
+  {
+    line:'while_tandem',
+    mkQ:(s)=>({
+      q:`Line 20: <strong>while lower != higher</strong> — lower="${s.lower}", higher="${s.higher}". What happens?`,
+      opts:[
+        {t:`"${s.lower}" ${s.lower===s.higher?'==':'!='} "${s.higher}" → ${s.lower===s.higher?'exit: LCA found!':'keep walking up in tandem'}`,correct:true},
+        {t:`Always exits immediately`,correct:false},
+        {t:`Goes back to re-equalize`,correct:false},
+      ],
+      ex:s.lower===s.higher?`lower === higher = "${s.lower}". They meet! This is the LCA. Loop exits.`:`"${s.lower}" != "${s.higher}". Not yet. Move both up: lower→${ANCESTORS[s.lower]}, higher→${ANCESTORS[s.higher]}.`,
+      quote:'"Now we\'re gonna say, let\'s keep going upwards until we\'re at the same spot — until we\'re at the youngest common ancestor."'
+    })
+  },
+  {
+    line:'ret_lca',
+    mkQ:(s)=>({
+      q:`Line 23: <strong>return lower</strong> — lower is "${s.lower}". Why return lower and not higher?`,
+      opts:[
+        {t:`Both are equal at this point (lower == higher == "${s.lower}"), so either works`,correct:true},
+        {t:`lower is always the correct ancestor by definition`,correct:false},
+        {t:`lower is the first descendant passed in`,correct:false},
+      ],
+      ex:`After the tandem while loop exits, lower == higher == "${s.lower}". They're the same node — the LCA. Return either one.`,
+      quote:'"So as soon as we get to line 23, we will just return one of the two descendants, \'cause, at this point, we know we\'re at the youngest common ancestor."'
+    })
+  },
+];
+
+// Compute question-worthy steps
+function computePredSteps(){
+  const steps=[];
+  function push(line,d1n,d2n,lower,higher,d1,d2,df){steps.push({line,d1node:d1n,d2node:d2n,lower,higher,depth1:d1,depth2:d2,diff:df});}
+
+  // while_depth for d1
+  let cur=D1,dep=0;
+  while(cur!=='A'){push('while_depth',cur,D2,null,null,dep,null,null);dep++;cur=ANCESTORS[cur];}
+  push('while_depth',cur,D2,null,null,dep,null,null);
+
+  // check_depth
+  push('check_depth',D1,D2,dep2>dep1?D2:D1,dep2>dep1?D1:D2,dep1,dep2,diff);
+
+  // while_eq
+  let lo=dep2>dep1?D2:D1,hi=dep2>dep1?D1:D2,d=diff;
+  while(d>0){push('while_eq',lo,hi,lo,hi,dep1,dep2,d);lo=ANCESTORS[lo];d--;}
+  push('while_eq',lo,hi,lo,hi,dep1,dep2,0);
+
+  // while_tandem
+  while(lo!==hi){push('while_tandem',lo,hi,lo,hi,dep1,dep2,0);lo=ANCESTORS[lo];hi=ANCESTORS[hi];}
+  push('while_tandem',lo,hi,lo,hi,dep1,dep2,0);
+
+  // ret_lca
+  push('ret_lca',lo,hi,lo,hi,dep1,dep2,0);
+  return steps;
+}
+
+const QLINES=new Set(QUESTIONS.map(q=>q.line));
+const ALL_STEPS=computePredSteps();
+const PRED_STEPS=ALL_STEPS.filter(s=>QLINES.has(s.line));
+
+let cur=0,answered=false;
+let correct=0,wrong=0,streak=0,bestStreak=0;
+let history=[];
+
+function buildCode(){
+  const cb=document.getElementById('codeBody');cb.innerHTML='';
+  CODE.forEach(l=>{
+    const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;
+    d.innerHTML=`<span class="ln">${l.n||''}</span><span class="code-content">${l.t}</span>`;
+    cb.appendChild(d);
+  });
+  document.getElementById('qT').textContent=PRED_STEPS.length;
+}
+
+function buildTree(s){
+  const svg=document.getElementById('treeSvg');svg.innerHTML='';
+  EDGES.forEach(([a,b])=>{
+    const na=NODES_POS[a],nb=NODES_POS[b];
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',na.x);line.setAttribute('y1',na.y);line.setAttribute('x2',nb.x);line.setAttribute('y2',nb.y);
+    line.setAttribute('class','tree-edge');svg.appendChild(line);
+  });
+  Object.entries(NODES_POS).forEach(([key,n])=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',15);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=key;
+    g.appendChild(circle);g.appendChild(text);svg.appendChild(g);
+    let cls='tree-node';
+    if(s.lower&&s.lower===s.higher&&key===s.lower)cls+=' lca';
+    else if(key===s.d1node&&s.lower!==s.higher)cls+=' d1';
+    else if(key===s.d2node&&key!==s.d1node&&s.lower!==s.higher)cls+=' d2';
+    g.setAttribute('class',cls);
+  });
+}
+
+function setV(id,val){const el=document.getElementById(id);if(!el)return;const p=el.textContent;el.textContent=String(val);if(p!==String(val)){el.className='vv c';setTimeout(()=>el.className='vv',600);}}
+
+function renderQ(){
+  if(cur>=PRED_STEPS.length){showComplete();return;}
+  const s=PRED_STEPS[cur];answered=false;
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('active-line','done-ok','done-err'));
+  const lel=document.getElementById(`line-${s.line}`);
+  if(lel){lel.classList.add('active-line');lel.scrollIntoView({block:'center',behavior:'smooth'});}
+  buildTree(s);
+  setV('vD1',s.depth1!==null?s.depth1:'—');
+  setV('vD2',s.depth2!==null?s.depth2:'—');
+  setV('vDiff',s.diff!==null?s.diff:'—');
+  setV('vLower',s.lower||'—');
+  setV('vHigher',s.higher||'—');
+  document.getElementById('qN').textContent=cur+1;
+
+  const qDef=QUESTIONS.find(q=>q.line===s.line);
+  if(!qDef){skipQ();return;}
+  const qData=qDef.mkQ(s);
+  document.getElementById('pQ').innerHTML=qData.q;
+  const opts=[...qData.opts];
+  for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
+  const oc=document.getElementById('pOpts');oc.innerHTML='';
+  ['A','B','C'].forEach((k,i)=>{
+    const btn=document.createElement('div');btn.className='popt';
+    btn.innerHTML=`<span class="okey">${k}</span>${opts[i].t}`;
+    btn.onclick=()=>select(btn,opts[i].correct,qData,opts,oc);
+    oc.appendChild(btn);
+  });
+  document.getElementById('pFb').className='pfb';
+  document.getElementById('tBar').textContent='Read the highlighted line. What does it produce right now?';
+  document.getElementById('tBar').className='teacher-bar2';
+}
+
+function select(btn,isOk,qData,opts,container){
+  if(answered)return;answered=true;
+  container.querySelectorAll('.popt').forEach(b=>b.classList.add('dis'));
+  const fb=document.getElementById('pFb');
+  const lel=document.getElementById(`line-${PRED_STEPS[cur].line}`);
+  if(isOk){
+    btn.classList.add('sr');correct++;streak++;if(streak>bestStreak)bestStreak=streak;
+    fb.textContent='✓ '+qData.ex;fb.className='pfb show ok';
+    if(lel)lel.classList.add('done-ok');
+    history.push({ok:true,q:qData.q.replace(/<[^>]+>/g,'').slice(0,35)});
+  } else {
+    btn.classList.add('sw');
+    opts.forEach((o,i)=>{if(o.correct)container.querySelectorAll('.popt')[i].classList.add('rv');});
+    wrong++;streak=0;
+    fb.textContent='✗ '+qData.ex;fb.className='pfb show err';
+    if(lel)lel.classList.add('done-err');
+    history.push({ok:false,q:qData.q.replace(/<[^>]+>/g,'').slice(0,35)});
+  }
+  document.getElementById('tBar').textContent=qData.quote;
+  document.getElementById('tBar').className='teacher-bar2 lit';
+  addHistory();updateScore();
+  setTimeout(()=>{cur++;renderQ();},isOk?1100:2400);
+}
+
+function addHistory(){
+  const h=history[history.length-1];
+  const hl=document.getElementById('histLog');
+  const item=document.createElement('div');
+  item.className=`hi ${h.ok?'ok':'err'}`;
+  item.innerHTML=`<span>${h.ok?'✓':'✗'}</span><span style="font-size:.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">${h.q}</span>`;
+  hl.appendChild(item);hl.scrollTop=hl.scrollHeight;
+}
+
+function updateScore(){
+  document.getElementById('scC').textContent=correct;
+  document.getElementById('scW').textContent=wrong;
+  document.getElementById('scS').textContent=streak;
+  document.getElementById('bestS').textContent=bestStreak;
+  const tot=correct+wrong;
+  document.getElementById('scA').textContent=tot?Math.round(correct/tot*100)+'%':'—';
+  document.getElementById('sFill').style.width=Math.min(streak*15,100)+'%';
+}
+
+function skipQ(){cur++;renderQ();}
+function showComplete(){
+  document.getElementById('pQ').innerHTML=`<strong>All questions done!</strong> Accuracy: ${Math.round(correct/(correct+wrong||1)*100)}%`;
+  document.getElementById('pOpts').innerHTML=`<a href="yca_cmc.html" style="display:inline-block;margin-top:.5rem;padding:8px 20px;background:var(--accent);color:#fff;border-radius:2px;font-size:.72rem;text-decoration:none;">→ Write Mode</a>`;
+}
+function resetAll(){cur=0;correct=0;wrong=0;streak=0;bestStreak=0;history=[];answered=false;document.getElementById('histLog').innerHTML='';updateScore();renderQ();}
+
+buildCode();renderQ();
+</script>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide — Youngest Common Ancestor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#faf6ef;--surface:#fff8f0;--surface2:#f2ebe0;--border:#d4c5a9;--border2:#b8a888;
+  --ink:#2c1f0e;--muted:#8a7560;--muted2:#6a5840;--accent:#c45c00;--accent2:#e07020;
+  --d1:#c45c00;--d1bg:#fff3e0;--d1b:#e07020;
+  --d2:#2a5ba4;--d2bg:#e8f0fe;--d2b:#4a7bc4;
+  --lca:#1b5e20;--lcabg:#e8f5e9;--lcab:#2e7d32;
+  --eq:#7b3fc4;--eqbg:#f3e5f5;--eqb:#9c27b0;
+  --active:#f59e0b;--activebg:#fff3cd;
+  --right:#1b5e20;--wrong:#c0392b;--line:#b8a888;
+}
+body{background:var(--bg);color:var(--ink);font-family:'Courier Prime',monospace;height:100vh;display:grid;grid-template-rows:58px 1fr 56px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+main{display:grid;grid-template-columns:1fr 360px;overflow:hidden;}
+
+.center{padding:1.75rem 2.5rem;display:flex;flex-direction:column;gap:1.25rem;border-right:2px solid var(--border2);overflow-y:auto;}
+.inst-box{background:var(--surface);border:2px solid var(--ink);border-radius:3px;padding:.85rem 1.1rem;display:flex;gap:.9rem;}
+.inst-icon{width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;}
+.inst-text{font-size:.75rem;line-height:1.65;color:var(--ink);}
+.inst-text strong{color:var(--accent);}
+.teacher-flash{padding:.6rem .9rem;border-left:3px solid var(--accent);font-size:.7rem;color:var(--muted2);font-style:italic;line-height:1.5;min-height:2.5rem;transition:all .3s;}
+.teacher-flash.lit{color:var(--ink);border-color:var(--active);}
+
+.tree-wrap{display:flex;justify-content:center;}
+svg.tree{overflow:visible;}
+.tree-edge{stroke:var(--line);stroke-width:1.5;fill:none;}
+.tree-node circle{fill:var(--surface);stroke:var(--border2);stroke-width:1.5;cursor:default;}
+.tree-node text{font-family:'Playfair Display',serif;font-size:13px;font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:middle;}
+.tree-node.d1 circle{fill:var(--d1bg);stroke:var(--d1b);stroke-width:2.5;}
+.tree-node.d1 text{fill:var(--d1);}
+.tree-node.d2 circle{fill:var(--d2bg);stroke:var(--d2b);stroke-width:2.5;}
+.tree-node.d2 text{fill:var(--d2);}
+.tree-node.lca circle{fill:var(--lcabg);stroke:var(--lcab);stroke-width:3;filter:drop-shadow(0 0 8px rgba(46,125,50,.5));}
+.tree-node.lca text{fill:var(--lca);}
+.tree-node.clickable circle{cursor:pointer;stroke:var(--active);stroke-width:2.5;fill:var(--activebg);animation:npulse .9s ease infinite;}
+.tree-node.clickable:hover circle{filter:drop-shadow(0 0 6px rgba(245,158,11,.6));}
+.tree-node.visited circle{fill:var(--surface2);stroke:var(--border);stroke-width:1.5;}
+.tree-node.visited text{fill:var(--muted);}
+.tree-node.equalized circle{fill:var(--eqbg);stroke:var(--eqb);stroke-width:2.5;}
+.tree-node.equalized text{fill:var(--eq);}
+.tree-node.wrong-shake circle{animation:ws .35s ease;}
+@keyframes npulse{0%,100%{stroke-opacity:1;}50%{stroke-opacity:.4;}}
+@keyframes ws{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+.depth-badge{font-family:'Courier Prime',monospace;font-size:10px;}
+
+.phase-indicator{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--accent);}
+
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.54rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+
+.state-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.state-title{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.state-row{padding:4px 8px;font-size:.67rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.state-row:last-child{border-bottom:none;}
+.state-k{color:var(--muted);}
+.state-v{font-weight:700;}
+.state-v.d1c{color:var(--d1);}
+.state-v.d2c{color:var(--d2);}
+.state-v.accent{color:var(--accent);}
+.state-v.lca{color:var(--lca);}
+.state-v.eq{color:var(--eq);}
+
+.path-track{display:flex;flex-direction:column;gap:.5rem;}
+.ptr{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;}
+.pt-label{font-size:.56rem;color:var(--muted);min-width:56px;text-transform:uppercase;}
+.pt-node{padding:2px 7px;border-radius:2px;font-size:.65rem;font-weight:700;border:1px solid;animation:pni .2s ease;}
+@keyframes pni{from{opacity:0;transform:scale(.7);}to{opacity:1;transform:scale(1);}}
+.pt-node.d1{background:var(--d1bg);border-color:var(--d1b);color:var(--d1);}
+.pt-node.d2{background:var(--d2bg);border-color:var(--d2b);color:var(--d2);}
+.pt-node.eq{background:var(--eqbg);border-color:var(--eqb);color:var(--eq);}
+.pt-arr{font-size:.6rem;color:var(--muted);}
+
+.hint-box{background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--active);border-radius:3px;padding:.65rem .75rem;font-size:.7rem;color:var(--muted2);line-height:1.6;min-height:3rem;}
+
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--surface);border:2px solid var(--border2);border-radius:3px;padding:8px 18px;font-size:.72rem;opacity:0;transition:all .25s;z-index:100;pointer-events:none;max-width:380px;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.good{border-color:var(--right);color:var(--right);}
+.toast.bad{border-color:var(--wrong);color:var(--wrong);}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'Courier Prime',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--ink);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="yca_watch.html" class="nav-tab">01 Watch</a>
+    <a href="yca_guide.html" class="nav-tab active">02 Guide</a>
+    <a href="yca_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="yca_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="yca_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="yca_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Youngest Common Ancestor · Guide</div>
+</header>
+<main>
+  <div class="center">
+    <div class="inst-box">
+      <div class="inst-icon">↑</div>
+      <div class="inst-text" id="instText"><strong>You drive the algorithm.</strong> Click the node that the algorithm should visit next. Walk <span style="color:var(--d1)">I</span> and <span style="color:var(--d2)">T</span> up to their common ancestor.</div>
+    </div>
+    <div class="teacher-flash" id="teacherFlash">"We have to get our two descendants on a sort of level playing field — get them at the same level in the tree."</div>
+    <div class="phase-indicator" id="phaseInd">Phase 1: Calculate depths</div>
+    <div class="tree-wrap">
+      <svg class="tree" id="treeSvg" width="360" height="280" viewBox="0 0 360 280"></svg>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Algorithm State</div>
+    <div class="state-block">
+      <div class="state-title">Current</div>
+      <div class="state-row"><span class="state-k">Phase</span><span class="state-v accent" id="sPhase">calc depth 1</span></div>
+      <div class="state-row"><span class="state-k">Ptr 1 (orange)</span><span class="state-v d1c" id="sPtr1">I</span></div>
+      <div class="state-row"><span class="state-k">Ptr 2 (blue)</span><span class="state-v d2c" id="sPtr2">T</span></div>
+      <div class="state-row"><span class="state-k">Depth 1</span><span class="state-v" id="sD1">0</span></div>
+      <div class="state-row"><span class="state-k">Depth 2</span><span class="state-v" id="sD2">0</span></div>
+      <div class="state-row"><span class="state-k">Diff</span><span class="state-v" id="sDiff">?</span></div>
+      <div class="state-row"><span class="state-k">LCA</span><span class="state-v lca" id="sLCA">?</span></div>
+    </div>
+
+    <div class="panel-label">Walk Trace</div>
+    <div class="path-track">
+      <div class="ptr"><span class="pt-label">Desc 1:</span><div id="trace1" style="display:flex;gap:3px;flex-wrap:wrap;"></div></div>
+      <div class="ptr"><span class="pt-label">Desc 2:</span><div id="trace2" style="display:flex;gap:3px;flex-wrap:wrap;"></div></div>
+    </div>
+
+    <div class="panel-label">Hint</div>
+    <div class="hint-box" id="hintBox">Start by clicking the parent of I to count its depth up to A.</div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.65rem;color:var(--muted);" id="footerStatus">Phase 1: Counting depth of descendant 1</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="showHint()">Hint</button>
+    <button class="btn" onclick="autoStep()">Auto Step</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="yca_cma.html" class="btn btn-accent">→ Mirror·A</a>
+  </div>
+</footer>
+<script>
+const NODES={A:{x:180,y:24},B:{x:80,y:80},C:{x:145,y:80},D:{x:210,y:80},E:{x:270,y:80},F:{x:330,y:80},G:{x:40,y:140},H:{x:90,y:140},I:{x:130,y:140},J:{x:195,y:140},K:{x:240,y:140},L:{x:285,y:140},P:{x:75,y:200},M:{x:120,y:200},T:{x:60,y:258}};
+const EDGES=[['A','B'],['A','C'],['A','D'],['A','E'],['A','F'],['B','G'],['B','H'],['B','I'],['D','J'],['D','K'],['E','L'],['H','P'],['I','M'],['P','T']];
+const ANCESTORS={B:'A',C:'A',D:'A',E:'A',F:'A',G:'B',H:'B',I:'B',J:'D',K:'D',L:'E',P:'H',M:'I',T:'P',A:null};
+const TOP='A';
+const DESC1='I',DESC2='T';
+
+const QUOTES={
+  calcD1:'"We\'ll start with the I descendant and just iterate upwards, counting how many nodes we count until the top ancestor."',
+  calcD2:'"For the T descendant, we\'re gonna go up once to the P, second time to the H, third time to the B, fourth time to the A — depth of four."',
+  equalize:'"The difference is four minus two equals two. We need to move two iterations upward from T to reach the same level as I."',
+  tandem:'"Now that we\'re on the same playing field, we keep going upwards until we\'re at the same spot — the youngest common ancestor."',
+  done:'"B is the youngest common ancestor. That\'s the algorithm — calculate depths, equalize, then walk in tandem."'
+};
+
+// State machine
+let phase='calcD1'; // calcD1 → calcD2 → equalize → tandem → done
+let ptr1=DESC1,ptr2=DESC2;
+let depth1=0,depth2=0,diff=0,stepsLeft=0;
+let trace1=[DESC1],trace2=[DESC2];
+let visitedNodes=new Set();
+let expectedClick=null;
+
+function getAncestors(node){
+  const path=[];let cur=node;
+  while(cur&&cur!==TOP){cur=ANCESTORS[cur];if(cur)path.push(cur);}
+  return path;
+}
+
+function computeDepth(node){let d=0,cur=node;while(ANCESTORS[cur]){cur=ANCESTORS[cur];d++;}return d;}
+
+function initState(){
+  phase='calcD1';ptr1=DESC1;ptr2=DESC2;
+  depth1=0;depth2=0;diff=0;stepsLeft=0;
+  trace1=[DESC1];trace2=[DESC2];visitedNodes=new Set([DESC1,DESC2]);
+  setExpected();
+  buildTree();updateState();
+  setHint(`Click the parent of ${ptr1} to begin counting its depth.`);
+  setQuote('calcD1');
+  document.getElementById('footerStatus').textContent='Phase 1: Counting depth of descendant 1';
+  document.getElementById('phaseInd').textContent='Phase 1: Calculate depth of I';
+}
+
+function setExpected(){
+  if(phase==='calcD1') expectedClick=ANCESTORS[ptr1]||null;
+  else if(phase==='calcD2') expectedClick=ANCESTORS[ptr2]||null;
+  else if(phase==='equalize') expectedClick=ANCESTORS[ptr2]||null;
+  else if(phase==='tandem') expectedClick=ANCESTORS[ptr1]||null;
+  else expectedClick=null;
+}
+
+function handleClick(node){
+  if(phase==='done'||!expectedClick)return;
+
+  if(node!==expectedClick){
+    showToast(`Not that one. Click ${expectedClick} — that\'s the next step.`,'bad');
+    const el=document.getElementById(`tnode-${node}`);
+    if(el)el.setAttribute('class',el.getAttribute('class').replace(' wrong-shake',''));
+    setTimeout(()=>{if(el)el.setAttribute('class',el.getAttribute('class')+' wrong-shake');setTimeout(()=>buildTree(),400);},10);
+    return;
+  }
+
+  if(phase==='calcD1'){
+    ptr1=ANCESTORS[ptr1];depth1++;
+    trace1.push(ptr1);
+    visitedNodes.add(ptr1);
+    showToast(`Depth 1 = ${depth1}. Now at ${ptr1}.`,ptr1===TOP?'good':'');
+    if(ptr1===TOP){
+      phase='calcD2';
+      setQuote('calcD2');
+      document.getElementById('phaseInd').textContent='Phase 2: Calculate depth of T';
+      document.getElementById('footerStatus').textContent='Phase 2: Counting depth of descendant 2';
+      setHint(`Depth of I = ${depth1}. Now count T\'s depth. Click parent of T.`);
+    } else {
+      setHint(`Good — depth so far = ${depth1}. Click parent of ${ptr1} to keep going.`);
+    }
+  } else if(phase==='calcD2'){
+    ptr2=ANCESTORS[ptr2];depth2++;
+    trace2.push(ptr2);
+    visitedNodes.add(ptr2);
+    showToast(`Depth 2 = ${depth2}. Now at ${ptr2}.`,ptr2===TOP?'good':'');
+    if(ptr2===TOP){
+      diff=depth2-depth1;
+      stepsLeft=diff;
+      ptr2=DESC2; // reset ptr2 to start equalization from T
+      phase='equalize';
+      setQuote('equalize');
+      document.getElementById('phaseInd').textContent=`Phase 3: Equalize — walk T up by ${diff}`;
+      document.getElementById('footerStatus').textContent=`Phase 3: Walk T up ${diff} steps to match I's level`;
+      setHint(`Depth of I=${depth1}, T=${depth2}. Diff=${diff}. Walk T up ${diff} steps. Click parent of T (${ANCESTORS[DESC2]}).`);
+      trace2=[DESC2];
+      ptr2=DESC2;
+    } else {
+      setHint(`Depth 2 so far = ${depth2}. Click parent of ${ptr2}.`);
+    }
+  } else if(phase==='equalize'){
+    ptr2=ANCESTORS[ptr2];stepsLeft--;
+    trace2.push(ptr2);
+    visitedNodes.add(ptr2);
+    showToast(`Moved T up. ${stepsLeft} more step(s) to equalize.`,stepsLeft===0?'good':'');
+    if(stepsLeft===0){
+      phase='tandem';
+      trace1=[DESC1];ptr1=DESC1;
+      setQuote('tandem');
+      document.getElementById('phaseInd').textContent='Phase 4: Walk both up in tandem';
+      document.getElementById('footerStatus').textContent='Phase 4: Walk both up together until they meet';
+      setHint(`Both at depth ${depth1}. Now walk I and ${ptr2} up together. Click ${ANCESTORS[DESC1]} (parent of I).`);
+    } else {
+      setHint(`${stepsLeft} step(s) left. Click parent of ${ptr2}.`);
+    }
+  } else if(phase==='tandem'){
+    const nextPtr1=ANCESTORS[ptr1];
+    const nextPtr2=ANCESTORS[ptr2];
+    ptr1=nextPtr1;ptr2=nextPtr2;
+    trace1.push(ptr1);trace2.push(ptr2);
+    visitedNodes.add(ptr1);visitedNodes.add(ptr2);
+    if(ptr1===ptr2){
+      phase='done';
+      setQuote('done');
+      document.getElementById('phaseInd').textContent=`✓ LCA = ${ptr1}`;
+      document.getElementById('footerStatus').textContent=`Done! Youngest Common Ancestor = ${ptr1}`;
+      showToast(`Found it! LCA = ${ptr1} 🎉`,'good');
+      setHint(`Both pointers met at ${ptr1}. That\'s the youngest common ancestor!`);
+    } else {
+      showToast(`Not yet. Moved to ${ptr1} and ${ptr2}. Keep going.`,'');
+      setHint(`I is now at ${ptr1}, equalized-T is at ${ptr2}. Keep walking up. Click ${ANCESTORS[ptr1]}.`);
+    }
+  }
+
+  setExpected();
+  buildTree();updateState();
+}
+
+function autoStep(){
+  if(phase==='done'||!expectedClick)return;
+  handleClick(expectedClick);
+}
+
+function buildTree(){
+  const svg=document.getElementById('treeSvg');svg.innerHTML='';
+  EDGES.forEach(([a,b])=>{
+    const na=NODES[a],nb=NODES[b];
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',na.x);line.setAttribute('y1',na.y);line.setAttribute('x2',nb.x);line.setAttribute('y2',nb.y);
+    line.setAttribute('class','tree-edge');svg.appendChild(line);
+  });
+  Object.entries(NODES).forEach(([key,n])=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('id',`tnode-${key}`);
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',16);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=key;
+    g.appendChild(circle);g.appendChild(text);
+    svg.appendChild(g);
+    g.onclick=()=>handleClick(key);
+
+    let cls='tree-node';
+    if(phase==='done'&&key===ptr1) cls+=' lca';
+    else if(key===ptr1&&phase!=='done') cls+=' d1';
+    else if(key===ptr2&&ptr1!==ptr2&&(phase==='equalize'||phase==='tandem')) cls+=' d2';
+    else if(key===DESC1&&phase==='tandem') cls+=' d1';
+    else if(key===DESC2) cls+=' d2';
+    else if(key===expectedClick) cls+=' clickable';
+    else if(visitedNodes.has(key)) cls+=' visited';
+    g.setAttribute('class',cls);
+  });
+}
+
+function updateState(){
+  const actualDiff=depth2>0&&depth1>0?depth2-depth1:'?';
+  document.getElementById('sPhase').textContent=phase;
+  document.getElementById('sPtr1').textContent=ptr1;
+  document.getElementById('sPtr2').textContent=ptr2;
+  document.getElementById('sD1').textContent=depth1;
+  document.getElementById('sD2').textContent=depth2;
+  document.getElementById('sDiff').textContent=typeof actualDiff==='number'?actualDiff:'?';
+  document.getElementById('sLCA').textContent=phase==='done'?ptr1:'?';
+
+  const t1=document.getElementById('trace1');t1.innerHTML='';
+  trace1.forEach((n,i)=>{
+    if(i>0){const a=document.createElement('span');a.className='pt-arr';a.textContent='→';t1.appendChild(a);}
+    const d=document.createElement('div');d.className='pt-node d1';d.textContent=n;t1.appendChild(d);
+  });
+  const t2=document.getElementById('trace2');t2.innerHTML='';
+  trace2.forEach((n,i)=>{
+    if(i>0){const a=document.createElement('span');a.className='pt-arr';a.textContent='→';t2.appendChild(a);}
+    const d=document.createElement('div');d.className=`pt-node ${phase==='equalize'?'eq':'d2'}`;d.textContent=n;t2.appendChild(d);
+  });
+}
+
+function setHint(t){document.getElementById('hintBox').textContent=t;}
+function setQuote(k){const el=document.getElementById('teacherFlash');el.textContent=QUOTES[k]||'';el.className='teacher-flash lit';setTimeout(()=>el.className='teacher-flash',4000);}
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;setTimeout(()=>t.className='toast',2800);}
+function showHint(){if(!expectedClick)return;showToast(`Click ${expectedClick} — ${phase==='calcD1'?'parent of '+ptr1:phase==='calcD2'?'parent of '+ptr2:phase==='equalize'?'move T upward':'walk both up'}`,'good');const el=document.getElementById(`tnode-${expectedClick}`);if(el){el.style.outline='3px solid var(--accent)';setTimeout(()=>el.style.outline='',1500);}}
+function resetAll(){initState();}
+
+initState();
+</script>
+</body>
+</html>

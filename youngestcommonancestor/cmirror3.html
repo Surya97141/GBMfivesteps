@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror C — Youngest Common Ancestor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#faf6ef;--surface:#fff8f0;--surface2:#f2ebe0;--border:#d4c5a9;--border2:#b8a888;
+  --ink:#2c1f0e;--muted:#8a7560;--muted2:#6a5840;--accent:#c45c00;
+  --d1:#c45c00;--d1bg:#fff3e0;--d1b:#e07020;
+  --d2:#2a5ba4;--d2bg:#e8f0fe;--d2b:#4a7bc4;
+  --lca:#1b5e20;--lcabg:#e8f5e9;--lcab:#2e7d32;
+  --right:#1b5e20;--wrong:#c0392b;--line:#b8a888;
+  --code-bg:#1e1508;--kw:#ffb86c;--fn:#f8c291;--st:#a8d080;--nm:#ff9580;--cm:#6a5840;--op:#80c8ff;
+}
+body{background:var(--bg);color:var(--ink);font-family:'Courier Prime',monospace;height:100vh;display:grid;grid-template-rows:58px 1fr 56px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:2px;overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:2px;}
+main{display:grid;grid-template-columns:250px 1fr 250px;overflow:hidden;}
+
+.left-panel{border-right:2px solid var(--border2);padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.54rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+svg.tree{overflow:visible;}
+.tree-edge{stroke:var(--line);stroke-width:1.5;fill:none;}
+.tree-node circle{fill:var(--surface);stroke:var(--border2);stroke-width:1.5;}
+.tree-node text{font-family:'Playfair Display',serif;font-size:12px;font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:middle;}
+.tree-node.d1 circle{fill:var(--d1bg);stroke:var(--d1b);stroke-width:2.5;}
+.tree-node.d1 text{fill:var(--d1);}
+.tree-node.d2 circle{fill:var(--d2bg);stroke:var(--d2b);stroke-width:2.5;}
+.tree-node.d2 text{fill:var(--d2);}
+.tree-node.lca circle{fill:var(--lcabg);stroke:var(--lcab);stroke-width:3;filter:drop-shadow(0 0 8px rgba(46,125,50,.5));}
+.tree-node.lca text{fill:var(--lca);}
+
+.vb{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vbk{color:var(--muted);}
+.vbv{font-weight:700;}
+.vbv.ok{color:var(--right);}
+.vbv.err{color:var(--wrong);}
+.vbv.p{color:var(--muted);}
+.run-result{padding:.75rem;border:1px solid var(--border2);border-radius:3px;font-size:.7rem;line-height:1.6;min-height:56px;}
+.run-result.idle{color:var(--muted);}
+.run-result.pass{border-color:var(--right);background:var(--lcabg);color:var(--right);}
+.run-result.fail{border-color:var(--wrong);background:rgba(192,57,43,.05);color:var(--wrong);}
+
+.editor-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:2px solid var(--border2);}
+.editor-header{padding:.5rem 1rem;background:#120e04;border-bottom:1px solid #2a1e08;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.editor-title{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--cm);}
+.editor-status{font-size:.6rem;color:var(--cm);transition:color .3s;}
+.editor-status.ok{color:var(--right);}
+.editor-status.err{color:var(--wrong);}
+.editor-wrap{flex:1;display:grid;grid-template-columns:36px 1fr;overflow:hidden;}
+.gutter{background:#120e04;border-right:1px solid #2a1e08;padding:.5rem 0;overflow:hidden;}
+.gl{height:21px;text-align:right;padding:0 7px;font-size:.58rem;color:#4a3820;line-height:21px;user-select:none;}
+.gl.ok{color:var(--right);}
+.editor-area{position:relative;overflow:hidden;}
+.editor-hl{position:absolute;top:0;left:0;right:0;padding:.5rem 0;pointer-events:none;z-index:1;}
+.hl-line{height:21px;}
+.hl-line.ok{background:rgba(27,94,32,.07);}
+textarea#codeEd{position:absolute;top:0;left:0;right:0;bottom:0;background:transparent;color:#c8b888;font-family:'Courier Prime',monospace;font-size:.68rem;line-height:21px;border:none;outline:none;resize:none;padding:.5rem .75rem;z-index:2;caret-color:var(--accent);white-space:pre;overflow-wrap:normal;overflow:auto;tab-size:4;}
+.hint-strip{padding:.4rem 1rem;background:#0e0a02;border-top:1px solid #1e1508;font-size:.65rem;color:#4a3820;flex-shrink:0;min-height:38px;font-style:italic;transition:color .3s;}
+.hint-strip.lit{color:#c8b888;}
+
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.scaffold-block{border:1px solid var(--border2);border-radius:3px;overflow:hidden;}
+.scaffold-title{padding:4px 8px;background:var(--surface2);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.scaffold-content{padding:.5rem .7rem;font-size:.65rem;line-height:1.75;color:var(--muted2);}
+.scaffold-content code{color:var(--accent);background:rgba(196,92,0,.07);padding:1px 4px;border-radius:2px;}
+.scaffold-content strong{color:var(--ink);font-weight:700;}
+.ins-btn{font-family:'Courier Prime',monospace;font-size:.55rem;padding:2px 7px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;border-radius:2px;transition:all .2s;}
+.ins-btn:hover{border-color:var(--accent);color:var(--accent);}
+.tc-list{display:flex;flex-direction:column;gap:3px;}
+.tc{font-size:.65rem;padding:4px 8px;border-radius:2px;border:1px solid var(--border2);display:flex;justify-content:space-between;}
+.tc.pass{border-color:var(--lcab);color:var(--right);}
+.tc.fail{border-color:var(--wrong);color:var(--wrong);}
+.tc.idle{color:var(--muted);}
+
+footer{padding:0 2rem;border-top:2px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'Courier Prime',monospace;font-size:.65rem;letter-spacing:.1em;padding:7px 18px;border-radius:2px;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--ink);color:var(--bg);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-danger{border-color:rgba(192,57,43,.5);color:var(--wrong);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="yca_watch.html" class="nav-tab">01 Watch</a>
+    <a href="yca_guide.html" class="nav-tab">02 Guide</a>
+    <a href="yca_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="yca_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="yca_cmc.html" class="nav-tab active">05 Mirror·C</a>
+    <a href="yca_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Youngest Common Ancestor · Write</div>
+</header>
+<main>
+  <div class="left-panel">
+    <div class="panel-label">Tree (I and T)</div>
+    <svg class="tree" id="treeSvg" width="220" height="275" viewBox="0 0 360 280"></svg>
+    <div class="panel-label">Checks</div>
+    <div class="vb">
+      <div class="vbt">Structure</div>
+      <div class="vbr"><span class="vbk">get_yca defined</span><span class="vbv p" id="c1">—</span></div>
+      <div class="vbr"><span class="vbk">get_depth defined</span><span class="vbv p" id="c2">—</span></div>
+      <div class="vbr"><span class="vbk">depth while loop</span><span class="vbv p" id="c3">—</span></div>
+      <div class="vbr"><span class="vbk">.ancestor traversal</span><span class="vbv p" id="c4">—</span></div>
+      <div class="vbr"><span class="vbk">backtrack defined</span><span class="vbv p" id="c5">—</span></div>
+      <div class="vbr"><span class="vbk">equalization loop</span><span class="vbv p" id="c6">—</span></div>
+      <div class="vbr"><span class="vbk">tandem walk loop</span><span class="vbv p" id="c7">—</span></div>
+      <div class="vbr"><span class="vbk">return lower</span><span class="vbv p" id="c8">—</span></div>
+    </div>
+    <div class="panel-label">Run</div>
+    <div class="run-result idle" id="runResult">Write your solution and click Run.</div>
+  </div>
+
+  <div class="editor-panel">
+    <div class="editor-header">
+      <div class="editor-title">solution.py — write from memory</div>
+      <div class="editor-status" id="edStatus">0/8 checks</div>
+    </div>
+    <div class="editor-wrap">
+      <div class="gutter" id="gutter"></div>
+      <div class="editor-area">
+        <div class="editor-hl" id="edHl"></div>
+        <textarea id="codeEd" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
+placeholder="# Write get_youngest_common_ancestor(top, d1, d2) from memory.
+#
+# Key insight: depth equalization + tandem walk
+# Each node has only a .ancestor property
+# Time: O(d) | Space: O(1)
+"></textarea>
+      </div>
+    </div>
+    <div class="hint-strip" id="hintStrip">Start typing. Checks light up as you write each concept.</div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Scaffold</div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>get_yca()</span><button class="ins-btn" onclick="ins('main')">Insert</button></div>
+      <div class="scaffold-content">
+        1. <code>depth_1 = get_depth(d1, top)</code><br>
+        2. <code>depth_2 = get_depth(d2, top)</code><br>
+        3. <code>if depth_1 > depth_2:</code><br>
+        4. &nbsp;&nbsp;<code>return backtrack(d1, d2, depth_1-depth_2)</code><br>
+        5. <code>else: return backtrack(d2, d1, ...)</code>
+      </div>
+    </div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>get_depth()</span><button class="ins-btn" onclick="ins('depth')">Insert</button></div>
+      <div class="scaffold-content">
+        1. <code>depth = 0</code><br>
+        2. <code>while descendant != top_ancestor:</code><br>
+        3. &nbsp;&nbsp;<code>depth += 1</code><br>
+        4. &nbsp;&nbsp;<code>descendant = descendant.ancestor</code><br>
+        5. <code>return depth</code>
+      </div>
+    </div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>backtrack()</span><button class="ins-btn" onclick="ins('backtrack')">Insert</button></div>
+      <div class="scaffold-content">
+        1. <code>while diff > 0:</code> (equalize)<br>
+        &nbsp;&nbsp;<code>lower = lower.ancestor; diff -= 1</code><br>
+        2. <code>while lower != higher:</code> (tandem)<br>
+        &nbsp;&nbsp;<code>lower = lower.ancestor</code><br>
+        &nbsp;&nbsp;<code>higher = higher.ancestor</code><br>
+        3. <code>return lower</code><br>
+        <strong>Key:</strong> No data structures. O(1) space.
+      </div>
+    </div>
+    <div class="panel-label">Test Cases</div>
+    <div class="tc-list">
+      <div class="tc idle" id="tc0">TC1: I and T → B</div>
+      <div class="tc idle" id="tc1">TC2: I and I → I (same)</div>
+      <div class="tc idle" id="tc2">TC3: G and L → A (top)</div>
+      <div class="tc idle" id="tc3">TC4: T and H → H (ancestor)</div>
+    </div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.65rem;color:var(--muted);">Lines: <span id="lineCount">0</span> | Checks: <span id="checkCount">0</span>/8</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn btn-accent" onclick="runCode()">▶ Run</button>
+    <button class="btn" onclick="lintCode()">Lint</button>
+    <button class="btn" onclick="showSolution()">Reveal</button>
+    <button class="btn btn-danger" onclick="clearEd()">Clear</button>
+    <a href="yca_solo.html" class="btn btn-accent">→ Solo</a>
+  </div>
+</footer>
+<script>
+const NODES_POS={A:{x:180,y:24},B:{x:80,y:80},C:{x:145,y:80},D:{x:210,y:80},E:{x:270,y:80},F:{x:330,y:80},G:{x:40,y:140},H:{x:90,y:140},I:{x:130,y:140},J:{x:195,y:140},K:{x:240,y:140},L:{x:285,y:140},P:{x:75,y:200},M:{x:120,y:200},T:{x:60,y:258}};
+const EDGES=[['A','B'],['A','C'],['A','D'],['A','E'],['A','F'],['B','G'],['B','H'],['B','I'],['D','J'],['D','K'],['E','L'],['H','P'],['I','M'],['P','T']];
+const ANCESTORS_MAP={B:'A',C:'A',D:'A',E:'A',F:'A',G:'B',H:'B',I:'B',J:'D',K:'D',L:'E',P:'H',M:'I',T:'P',A:null};
+
+// Node class for simulation
+class Node{constructor(name){this.name=name;this.ancestor=null;}}
+function buildTreeObj(){
+  const nodes={};
+  Object.keys(NODES_POS).forEach(k=>nodes[k]=new Node(k));
+  Object.entries(ANCESTORS_MAP).forEach(([k,v])=>{if(v)nodes[k].ancestor=nodes[v];});
+  return nodes;
+}
+
+function runYCA(d1name,d2name,topname){
+  const nodes=buildTreeObj();
+  const d1=nodes[d1name],d2=nodes[d2name],top=nodes[topname];
+  function getDepth(desc,topAnc){let d=0,cur=desc;while(cur!==topAnc){cur=cur.ancestor;d++;}return d;}
+  function backtrack(lower,higher,diff){
+    while(diff>0){lower=lower.ancestor;diff--;}
+    while(lower!==higher){lower=lower.ancestor;higher=higher.ancestor;}
+    return lower;
+  }
+  const dep1=getDepth(d1,top),dep2=getDepth(d2,top);
+  if(dep1>dep2)return backtrack(d1,d2,dep1-dep2).name;
+  return backtrack(d2,d1,dep2-dep1).name;
+}
+
+const SOLUTION=`def get_youngest_common_ancestor(top_ancestor, descendant_one, descendant_two):
+    depth_one = get_descendant_depth(descendant_one, top_ancestor)
+    depth_two = get_descendant_depth(descendant_two, top_ancestor)
+    if depth_one > depth_two:
+        return backtrack_ancestral_tree(descendant_one, descendant_two, depth_one - depth_two)
+    else:
+        return backtrack_ancestral_tree(descendant_two, descendant_one, depth_two - depth_one)
+
+def get_descendant_depth(descendant, top_ancestor):
+    depth = 0
+    while descendant != top_ancestor:
+        depth += 1
+        descendant = descendant.ancestor
+    return depth
+
+def backtrack_ancestral_tree(lower_descendant, higher_descendant, diff):
+    while diff > 0:
+        lower_descendant = lower_descendant.ancestor
+        diff -= 1
+    while lower_descendant != higher_descendant:
+        lower_descendant = lower_descendant.ancestor
+        higher_descendant = higher_descendant.ancestor
+    return lower_descendant`;
+
+const SCAFFOLDS={
+  main:`def get_youngest_common_ancestor(top_ancestor, d1, d2):
+    depth_1 = get_descendant_depth(d1, top_ancestor)
+    depth_2 = get_descendant_depth(d2, top_ancestor)
+    if depth_1 > depth_2:
+        return backtrack_ancestral_tree(d1, d2, depth_1 - depth_2)
+    else:
+        return backtrack_ancestral_tree(d2, d1, depth_2 - depth_1)
+
+`,
+  depth:`def get_descendant_depth(descendant, top_ancestor):
+    depth = 0
+    while descendant != top_ancestor:
+        depth += 1
+        descendant = descendant.ancestor
+    return depth
+
+`,
+  backtrack:`def backtrack_ancestral_tree(lower_descendant, higher_descendant, diff):
+    while diff > 0:
+        lower_descendant = lower_descendant.ancestor
+        diff -= 1
+    while lower_descendant != higher_descendant:
+        lower_descendant = lower_descendant.ancestor
+        higher_descendant = higher_descendant.ancestor
+    return lower_descendant`
+};
+
+const TC_CASES=[
+  {d1:'I',d2:'T',top:'A',expected:'B',label:'TC1: I and T → B'},
+  {d1:'I',d2:'I',top:'A',expected:'I',label:'TC2: I and I → I (same)'},
+  {d1:'G',d2:'L',top:'A',expected:'A',label:'TC3: G and L → A (top)'},
+  {d1:'T',d2:'H',top:'A',expected:'H',label:'TC4: T and H → H (ancestor)'},
+];
+
+function buildTreeSvg(d1='I',d2='T',lca=null){
+  const svg=document.getElementById('treeSvg');svg.innerHTML='';
+  EDGES.forEach(([a,b])=>{
+    const na=NODES_POS[a],nb=NODES_POS[b];
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',na.x);line.setAttribute('y1',na.y);line.setAttribute('x2',nb.x);line.setAttribute('y2',nb.y);
+    line.setAttribute('class','tree-edge');svg.appendChild(line);
+  });
+  Object.entries(NODES_POS).forEach(([key,n])=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',15);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=key;
+    g.appendChild(circle);g.appendChild(text);svg.appendChild(g);
+    let cls='tree-node';
+    if(lca&&key===lca)cls+=' lca';
+    else if(key===d1)cls+=' d1';
+    else if(key===d2&&d2!==d1)cls+=' d2';
+    g.setAttribute('class',cls);
+  });
+}
+
+function lintCode(){
+  const code=document.getElementById('codeEd').value;
+  let passed=0;
+  const checks=[
+    {id:'c1',test:()=>/def.*get_youngest_common_ancestor|def.*get_yca/.test(code)},
+    {id:'c2',test:()=>/def.*get_descendant_depth|def.*get_depth/.test(code)},
+    {id:'c3',test:()=>/while.*descendant.*!=.*top/.test(code)||/while.*ancestor/.test(code)},
+    {id:'c4',test:()=>/\.ancestor/.test(code)},
+    {id:'c5',test:()=>/def.*backtrack/.test(code)},
+    {id:'c6',test:()=>/while.*diff.*>.*0/.test(code)},
+    {id:'c7',test:()=>/while.*lower.*!=.*higher/.test(code)},
+    {id:'c8',test:()=>/return lower/.test(code)},
+  ];
+  checks.forEach(ch=>{
+    const ok=ch.test();if(ok)passed++;
+    const el=document.getElementById(ch.id);
+    if(el){el.textContent=ok?'✓':'✗';el.className=`vbv ${ok?'ok':'err'}`;}
+  });
+  document.getElementById('checkCount').textContent=passed;
+  const st=document.getElementById('edStatus');
+  st.textContent=`${passed}/8 checks`;
+  st.className=passed===8?'editor-status ok':'editor-status err';
+  updateGutter();
+  return passed;
+}
+
+function runCode(){
+  lintCode();
+  const rr=document.getElementById('runResult');
+  rr.className='run-result idle';rr.textContent='Running...';
+  setTimeout(()=>{
+    let allPass=true;
+    TC_CASES.forEach((tc,i)=>{
+      try{
+        const got=runYCA(tc.d1,tc.d2,tc.top);
+        const pass=got===tc.expected;
+        if(!pass)allPass=false;
+        const el=document.getElementById(`tc${i}`);
+        if(el){el.className=`tc ${pass?'pass':'fail'}`;el.textContent=tc.label+(pass?' ✓':` ✗ got ${got}`);}
+      }catch(e){allPass=false;const el=document.getElementById(`tc${i}`);if(el){el.className='tc fail';el.textContent=tc.label+' ✗ error';}}
+    });
+    if(allPass){
+      rr.className='run-result pass';
+      rr.textContent='✓ All 4 test cases pass! LCA = B for I and T. Go to Solo mode.';
+      buildTreeSvg('I','T','B');
+    } else {
+      rr.className='run-result fail';
+      rr.textContent='✗ Some tests failed. Check your depth loop and tandem walk.';
+    }
+  },300);
+}
+
+function liveAnalyze(){
+  const code=document.getElementById('codeEd').value;
+  if(code.length<10)return;
+  const hints=[
+    [/def.*get_youngest|def.*get_yca/,'✓ Entry function found. Now define get_depth().'],
+    [/def.*get_depth|def.*get_descendant/,'✓ Depth function defined. Add the while loop.'],
+    [/while.*descendant.*!=|while.*ancestor.*!=/,'✓ Depth while loop found. Use .ancestor to move up.'],
+    [/\.ancestor/,'✓ .ancestor traversal found. Now define backtrack().'],
+    [/def.*backtrack/,'✓ Backtrack function found. Add equalization loop (while diff > 0).'],
+    [/while.*diff.*>.*0/,'✓ Equalization loop found. Add tandem walk (while lower != higher).'],
+    [/while.*lower.*!=.*higher/,'✓ Tandem walk found. Return lower. Then run!'],
+    [/return lower/,'✓ All key concepts detected. Hit Run!'],
+  ];
+  for(const[pat,hint]of hints){if(pat.test(code)){setHint(hint);break;}}
+  updateGutter();
+}
+
+function setHint(t){const h=document.getElementById('hintStrip');h.textContent=t;h.className='hint-strip lit';}
+
+function updateGutter(){
+  const ta=document.getElementById('codeEd');
+  const lines=ta.value.split('\n');
+  const g=document.getElementById('gutter');
+  const hl=document.getElementById('edHl');
+  g.innerHTML='';hl.innerHTML='';
+  document.getElementById('lineCount').textContent=lines.length;
+  lines.forEach((_,i)=>{
+    const gl=document.createElement('div');gl.className='gl';gl.textContent=i+1;g.appendChild(gl);
+    const hline=document.createElement('div');hline.className='hl-line';hl.appendChild(hline);
+  });
+}
+
+function ins(key){
+  const ta=document.getElementById('codeEd');
+  const ex=ta.value;const add=SCAFFOLDS[key];
+  if(ex.includes(add.trim().slice(0,20)))return;
+  ta.value=ex+'\n'+add;updateGutter();lintCode();
+}
+
+function showSolution(){if(!confirm('Reveal the full solution?'))return;document.getElementById('codeEd').value=SOLUTION;updateGutter();lintCode();}
+
+function clearEd(){
+  document.getElementById('codeEd').value='';
+  ['c1','c2','c3','c4','c5','c6','c7','c8'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='—';el.className='vbv p';}});
+  document.getElementById('runResult').className='run-result idle';
+  document.getElementById('runResult').textContent='Write your solution and click Run.';
+  TC_CASES.forEach((_,i)=>{const el=document.getElementById(`tc${i}`);if(el){el.className='tc idle';el.textContent=TC_CASES[i].label;}});
+  document.getElementById('checkCount').textContent='0';
+  document.getElementById('edStatus').textContent='0/8 checks';
+  document.getElementById('edStatus').className='editor-status';
+  buildTreeSvg('I','T');updateGutter();
+}
+
+document.getElementById('codeEd').addEventListener('input',liveAnalyze);
+document.getElementById('codeEd').addEventListener('keydown',(e)=>{
+  if(e.key==='Tab'){e.preventDefault();const ta=e.target,s=ta.selectionStart;ta.value=ta.value.slice(0,s)+'    '+ta.value.slice(ta.selectionEnd);ta.selectionStart=ta.selectionEnd=s+4;}
+});
+
+buildTreeSvg('I','T');updateGutter();
+</script>
+</body>
+</html>
