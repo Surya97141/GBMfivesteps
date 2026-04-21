@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror A — Two Colorable</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0a0a;--surface:#111;--surface2:#1a1a1a;--border:#2a2a2a;--border2:#3a3a3a;
+  --text:#f0f0f0;--muted:#555;--muted2:#777;
+  --blue:#00d4ff;--blue-bg:rgba(0,212,255,.1);
+  --green:#39ff14;--green-bg:rgba(57,255,20,.1);
+  --accent:#ff3b3b;
+  --code-bg:#070707;--line-hl:#121212;--line-active:#1a2a00;
+  --kw:#ff9060;--fn:#00d4ff;--st:#a8d080;--nm:#ff9580;--cm:#555;--op:#80c8ff;
+}
+body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;height:100vh;display:grid;grid-template-rows:56px 1fr 54px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.1em;color:var(--blue);}
+.nav-tabs{display:flex;border:1px solid var(--border2);overflow:hidden;}
+.nav-tab{padding:5px 12px;font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted2);text-decoration:none;border-right:1px solid var(--border);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--blue);color:#000;font-weight:700;}
+.nav-tab:hover:not(.active){background:var(--surface2);color:var(--text);}
+.mode-pill{font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted2);border:1px solid var(--border2);padding:3px 10px;}
+main{display:grid;grid-template-columns:260px 1fr 230px;overflow:hidden;}
+
+.graph-panel{border-right:1px solid var(--border2);padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.52rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+svg.graph{overflow:visible;}
+.graph-edge{stroke:#333;stroke-width:2;fill:none;}
+.graph-edge.ce{stroke:var(--accent);stroke-width:3;}
+.graph-node circle{fill:var(--surface2);stroke:var(--border2);stroke-width:2;transition:all .3s;}
+.graph-node text{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;fill:var(--muted2);text-anchor:middle;dominant-baseline:middle;}
+.graph-node.blue circle{fill:var(--blue-bg);stroke:var(--blue);stroke-width:2.5;}
+.graph-node.blue text{fill:var(--blue);}
+.graph-node.green circle{fill:var(--green-bg);stroke:var(--green);stroke-width:2.5;}
+.graph-node.green text{fill:var(--green);}
+.graph-node.cur circle{stroke:var(--text);stroke-width:3;}
+.graph-node.conflict circle{fill:rgba(255,59,59,.15);stroke:var(--accent);stroke-width:3;}
+.graph-node.conflict text{fill:var(--accent);}
+
+.cs-row{display:flex;gap:3px;flex-wrap:wrap;}
+.cs{width:50px;height:42px;border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:all .3s;}
+.cs-i{font-size:.48rem;color:var(--muted);}
+.cs-v{font-size:.68rem;font-weight:700;color:var(--muted2);}
+.cs.b{border-color:var(--blue);background:var(--blue-bg);}.cs.b .cs-v{color:var(--blue);}
+.cs.g{border-color:var(--green);background:var(--green-bg);}.cs.g .cs-v{color:var(--green);}
+.st-col{display:flex;flex-direction:column-reverse;gap:3px;}
+.si{padding:3px 8px;border:1px solid var(--border2);font-size:.65rem;font-weight:700;color:var(--muted2);}
+.si.top{border-color:var(--blue);color:var(--blue);background:var(--blue-bg);}
+
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);}
+.code-header{padding:.5rem 1rem;background:#050505;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title{font-size:.55rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);}
+.code-step{font-size:.6rem;color:var(--blue);opacity:.8;}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:#333;flex-shrink:0;line-height:21px;user-select:none;}
+.code-content{flex:1;padding:0 12px 0 4px;font-size:.68rem;line-height:21px;white-space:pre;color:#888;}
+.code-line.active-line{background:var(--line-active);border-left:2px solid var(--green);}
+.code-line.active-line .ln{color:var(--green);}
+.code-line.just-ran{animation:lr .5s ease;}
+@keyframes lr{0%{background:rgba(57,255,20,.15);}100%{background:var(--line-active);}}
+.kw{color:var(--kw);}.fn{color:var(--fn);}.st{color:var(--st);}.nm{color:var(--nm);}.cm{color:var(--cm);font-style:italic;}.op{color:var(--op);}
+.teacher-bar{padding:.5rem 1rem;background:#050505;border-top:1px solid #1a1a1a;font-size:.62rem;color:#333;font-style:italic;line-height:1.4;flex-shrink:0;min-height:40px;transition:color .3s;}
+.teacher-bar.lit{color:#888;}
+
+.vars-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.vb{border:1px solid var(--border2);overflow:hidden;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vk{color:var(--muted2);}
+.vv{font-weight:700;font-size:.62rem;}
+.vv.chg{color:var(--blue);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(0,212,255,.15);}100%{background:transparent;}}
+.vv.b{color:var(--blue);}.vv.g{color:var(--green);}.vv.r{color:var(--accent);}
+.log-b{display:flex;flex-direction:column;gap:2px;max-height:140px;overflow-y:auto;}
+.ll{font-size:.58rem;padding:2px 6px;border-left:2px solid var(--border2);color:var(--muted);}
+.ll.b{border-color:var(--blue);color:var(--blue);}
+.ll.g{border-color:var(--green);color:var(--green);}
+.ll.r{border-color:var(--accent);color:var(--accent);}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.1em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--blue);color:#000;border-color:var(--blue);font-weight:700;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">ALGO·LEARN</div>
+  <nav class="nav-tabs">
+    <a href="tc_watch.html" class="nav-tab">01 Watch</a>
+    <a href="tc_guide.html" class="nav-tab">02 Guide</a>
+    <a href="tc_cma.html" class="nav-tab active">03 Mirror·A</a>
+    <a href="tc_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="tc_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="tc_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Two Colorable · Follow</div>
+</header>
+<main>
+  <div class="graph-panel">
+    <div class="panel-label">Graph</div>
+    <svg class="graph" id="graphSvg" width="220" height="200" viewBox="0 0 320 240"></svg>
+    <div class="panel-label">Colors</div>
+    <div class="cs-row" id="csRow"></div>
+    <div class="panel-label">Stack</div>
+    <div class="st-col" id="stCol"></div>
+  </div>
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title">Python · two_colorable.py</div>
+      <div class="code-step">step <span id="stepNum">0</span>/<span id="stepTotal">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="teacher-bar" id="teacherBar">"We also need to search through all of the nodes. So let's keep track of a stack of the nodes that we need to visit."</div>
+  </div>
+  <div class="vars-panel">
+    <div class="panel-label">Variables</div>
+    <div class="vb">
+      <div class="vbt">State</div>
+      <div class="vbr"><span class="vk">node</span><span class="vv" id="vNode">—</span></div>
+      <div class="vbr"><span class="vk">color</span><span class="vv" id="vColor">—</span></div>
+      <div class="vbr"><span class="vk">neighbor</span><span class="vv" id="vNeighbor">—</span></div>
+      <div class="vbr"><span class="vk">n_color</span><span class="vv" id="vNColor">—</span></div>
+      <div class="vbr"><span class="vk">stack len</span><span class="vv" id="vStack">0</span></div>
+      <div class="vbr"><span class="vk">result</span><span class="vv" id="vResult">—</span></div>
+    </div>
+    <div class="panel-label">Log</div>
+    <div class="log-b" id="logB"></div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Step <span id="stepLabel">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" id="prevBtn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="toggleAuto()" id="autoBtn">Auto</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="tc_cmb.html" class="btn btn-accent">→ Mirror·B</a>
+  </div>
+</footer>
+<script>
+const ADJ=[[1,3],[0,2],[1,3],[0,2]];
+const N=4;
+const GRAPH_NODES=[{id:0,x:80,y:70},{id:1,x:240,y:70},{id:2,x:240,y:170},{id:3,x:80,y:170}];
+const GRAPH_EDGES=[[0,1],[1,2],[2,3],[3,0]];
+const opp=c=>c==='blue'?'green':'blue';
+
+const CODE=[
+  {n:1,t:'<span class="kw">def</span> <span class="fn">two_colorable</span>(graph):',id:'def'},
+  {n:2,t:'  colors <span class="op">=</span> [<span class="kw">None</span>] <span class="op">*</span> <span class="fn">len</span>(graph)',id:'init_colors'},
+  {n:3,t:'  colors[<span class="nm">0</span>] <span class="op">=</span> <span class="kw">True</span>           <span class="cm"># start: True = blue</span>',id:'color_first'},
+  {n:4,t:'  stack <span class="op">=</span> [<span class="nm">0</span>]',id:'init_stack'},
+  {n:5,t:'',id:'b1'},
+  {n:6,t:'  <span class="kw">while</span> stack:',id:'while_stack'},
+  {n:7,t:'    node <span class="op">=</span> stack.pop()',id:'pop'},
+  {n:8,t:'    <span class="kw">for</span> neighbor <span class="kw">in</span> graph[node]:',id:'for_nb'},
+  {n:9,t:'      <span class="kw">if</span> neighbor <span class="op">==</span> node:     <span class="cm"># self-loop</span>',id:'self_loop'},
+  {n:10,t:'        <span class="kw">return</span> <span class="kw">False</span>',id:'ret_false_sl'},
+  {n:11,t:'      <span class="kw">if</span> colors[neighbor] <span class="kw">is</span> <span class="kw">None</span>:',id:'check_uncolored'},
+  {n:12,t:'        colors[neighbor] <span class="op">=</span> <span class="kw">not</span> colors[node]',id:'assign_color'},
+  {n:13,t:'        stack.append(neighbor)',id:'push'},
+  {n:14,t:'      <span class="kw">elif</span> colors[neighbor] <span class="op">==</span> colors[node]:',id:'check_conflict'},
+  {n:15,t:'        <span class="kw">return</span> <span class="kw">False</span>           <span class="cm"># same color!</span>',id:'ret_false_c'},
+  {n:16,t:'',id:'b2'},
+  {n:17,t:'  <span class="kw">return</span> <span class="kw">True</span>',id:'ret_true'},
+];
+
+const QUOTES={
+  init_colors:'"What I want to do is initialize an extra array and this array is gonna keep track of all of the colors."',
+  color_first:'"For the first node, we can just give it any color that we want. So for node 0, let\'s make it blue — we will use True for blue."',
+  init_stack:'"We also need to search through all of the nodes. Let\'s keep track of a stack of the nodes that we need to visit."',
+  while_stack:'"We are going to loop through the entire stack until it is empty."',
+  pop:'"So let\'s visit the next node in the stack — we pop it off."',
+  for_nb:'"When we are visiting a node, we want to look to all of its edges."',
+  check_uncolored:'"So this one does not have a color yet. Just like we did with node 0, we want to color any nodes connected with the opposite color."',
+  assign_color:'"We are going to color the neighbor with the opposite of our current color — not colors[node]."',
+  push:'"We also need to add this node to the stack to make sure that we visit it."',
+  check_conflict:'"Because our node is connected to another node that already has the same color — return false."',
+  ret_true:'"At this point we\'ve made it through the entire stack and we haven\'t found any reason to return false."',
+};
+
+function computeSteps(){
+  const steps=[];
+  const colors=new Array(N).fill(null);
+  const s=(line,node,color,nb,ncolor,stack,result,log)=>steps.push({line,colors:[...colors],node,color,neighbor:nb,ncolor,stack:[...stack],result,log});
+
+  s('def',null,null,null,null,[],null,null);
+  s('init_colors',null,null,null,null,[],null,null);
+  colors[0]='blue';
+  s('color_first',0,'blue',null,null,[],null,{t:'b',m:'colors[0] = True (blue)'});
+  const stack=[0];
+  s('init_stack',null,null,null,null,[...stack],null,null);
+
+  while(stack.length){
+    s('while_stack',null,null,null,null,[...stack],null,null);
+    const node=stack.pop();
+    const myColor=colors[node];
+    s('pop',node,myColor,null,null,[...stack],null,{t:'b',m:`popped node ${node} (${myColor})`});
+
+    for(const nb of ADJ[node]){
+      s('for_nb',node,myColor,nb,colors[nb],[...stack],null,null);
+      s('self_loop',node,myColor,nb,colors[nb],[...stack],null,null);
+      if(nb===node){
+        s('ret_false_sl',node,myColor,nb,colors[nb],[...stack],'false',{t:'r',m:'self-loop! return False'});
+        return steps;
+      }
+      s('check_uncolored',node,myColor,nb,colors[nb],[...stack],null,null);
+      if(colors[nb]===null){
+        colors[nb]=opp(myColor);
+        s('assign_color',node,myColor,nb,colors[nb],[...stack],null,{t:colors[nb]==='blue'?'b':'g',m:`colors[${nb}] = ${colors[nb]==='blue'?'True (blue)':'False (green)'}`});
+        stack.push(nb);
+        s('push',node,myColor,nb,colors[nb],[...stack],null,{t:colors[nb]==='blue'?'b':'g',m:`pushed node ${nb} to stack`});
+      } else {
+        s('check_conflict',node,myColor,nb,colors[nb],[...stack],null,null);
+        if(colors[nb]===myColor){
+          s('ret_false_c',node,myColor,nb,colors[nb],[...stack],'false',{t:'r',m:`conflict! node ${nb} same color as node ${node}`});
+          return steps;
+        }
+      }
+    }
+  }
+  s('while_stack',null,null,null,null,[],null,null);
+  s('ret_true',null,null,null,null,[],'true',{t:'g',m:'return True — two colorable!'});
+  return steps;
+}
+
+const STEPS=computeSteps();
+let cur=0,autoTimer=null;
+
+function buildCode(){
+  const cb=document.getElementById('codeBody');cb.innerHTML='';
+  CODE.forEach(l=>{
+    const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;
+    d.innerHTML=`<span class="ln">${l.n||''}</span><span class="code-content">${l.t}</span>`;
+    cb.appendChild(d);
+  });
+  document.getElementById('stepTotal').textContent=STEPS.length;
+}
+
+function buildGraph(s){
+  const svg=document.getElementById('graphSvg');svg.innerHTML='';
+  GRAPH_EDGES.forEach(([a,b])=>{
+    const na=GRAPH_NODES[a],nb=GRAPH_NODES[b];
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',na.x);line.setAttribute('y1',na.y);line.setAttribute('x2',nb.x);line.setAttribute('y2',nb.y);
+    const ce=s.result==='false'&&s.neighbor!==null&&((a===s.node&&b===s.neighbor)||(b===s.node&&a===s.neighbor));
+    line.setAttribute('class',`graph-edge${ce?' ce':''}`);
+    svg.appendChild(line);
+  });
+  GRAPH_NODES.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',24);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=n.id;
+    g.appendChild(circle);g.appendChild(text);svg.appendChild(g);
+    let cls='graph-node';
+    if(s.colors[n.id]==='blue')cls+=' blue';
+    else if(s.colors[n.id]==='green')cls+=' green';
+    if(n.id===s.node)cls+=' cur';
+    if(s.result==='false'&&(n.id===s.node||n.id===s.neighbor))cls+=' conflict';
+    g.setAttribute('class',cls);
+  });
+}
+
+function renderCS(s){
+  const el=document.getElementById('csRow');el.innerHTML='';
+  s.colors.forEach((c,i)=>{
+    const d=document.createElement('div');d.className=`cs${c==='blue'?' b':c==='green'?' g':''}`;
+    d.innerHTML=`<span class="cs-i">node ${i}</span><span class="cs-v">${c===null?'None':c==='blue'?'True':'False'}</span>`;
+    el.appendChild(d);
+  });
+}
+
+function renderSt(s){
+  const el=document.getElementById('stCol');el.innerHTML='';
+  if(!s.stack.length){el.innerHTML='<span style="font-size:.62rem;color:var(--muted)">empty</span>';return;}
+  s.stack.forEach((item,i)=>{
+    const d=document.createElement('div');d.className=`si${i===s.stack.length-1?' top':''}`;d.textContent=`node ${item}`;el.appendChild(d);
+  });
+}
+
+function setV(id,val,extra=''){const el=document.getElementById(id);if(!el)return;const p=el.textContent;el.textContent=String(val);if(p!==String(val)){el.className=`vv${extra} chg`;setTimeout(()=>el.className=`vv${extra}`,600);}}
+
+function applyStep(s){
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('active-line','just-ran'));
+  const lel=document.getElementById(`line-${s.line}`);
+  if(lel){lel.classList.add('active-line','just-ran');lel.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  buildGraph(s);renderCS(s);renderSt(s);
+  setV('vNode',s.node!==null?`node ${s.node}`:'—');
+  setV('vColor',s.color||'—',s.color==='blue'?' b':s.color==='green'?' g':'');
+  setV('vNeighbor',s.neighbor!==null?`node ${s.neighbor}`:'—');
+  setV('vNColor',s.ncolor||'—',s.ncolor==='blue'?' b':s.ncolor==='green'?' g':'');
+  setV('vStack',s.stack.length);
+  setV('vResult',s.result||'—',s.result==='true'?' g':s.result==='false'?' r':'');
+  document.getElementById('stepNum').textContent=cur;
+  document.getElementById('stepLabel').textContent=cur;
+  const q=QUOTES[s.line];const tb=document.getElementById('teacherBar');
+  if(q){tb.textContent=q;tb.className='teacher-bar lit';}else{tb.className='teacher-bar';}
+  if(s.log){
+    const lb=document.getElementById('logB');
+    const li=document.createElement('div');li.className=`ll ${s.log.t}`;li.textContent=`${cur}: ${s.log.m}`;
+    lb.appendChild(li);lb.scrollTop=lb.scrollHeight;
+  }
+}
+
+function nextStep(){if(cur<STEPS.length-1){cur++;applyStep(STEPS[cur]);}}
+function prevStep(){if(cur>0){cur--;applyStep(STEPS[cur]);}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}
+  else{document.getElementById('autoBtn').textContent='Stop';autoTimer=setInterval(()=>{if(cur<STEPS.length-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}},420);}
+}
+function resetAll(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}cur=0;document.getElementById('logB').innerHTML='';buildCode();applyStep(STEPS[0]);}
+
+buildCode();applyStep(STEPS[0]);
+</script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch — Two Colorable</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0a0a;--surface:#111;--surface2:#1a1a1a;--border:#2a2a2a;--border2:#3a3a3a;
+  --text:#f0f0f0;--muted:#555;--muted2:#777;
+  --blue:#00d4ff;--blue-bg:rgba(0,212,255,.1);--blue-border:rgba(0,212,255,.4);
+  --green:#39ff14;--green-bg:rgba(57,255,20,.1);--green-border:rgba(57,255,20,.4);
+  --accent:#ff3b3b;--accent2:#ff6b6b;
+  --null:#333;--null-text:#666;
+  --edge:#333;--edge-hl:#555;
+}
+body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;height:100vh;display:grid;grid-template-rows:56px 1fr 54px;overflow:hidden;}
+
+header{padding:0 2rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.1em;color:var(--blue);}
+.nav-tabs{display:flex;border:1px solid var(--border2);overflow:hidden;}
+.nav-tab{padding:5px 12px;font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted2);text-decoration:none;border-right:1px solid var(--border);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--blue);color:#000;font-weight:700;}
+.nav-tab:hover:not(.active){background:var(--surface2);color:var(--text);}
+.mode-pill{font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted2);border:1px solid var(--border2);padding:3px 10px;}
+
+main{display:grid;grid-template-columns:1fr 440px;overflow:hidden;}
+
+.left-panel{padding:2.5rem 3rem;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--border2);overflow:hidden;}
+.stage-tag{font-size:.55rem;letter-spacing:.35em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;}
+.narrator{font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:.06em;line-height:1.2;color:var(--text);min-height:9rem;}
+.narrator .hl{color:var(--blue);}
+.narrator .g{color:var(--green);}
+.narrator .r{color:var(--accent);}
+.concept{display:inline-block;margin-top:1.2rem;font-size:.55rem;letter-spacing:.25em;text-transform:uppercase;background:var(--blue);color:#000;padding:4px 12px;font-weight:700;}
+.quote{margin-top:1.5rem;padding:.85rem 1.1rem;border-left:2px solid var(--blue);font-size:.7rem;color:var(--muted2);line-height:1.65;min-height:3.5rem;}
+.quote span{color:var(--text);}
+.progress-wrap{margin-top:2rem;}
+.progress-bar{height:2px;background:var(--border2);}
+.progress-fill{height:100%;background:var(--blue);transition:width .5s ease;}
+.progress-label{font-size:.55rem;color:var(--muted);margin-top:.4rem;letter-spacing:.1em;}
+
+.right-panel{padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.52rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+
+/* GRAPH SVG */
+.graph-wrap{display:flex;justify-content:center;}
+svg.graph{overflow:visible;}
+.graph-edge{stroke:var(--edge);stroke-width:2;fill:none;transition:stroke .3s;}
+.graph-edge.hl{stroke:var(--edge-hl);stroke-width:2.5;}
+.graph-node circle{fill:var(--surface2);stroke:var(--border2);stroke-width:2;transition:all .35s;}
+.graph-node text{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;fill:var(--muted2);text-anchor:middle;dominant-baseline:middle;transition:fill .35s;}
+.graph-node.blue circle{fill:var(--blue-bg);stroke:var(--blue);stroke-width:2.5;filter:drop-shadow(0 0 8px rgba(0,212,255,.4));}
+.graph-node.blue text{fill:var(--blue);}
+.graph-node.green circle{fill:var(--green-bg);stroke:var(--green);stroke-width:2.5;filter:drop-shadow(0 0 8px rgba(57,255,20,.4));}
+.graph-node.green text{fill:var(--green);}
+.graph-node.conflict circle{fill:rgba(255,59,59,.15);stroke:var(--accent);stroke-width:3;filter:drop-shadow(0 0 10px rgba(255,59,59,.6));animation:conflictPulse .6s ease infinite;}
+.graph-node.conflict text{fill:var(--accent);}
+.graph-node.active circle{stroke-width:3;animation:activePulse .7s ease infinite;}
+.graph-node.blue.active circle{animation:activePulseB .7s ease infinite;}
+.graph-node.green.active circle{animation:activePulseG .7s ease infinite;}
+@keyframes conflictPulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+@keyframes activePulseB{0%,100%{box-shadow:0 0 8px rgba(0,212,255,.4);}50%{filter:drop-shadow(0 0 14px rgba(0,212,255,.8));}}
+@keyframes activePulseG{0%,100%{}50%{filter:drop-shadow(0 0 14px rgba(57,255,20,.8));}}
+
+/* Colors array */
+.colors-array{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
+.color-slot{width:52px;height:44px;border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .3s;}
+.color-slot-idx{font-size:.52rem;color:var(--muted);letter-spacing:.05em;}
+.color-slot-val{font-size:.75rem;font-weight:700;color:var(--muted2);}
+.color-slot.blue-slot{border-color:var(--blue);background:var(--blue-bg);}
+.color-slot.blue-slot .color-slot-val{color:var(--blue);}
+.color-slot.green-slot{border-color:var(--green);background:var(--green-bg);}
+.color-slot.green-slot .color-slot-val{color:var(--green);}
+
+/* Stack */
+.stack-display{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+.stack-item{padding:3px 10px;border:1px solid var(--border2);font-size:.7rem;font-weight:700;color:var(--muted2);transition:all .2s;animation:stackIn .2s ease;}
+@keyframes stackIn{from{opacity:0;transform:scale(.7);}to{opacity:1;transform:scale(1);}}
+.stack-item.top{border-color:var(--blue);color:var(--blue);background:var(--blue-bg);}
+
+/* Result */
+.result-display{padding:.75rem 1rem;border:1px solid var(--border2);font-size:.85rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;transition:all .3s;}
+.result-display.true{border-color:var(--green);color:var(--green);background:var(--green-bg);}
+.result-display.false{border-color:var(--accent);color:var(--accent);background:rgba(255,59,59,.08);}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.1em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--blue);color:#000;border-color:var(--blue);font-weight:700;}
+.btn-accent:hover{opacity:.85;}
+.speed-wrap{display:flex;align-items:center;gap:.75rem;font-size:.58rem;color:var(--muted);letter-spacing:.08em;}
+.speed-wrap input{accent-color:var(--blue);width:80px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">ALGO·LEARN</div>
+  <nav class="nav-tabs">
+    <a href="tc_watch.html" class="nav-tab active">01 Watch</a>
+    <a href="tc_guide.html" class="nav-tab">02 Guide</a>
+    <a href="tc_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="tc_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="tc_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="tc_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Two Colorable · Watch</div>
+</header>
+
+<main>
+  <div class="left-panel">
+    <div>
+      <div class="stage-tag" id="stageTag">Stage 1 of 9 — Problem</div>
+      <div class="narrator" id="narrator">A graph. Two colors.<br>Can we color every node so <span class="hl">no two</span><br>neighbors share a color?</div>
+      <div class="concept" id="concept">KEY CONCEPT: BIPARTITENESS</div>
+      <div class="quote" id="quote"><span>"What we mean by two colorable is that we can give each node a color and that node will have no edges connecting itself to another node of the same color."</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Step 1 / 9</div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Graph (adjacency list: [[1,3],[0,2],[1,3],[0,2]])</div>
+    <div class="graph-wrap">
+      <svg class="graph" id="graphSvg" width="300" height="220" viewBox="0 0 300 220"></svg>
+    </div>
+
+    <div class="panel-label">Colors Array</div>
+    <div class="colors-array" id="colorsArray"></div>
+
+    <div class="panel-label">Stack (DFS)</div>
+    <div class="stack-display" id="stackDisplay"></div>
+
+    <div class="panel-label">Result</div>
+    <div class="result-display" id="resultDisplay" style="color:var(--muted);border-color:var(--border2);">—</div>
+  </div>
+</main>
+
+<footer>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+  </div>
+  <div class="speed-wrap">
+    Speed: <input type="range" id="speedSlider" min="600" max="3000" value="1600" step="100">
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">Auto Play</button>
+  </div>
+  <a href="tc_guide.html" class="btn btn-accent">Guide →</a>
+</footer>
+
+<script>
+// Graph: 4 nodes, square
+// Adjacency: 0:[1,3], 1:[0,2], 2:[1,3], 3:[0,2]
+const GRAPH_NODES = [
+  {id:0, x:80,  y:60},
+  {id:1, x:220, y:60},
+  {id:2, x:220, y:160},
+  {id:3, x:80,  y:160},
+];
+const GRAPH_EDGES = [[0,1],[1,2],[2,3],[3,0]];
+
+const STAGES = [
+  {
+    tag:'Stage 1 of 9 — Problem',
+    narrator:'A graph. Two colors.<br>Can we color every node so <span class="hl">no two</span><br>neighbors share a color?',
+    concept:'KEY CONCEPT: BIPARTITENESS',
+    quote:'"What we mean by two colorable is that we can give each node a color and that node will have no edges connecting itself to another node of the same color."',
+    colors:[null,null,null,null], stack:[], active:[], result:null, conflict:[]
+  },
+  {
+    tag:'Stage 2 of 9 — Adjacency List',
+    narrator:'Graph as <span class="hl">adjacency list.</span><br>Array of arrays. Each subarray<br>= neighbors of that node.',
+    concept:'KEY CONCEPT: ADJACENCY LIST INPUT',
+    quote:'"This graph is going to be given to us in the form of an adjacency list — an array of arrays where each inside array represents the edges of a given node."',
+    colors:[null,null,null,null], stack:[], active:[0], result:null, conflict:[]
+  },
+  {
+    tag:'Stage 3 of 9 — Self-loop = not two colorable',
+    narrator:'A <span class="r">self-loop</span> is instant failure.<br>A node connected to itself<br>cannot have a different color.',
+    concept:'KEY CONCEPT: SELF-LOOP DETECTION',
+    quote:'"Whenever there is a self-loop, this is considered not two colorable because node one has an edge to a node of the same color — even though it is the exact same node."',
+    colors:[null,null,null,null], stack:[], active:[], result:null, conflict:[1]
+  },
+  {
+    tag:'Stage 4 of 9 — Start: Color Node 0',
+    narrator:'Start at node 0.<br>Assign it <span class="hl">BLUE</span> (true).<br>Add neighbors to stack.',
+    concept:'KEY CONCEPT: INITIALIZATION',
+    quote:'"For the first node, we can just give it any color that we want. So for node 0, let\'s make it blue."',
+    colors:['blue',null,null,null], stack:[1,3], active:[0], result:null, conflict:[]
+  },
+  {
+    tag:'Stage 5 of 9 — Color Neighbors',
+    narrator:'Neighbors of 0 get <span class="g">GREEN</span> (false).<br>Opposite color. Always.<br>Add them to the stack.',
+    concept:'KEY CONCEPT: OPPOSITE COLOR RULE',
+    quote:'"We want to color these nodes as well and they need to be a different color than node 0, so these will be green."',
+    colors:['blue','green',null,'green'], stack:[1,3], active:[1,3], result:null, conflict:[]
+  },
+  {
+    tag:'Stage 6 of 9 — Visit Node 1',
+    narrator:'Pop node 1 from stack.<br>Node 2 has no color yet →<br>give it <span class="hl">BLUE</span>. Add to stack.',
+    concept:'KEY CONCEPT: DFS PROPAGATION',
+    quote:'"When we are visiting node 1, we want to look at all of its edges. Node 2 does not have a color yet so we color it the opposite color of node 1."',
+    colors:['blue','green','blue','green'], stack:[3,2], active:[1], result:null, conflict:[]
+  },
+  {
+    tag:'Stage 7 of 9 — Nodes 2 and 3',
+    narrator:'Node 2: neighbors 1,3 already <span class="g">GREEN.</span><br>Node 3: neighbors 0,2 already <span class="hl">BLUE.</span><br>No conflicts anywhere.',
+    concept:'KEY CONCEPT: CONFLICT CHECK',
+    quote:'"From node 2, both of its edges point to nodes that are already colored green — a different color. So these are both fine."',
+    colors:['blue','green','blue','green'], stack:[], active:[2,3], result:null, conflict:[]
+  },
+  {
+    tag:'Stage 8 of 9 — Return true',
+    narrator:'Stack empty. No conflicts.<br>Every node colored.<br>Return <span class="g">true</span> — two colorable!',
+    concept:'KEY CONCEPT: SUCCESS CONDITION',
+    quote:'"At this point we\'ve made it through the entire stack and we haven\'t found any reason to return false. So that means we must have succeeded — return true."',
+    colors:['blue','green','blue','green'], stack:[], active:[], result:'true', conflict:[]
+  },
+  {
+    tag:'Stage 9 of 9 — Complexity',
+    narrator:'Time: <span class="hl">O(V + E)</span><br>Space: <span class="hl">O(V)</span><br>DFS visits every node and edge once.',
+    concept:'KEY CONCEPT: O(V+E) TIME · O(V) SPACE',
+    quote:'"The time complexity is O(V + E) because of the depth-first search that we are doing — we need to visit each node and all of their edges. Space is O(V)."',
+    colors:['blue','green','blue','green'], stack:[], active:[], result:'true', conflict:[]
+  }
+];
+
+let cur=0;
+let autoTimer=null;
+
+function buildGraph(stage){
+  const svg=document.getElementById('graphSvg');svg.innerHTML='';
+  // edges
+  GRAPH_EDGES.forEach(([a,b])=>{
+    const na=GRAPH_NODES[a],nb=GRAPH_NODES[b];
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',na.x);line.setAttribute('y1',na.y);
+    line.setAttribute('x2',nb.x);line.setAttribute('y2',nb.y);
+    line.setAttribute('class','graph-edge');
+    svg.appendChild(line);
+  });
+  // nodes
+  GRAPH_NODES.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',24);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=n.id;
+    g.appendChild(circle);g.appendChild(text);svg.appendChild(g);
+    let cls='graph-node';
+    if(stage.conflict&&stage.conflict.includes(n.id))cls+=' conflict';
+    else if(stage.colors[n.id]==='blue')cls+=' blue';
+    else if(stage.colors[n.id]==='green')cls+=' green';
+    if(stage.active&&stage.active.includes(n.id))cls+=' active';
+    g.setAttribute('class',cls);
+  });
+}
+
+function buildColorsArray(colors){
+  const el=document.getElementById('colorsArray');el.innerHTML='';
+  colors.forEach((c,i)=>{
+    const slot=document.createElement('div');
+    let cls='color-slot';
+    if(c==='blue')cls+=' blue-slot';
+    else if(c==='green')cls+=' green-slot';
+    slot.className=cls;
+    slot.innerHTML=`<span class="color-slot-idx">node ${i}</span><span class="color-slot-val">${c===null?'null':c==='blue'?'true':'false'}</span>`;
+    el.appendChild(slot);
+  });
+}
+
+function buildStack(stack){
+  const el=document.getElementById('stackDisplay');el.innerHTML='';
+  if(!stack||stack.length===0){el.innerHTML='<span style="font-size:.65rem;color:var(--muted);">empty</span>';return;}
+  [...stack].reverse().forEach((item,i)=>{
+    const d=document.createElement('div');
+    d.className=`stack-item${i===0?' top':''}`;
+    d.textContent=`node ${item}`;
+    el.appendChild(d);
+  });
+}
+
+function applyStage(s){
+  document.getElementById('stageTag').textContent=s.tag;
+  document.getElementById('narrator').innerHTML=s.narrator;
+  document.getElementById('concept').textContent=s.concept;
+  document.getElementById('quote').innerHTML=`<span>${s.quote}</span>`;
+  buildGraph(s);
+  buildColorsArray(s.colors);
+  buildStack(s.stack);
+  const rd=document.getElementById('resultDisplay');
+  if(s.result==='true'){rd.textContent='→ return TRUE';rd.className='result-display true';}
+  else if(s.result==='false'){rd.textContent='→ return FALSE';rd.className='result-display false';}
+  else{rd.textContent='—';rd.style.cssText='color:var(--muted);border-color:var(--border2);';}
+  const pct=((cur+1)/STAGES.length*100).toFixed(0);
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressLabel').textContent=`Step ${cur+1} / ${STAGES.length}`;
+}
+
+function nextStep(){if(cur<STAGES.length-1){cur++;applyStage(STAGES[cur]);}}
+function prevStep(){if(cur>0){cur--;applyStage(STAGES[cur]);}}
+function resetAll(){cur=0;applyStage(STAGES[0]);if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+  else{const spd=parseInt(document.getElementById('speedSlider').value);document.getElementById('autoBtn').textContent='Stop';autoTimer=setInterval(()=>{if(cur<STAGES.length-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}},spd);}
+}
+
+applyStage(STAGES[0]);
+</script>
+</body>
+</html>

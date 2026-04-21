@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide — Two Colorable</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0a0a;--surface:#111;--surface2:#1a1a1a;--border:#2a2a2a;--border2:#3a3a3a;
+  --text:#f0f0f0;--muted:#555;--muted2:#777;
+  --blue:#00d4ff;--blue-bg:rgba(0,212,255,.1);--blue-border:rgba(0,212,255,.4);
+  --green:#39ff14;--green-bg:rgba(57,255,20,.1);--green-border:rgba(57,255,20,.4);
+  --accent:#ff3b3b;--right:#39ff14;--wrong:#ff3b3b;
+}
+body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;height:100vh;display:grid;grid-template-rows:56px 1fr 54px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.1em;color:var(--blue);}
+.nav-tabs{display:flex;border:1px solid var(--border2);overflow:hidden;}
+.nav-tab{padding:5px 12px;font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted2);text-decoration:none;border-right:1px solid var(--border);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--blue);color:#000;font-weight:700;}
+.nav-tab:hover:not(.active){background:var(--surface2);color:var(--text);}
+.mode-pill{font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted2);border:1px solid var(--border2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 360px;overflow:hidden;}
+
+.center{padding:1.75rem 2.5rem;display:flex;flex-direction:column;gap:1.25rem;border-right:1px solid var(--border2);overflow-y:auto;}
+.inst-box{background:var(--surface);border:1px solid var(--border2);border-top:2px solid var(--blue);padding:.85rem 1.1rem;display:flex;gap:.9rem;}
+.inst-icon{width:28px;height:28px;background:var(--blue);color:#000;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;}
+.inst-text{font-size:.72rem;line-height:1.7;}
+.inst-text strong{color:var(--blue);}
+.teacher-flash{padding:.6rem .9rem;border-left:2px solid var(--blue);font-size:.68rem;color:var(--muted2);font-style:italic;line-height:1.5;min-height:2.5rem;transition:all .3s;}
+.teacher-flash.lit{color:var(--text);border-color:var(--green);}
+
+.graph-area{display:flex;flex-direction:column;gap:.75rem;}
+.graph-label{font-size:.52rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);}
+.graph-wrap{display:flex;justify-content:center;}
+svg.graph{overflow:visible;}
+.graph-edge{stroke:#333;stroke-width:2;fill:none;}
+.graph-edge.conflict-edge{stroke:var(--accent);stroke-width:3;}
+.graph-node circle{fill:var(--surface2);stroke:var(--border2);stroke-width:2;cursor:default;transition:all .25s;}
+.graph-node text{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;fill:var(--muted2);text-anchor:middle;dominant-baseline:middle;}
+.graph-node.blue circle{fill:var(--blue-bg);stroke:var(--blue);stroke-width:2.5;filter:drop-shadow(0 0 8px rgba(0,212,255,.4));}
+.graph-node.blue text{fill:var(--blue);}
+.graph-node.green circle{fill:var(--green-bg);stroke:var(--green);stroke-width:2.5;filter:drop-shadow(0 0 8px rgba(57,255,20,.4));}
+.graph-node.green text{fill:var(--green);}
+.graph-node.clickable circle{cursor:pointer;stroke:var(--muted2);animation:cp .8s ease infinite;}
+.graph-node.clickable:hover circle{stroke:var(--blue);filter:drop-shadow(0 0 8px rgba(0,212,255,.5));}
+.graph-node.conflict circle{fill:rgba(255,59,59,.15);stroke:var(--accent);stroke-width:3;filter:drop-shadow(0 0 10px rgba(255,59,59,.6));animation:conflictP .5s ease infinite;}
+.graph-node.conflict text{fill:var(--accent);}
+.graph-node.current circle{stroke:var(--text);stroke-width:3;animation:curP .7s ease infinite;}
+.graph-node.wrong-click circle{animation:ws .35s ease;}
+@keyframes cp{0%,100%{stroke-opacity:1;}50%{stroke-opacity:.3;}}
+@keyframes conflictP{0%,100%{opacity:1;}50%{opacity:.4;}}
+@keyframes curP{0%,100%{opacity:1;}50%{opacity:.6;}}
+@keyframes ws{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
+
+.phase-text{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.08em;color:var(--blue);}
+
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.52rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.35rem;}
+
+.colors-display{display:flex;gap:4px;flex-wrap:wrap;}
+.cs{width:54px;height:46px;border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .3s;}
+.cs-idx{font-size:.5rem;color:var(--muted);}
+.cs-val{font-size:.72rem;font-weight:700;color:var(--muted2);}
+.cs.b{border-color:var(--blue);background:var(--blue-bg);}.cs.b .cs-val{color:var(--blue);}
+.cs.g{border-color:var(--green);background:var(--green-bg);}.cs.g .cs-val{color:var(--green);}
+
+.stack-vis{display:flex;flex-direction:column-reverse;gap:3px;}
+.si{padding:4px 10px;border:1px solid var(--border2);font-size:.68rem;font-weight:700;color:var(--muted2);transition:all .2s;animation:sIn .2s ease;}
+.si.top{border-color:var(--blue);color:var(--blue);background:var(--blue-bg);}
+.si.top::after{content:'← TOP';font-size:.5rem;margin-left:6px;opacity:.6;}
+@keyframes sIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+
+.state-block{border:1px solid var(--border2);overflow:hidden;}
+.state-title{padding:4px 8px;background:var(--surface2);font-size:.5rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.state-row{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.state-row:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:700;}
+.sv.b{color:var(--blue);}.sv.g{color:var(--green);}.sv.r{color:var(--accent);}
+
+.hint-box{background:var(--surface2);border:1px solid var(--border2);border-left:2px solid var(--green);padding:.65rem .75rem;font-size:.68rem;color:var(--muted2);line-height:1.6;min-height:3rem;}
+
+.toast{position:fixed;top:68px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--surface);border:1px solid var(--border2);padding:8px 18px;font-size:.7rem;opacity:0;transition:all .25s;z-index:100;pointer-events:none;max-width:380px;text-align:center;letter-spacing:.05em;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.good{border-color:var(--right);color:var(--right);}
+.toast.bad{border-color:var(--wrong);color:var(--wrong);}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.1em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--blue);color:#000;border-color:var(--blue);font-weight:700;}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header>
+  <div class="logo">ALGO·LEARN</div>
+  <nav class="nav-tabs">
+    <a href="tc_watch.html" class="nav-tab">01 Watch</a>
+    <a href="tc_guide.html" class="nav-tab active">02 Guide</a>
+    <a href="tc_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="tc_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="tc_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="tc_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Two Colorable · Guide</div>
+</header>
+<main>
+  <div class="center">
+    <div class="inst-box">
+      <div class="inst-icon">▶</div>
+      <div class="inst-text" id="instText"><strong>You drive the DFS.</strong> Click the node the algorithm should process next from the stack. Conflicts are detected automatically.</div>
+    </div>
+    <div class="teacher-flash" id="teacherFlash">"For the first node we can just give it any color that we want. So for node 0, let's make it blue."</div>
+    <div class="phase-text" id="phaseText">PHASE: INITIALIZE</div>
+    <div class="graph-area">
+      <div class="graph-label">Graph — click to process</div>
+      <div class="graph-wrap">
+        <svg class="graph" id="graphSvg" width="320" height="240" viewBox="0 0 320 240"></svg>
+      </div>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Colors Array</div>
+    <div class="colors-display" id="colorsDisplay"></div>
+    <div class="panel-label">Stack</div>
+    <div class="stack-vis" id="stackVis"></div>
+    <div class="panel-label">State</div>
+    <div class="state-block">
+      <div class="state-title">Algorithm</div>
+      <div class="state-row"><span class="sk">Phase</span><span class="sv b" id="sPhase">init</span></div>
+      <div class="state-row"><span class="sk">Current node</span><span class="sv" id="sNode">—</span></div>
+      <div class="state-row"><span class="sk">Current color</span><span class="sv" id="sColor">—</span></div>
+      <div class="state-row"><span class="sk">Stack size</span><span class="sv" id="sStack">0</span></div>
+      <div class="state-row"><span class="sk">Conflicts</span><span class="sv r" id="sConflicts">0</span></div>
+    </div>
+    <div class="panel-label">Hint</div>
+    <div class="hint-box" id="hintBox">Node 0 gets colored BLUE automatically. Now click node 0 to process its neighbors.</div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);" id="footerStatus">Stack: 0 items</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="showHint()">Hint</button>
+    <button class="btn" onclick="autoStep()">Auto Step</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="tc_cma.html" class="btn btn-accent">→ Mirror·A</a>
+  </div>
+</footer>
+<script>
+// Graph: [[1,3],[0,2],[1,3],[0,2]] — a square
+const ADJ=[[1,3],[0,2],[1,3],[0,2]];
+const N=4;
+const GRAPH_NODES=[{id:0,x:80,y:70},{id:1,x:240,y:70},{id:2,x:240,y:170},{id:3,x:80,y:170}];
+const GRAPH_EDGES=[[0,1],[1,2],[2,3],[3,0]];
+
+const QUOTES={
+  init:'"For the first node we can just give it any color that we want. So for node 0, let\'s make it blue."',
+  process:'"When we are visiting a node, we want to look to all of its edges to see if it has any conflicting nodes or uncolored neighbors."',
+  uncolored:'"Just like we did with node 0, we want to color any nodes connected to this node with the opposite color."',
+  alreadyColored:'"So we know that node zero has either already been visited or is already in the stack because it already has a color. So we don\'t need to add it to the stack again."',
+  conflict:'"Because our node is connected to another node that already has the same color, we know it\'s going to be impossible. Properly two color this graph so we can return false."',
+  done:'"We\'ve made it through the entire stack and we haven\'t found any reason to return false. Return true."',
+};
+
+let colors=new Array(N).fill(null);
+let stack=[];
+let phase='init';
+let currentNode=null;
+let conflicts=0;
+let done=false;
+let expectedClick=null;
+let processQueue=[];
+let conflictEdges=[];
+
+function opp(c){return c==='blue'?'green':'blue';}
+function colorBool(c){return c==='blue'?'true':c==='green'?'false':'null';}
+
+function initState(){
+  colors=new Array(N).fill(null);stack=[];phase='init';currentNode=null;conflicts=0;done=false;conflictEdges=[];processQueue=[];
+  // color node 0 blue, add neighbors to stack
+  colors[0]='blue';
+  ADJ[0].forEach(nb=>{
+    if(colors[nb]===null){colors[nb]=opp(colors[0]);stack.push(nb);}
+  });
+  phase='popping';expectedClick=stack[stack.length-1];
+  buildGraph();renderColors();renderStack();updateState();
+  setHint(`Node 0 colored BLUE. Neighbors 1 and 3 colored GREEN and added to stack. Click node ${expectedClick} (top of stack) to process it.`);
+  setQuote('init');
+  document.getElementById('footerStatus').textContent=`Stack: ${stack.length} items`;
+}
+
+function handleClick(nodeId){
+  if(done||!expectedClick)return;
+  if(nodeId!==expectedClick){
+    showToast(`Not that one. Click node ${expectedClick} — it's the top of the stack.`,'bad');
+    return;
+  }
+  processNode(nodeId);
+}
+
+function processNode(nodeId){
+  stack.pop();
+  currentNode=nodeId;
+  const myColor=colors[nodeId];
+  setQuote('process');
+  document.getElementById('instText').innerHTML=`<strong>Processing node ${nodeId}</strong> (${myColor.toUpperCase()}). Checking ${ADJ[nodeId].length} neighbor(s).`;
+
+  let newlyAdded=[];
+  let conflict=false;
+  ADJ[nodeId].forEach(nb=>{
+    if(nb===nodeId){conflict=true;conflictEdges.push([nodeId,nb]);return;} // self-loop
+    if(colors[nb]===null){
+      colors[nb]=opp(myColor);
+      stack.push(nb);
+      newlyAdded.push(nb);
+    } else if(colors[nb]===myColor){
+      conflict=true;
+      conflictEdges.push([nodeId,nb]);
+      conflicts++;
+    }
+  });
+
+  buildGraph();renderColors();renderStack();
+
+  if(conflict){
+    done=true;phase='conflict';expectedClick=null;
+    showToast(`CONFLICT at node ${nodeId}! Return FALSE.`,'bad');
+    setQuote('conflict');
+    document.getElementById('instText').innerHTML=`<strong style="color:var(--accent)">CONFLICT!</strong> Node ${nodeId} (${myColor.toUpperCase()}) is connected to a node of the same color. Return <strong>FALSE</strong>.`;
+    setHint('A same-colored neighbor found. This graph is NOT two colorable. Return false.');
+    document.getElementById('sPhase').textContent='CONFLICT → false';
+    document.getElementById('footerStatus').textContent='RESULT: false';
+    return;
+  }
+
+  if(newlyAdded.length>0){
+    setQuote('uncolored');
+    setHint(`Colored ${newlyAdded.map(n=>`node ${n}`).join(', ')} as ${opp(myColor).toUpperCase()}. Added to stack.`);
+  } else {
+    setQuote('alreadyColored');
+    setHint(`All neighbors of node ${nodeId} already colored. Nothing to add.`);
+  }
+
+  if(stack.length===0){
+    done=true;phase='done';expectedClick=null;
+    setQuote('done');
+    document.getElementById('instText').innerHTML=`<strong style="color:var(--green)">DONE!</strong> Stack empty, no conflicts found. Return <strong>TRUE</strong>.`;
+    setHint('Stack exhausted. No conflicts. This graph IS two colorable. Return true.');
+    document.getElementById('sPhase').textContent='DONE → true';
+    document.getElementById('footerStatus').textContent='RESULT: true ✓';
+    return;
+  }
+
+  expectedClick=stack[stack.length-1];
+  phase='popping';
+  updateState();
+  document.getElementById('footerStatus').textContent=`Stack: ${stack.length} items — click node ${expectedClick}`;
+  buildGraph();
+}
+
+function autoStep(){if(!done&&expectedClick!==null){processNode(expectedClick);}}
+
+function buildGraph(){
+  const svg=document.getElementById('graphSvg');svg.innerHTML='';
+  GRAPH_EDGES.forEach(([a,b])=>{
+    const na=GRAPH_NODES[a],nb=GRAPH_NODES[b];
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',na.x);line.setAttribute('y1',na.y);line.setAttribute('x2',nb.x);line.setAttribute('y2',nb.y);
+    const isConflict=conflictEdges.some(([x,y])=>(x===a&&y===b)||(x===b&&y===a));
+    line.setAttribute('class',`graph-edge${isConflict?' conflict-edge':''}`);
+    svg.appendChild(line);
+  });
+  GRAPH_NODES.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',26);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=n.id;
+    g.appendChild(circle);g.appendChild(text);svg.appendChild(g);
+    g.onclick=()=>handleClick(n.id);
+    let cls='graph-node';
+    if(colors[n.id]==='blue')cls+=' blue';
+    else if(colors[n.id]==='green')cls+=' green';
+    if(n.id===currentNode)cls+=' current';
+    if(!done&&n.id===expectedClick)cls+=' clickable';
+    if(phase==='conflict'&&conflictEdges.flat().includes(n.id))cls+=' conflict';
+    g.setAttribute('class',cls);
+  });
+}
+
+function renderColors(){
+  const el=document.getElementById('colorsDisplay');el.innerHTML='';
+  colors.forEach((c,i)=>{
+    const s=document.createElement('div');
+    s.className=`cs${c==='blue'?' b':c==='green'?' g':''}`;
+    s.innerHTML=`<span class="cs-idx">node ${i}</span><span class="cs-val">${c===null?'null':c==='blue'?'true':'false'}</span>`;
+    el.appendChild(s);
+  });
+}
+
+function renderStack(){
+  const el=document.getElementById('stackVis');el.innerHTML='';
+  if(!stack.length){el.innerHTML='<span style="font-size:.65rem;color:var(--muted);">empty</span>';return;}
+  [...stack].forEach((item,i)=>{
+    const d=document.createElement('div');
+    d.className=`si${i===stack.length-1?' top':''}`;
+    d.textContent=`node ${item}`;
+    el.appendChild(d);
+  });
+}
+
+function updateState(){
+  document.getElementById('sPhase').textContent=phase;
+  document.getElementById('sNode').textContent=currentNode!==null?`node ${currentNode}`:'—';
+  document.getElementById('sColor').textContent=currentNode!==null?(colors[currentNode]||'—'):'—';
+  document.getElementById('sStack').textContent=stack.length;
+  document.getElementById('sConflicts').textContent=conflicts;
+}
+
+function setHint(t){document.getElementById('hintBox').textContent=t;}
+function setQuote(k){const el=document.getElementById('teacherFlash');el.textContent=QUOTES[k]||'';el.className='teacher-flash lit';setTimeout(()=>el.className='teacher-flash',4000);}
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;setTimeout(()=>t.className='toast',2800);}
+function showHint(){if(!expectedClick||done)return;showToast(`Click node ${expectedClick} — top of the DFS stack`,'good');const el=document.getElementById(`gnode-${expectedClick}`);if(el){el.style.outline='2px solid var(--blue)';setTimeout(()=>el.style.outline='',1500);}}
+function resetAll(){initState();}
+
+initState();
+</script>
+</body>
+</html>
