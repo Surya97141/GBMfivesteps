@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch — Cycle in Graph</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f8f6f1;--surface:#ffffff;--surface2:#f2efe8;--border:#ddd9ce;--border2:#c8c2b4;
+  --ink:#1a1810;--muted:#8a8070;--muted2:#6a6050;
+  --accent:#c45800;--accent2:#e06a00;
+  --W:#334488;--Wbg:rgba(51,68,136,.06);--Wb:rgba(51,68,136,.3);
+  --G:#b85c00;--Gbg:rgba(184,92,0,.1);--Gb:rgba(184,92,0,.5);
+  --B:#006b58;--Bbg:rgba(0,107,88,.08);--Bb:rgba(0,107,88,.4);
+  --back:#cc2200;--tree:#2255cc;--cross:#7722cc;--fwd:#228844;
+  --line:#ddd9ce;
+}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--bg);letter-spacing:.04em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}
+.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+
+main{display:grid;grid-template-columns:1fr 440px;overflow:hidden;}
+
+.left-panel{padding:2.5rem 3rem;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--border2);overflow:hidden;}
+.stage-tag{font-size:.53rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-bottom:.7rem;}
+.narrator{font-family:'Playfair Display',serif;font-size:2rem;font-weight:400;line-height:1.4;color:var(--ink);min-height:9.5rem;}
+.narrator .hl{color:var(--accent);font-weight:700;}
+.narrator .back{color:var(--back);}
+.narrator .gray{color:var(--G);}
+.narrator .blk{color:var(--B);}
+.narrator .tree{color:var(--tree);}
+.concept{display:inline-block;margin-top:1.2rem;font-size:.52rem;letter-spacing:.22em;text-transform:uppercase;background:var(--ink);color:var(--bg);padding:4px 12px;}
+.quote{margin-top:1.5rem;padding:.8rem 1rem;border-left:3px solid var(--accent);font-size:.7rem;color:var(--muted2);line-height:1.65;min-height:3.5rem;}
+.quote span{color:var(--ink);}
+.progress-wrap{margin-top:2rem;}
+.progress-bar{height:3px;background:var(--border);}
+.progress-fill{height:100%;background:var(--accent);transition:width .5s ease;}
+.progress-label{font-size:.53rem;color:var(--muted);margin-top:.4rem;}
+
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1.1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+
+svg.graph{overflow:visible;}
+.ge{fill:none;}
+.ge.default{stroke:var(--border2);stroke-width:1.5;}
+.ge.tree{stroke:var(--tree);stroke-width:2;}
+.ge.back{stroke:var(--back);stroke-width:2.5;animation:pb .9s ease infinite;}
+.ge.cross{stroke:var(--cross);stroke-width:1.5;}
+.ge.fwd{stroke:var(--fwd);stroke-width:1.5;}
+@keyframes pb{0%,100%{opacity:1;}50%{opacity:.25;}}
+.gn circle{transition:all .4s;stroke-width:2;}
+.gn text{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-anchor:middle;dominant-baseline:middle;}
+.gn.W circle{fill:var(--Wbg);stroke:var(--Wb);}
+.gn.W text{fill:var(--W);}
+.gn.G circle{fill:var(--Gbg);stroke:var(--Gb);filter:drop-shadow(0 0 6px rgba(184,92,0,.4));}
+.gn.G text{fill:var(--G);}
+.gn.B circle{fill:var(--Bbg);stroke:var(--Bb);}
+.gn.B text{fill:var(--B);}
+.gn.cur circle{stroke-width:3;}
+.gn.conf circle{fill:rgba(204,34,0,.12);stroke:var(--back);stroke-width:3;animation:cfp .5s ease infinite;}
+.gn.conf text{fill:var(--back);}
+@keyframes cfp{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+.colors-row{display:flex;gap:4px;flex-wrap:wrap;}
+.cs{width:52px;height:44px;border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .3s;border-radius:2px;}
+.cs-i{font-size:.44rem;color:var(--muted);}
+.cs-v{font-size:.7rem;font-weight:600;}
+.cs.W{border-color:var(--Wb);background:var(--Wbg);}.cs.W .cs-v{color:var(--W);}
+.cs.G{border-color:var(--Gb);background:var(--Gbg);}.cs.G .cs-v{color:var(--G);}
+.cs.B{border-color:var(--Bb);background:var(--Bbg);}.cs.B .cs-v{color:var(--B);}
+
+.rec-stack{display:flex;flex-direction:column-reverse;gap:3px;}
+.rsi{padding:3px 10px;border:1px solid var(--border2);font-size:.65rem;color:var(--muted2);border-radius:2px;}
+.rsi.top{border-color:var(--Gb);color:var(--G);background:var(--Gbg);}
+
+.legend{display:flex;flex-wrap:wrap;gap:.5rem;}
+.leg{display:flex;align-items:center;gap:5px;font-size:.57rem;color:var(--muted2);}
+.leg-line{width:20px;height:2px;}
+
+.result-box{padding:.65rem 1rem;border:1px solid var(--border2);font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;transition:all .3s;border-radius:2px;}
+.result-box.true{border-color:var(--back);color:var(--back);background:rgba(204,34,0,.06);}
+.result-box.false{border-color:var(--B);color:var(--B);background:var(--Bbg);}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.btn-accent:hover{background:var(--accent2);border-color:var(--accent2);}
+.speed-wrap{display:flex;align-items:center;gap:.75rem;font-size:.57rem;color:var(--muted);}
+.speed-wrap input{accent-color:var(--accent);width:80px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="cig_watch.html" class="nav-tab active">01 Watch</a>
+    <a href="cig_guide.html" class="nav-tab">02 Guide</a>
+    <a href="cig_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="cig_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="cig_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="cig_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Cycle in Graph · Watch</div>
+</header>
+
+<main>
+  <div class="left-panel">
+    <div>
+      <div class="stage-tag" id="stageTag">Stage 1 of 10 — Problem</div>
+      <div class="narrator" id="narrator">Directed graph.<br>Does it contain a <span class="back">cycle?</span><br>Return <span class="hl">true</span> or <span class="hl">false.</span></div>
+      <div class="concept" id="concept">KEY CONCEPT: CYCLE DETECTION</div>
+      <div class="quote" id="quote"><span>"A cycle is a closed chain of vertices — you start at a vertex, traverse through others, and eventually return to the original. The first vertex is also the last."</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+      <div class="progress-label" id="pLabel">Step 1 / 10</div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Directed Graph — adj: [[1,2],[2,3,4],[0],[],[2,5],[]]</div>
+    <div style="display:flex;justify-content:center;">
+      <svg class="graph" id="graphSvg" width="240" height="210" viewBox="0 0 240 215"></svg>
+    </div>
+    <div class="panel-label">Colors Array — 0=White 1=Gray 2=Black</div>
+    <div class="colors-row" id="colorsRow"></div>
+    <div class="panel-label">Recursion Stack (Gray nodes = in-stack)</div>
+    <div class="rec-stack" id="recStack"></div>
+    <div class="panel-label">Edge Types</div>
+    <div class="legend">
+      <div class="leg"><div class="leg-line" style="background:var(--tree)"></div>Tree</div>
+      <div class="leg"><div class="leg-line" style="background:var(--back)"></div>Back → CYCLE</div>
+      <div class="leg"><div class="leg-line" style="background:var(--cross)"></div>Cross</div>
+      <div class="leg"><div class="leg-line" style="background:var(--fwd)"></div>Forward</div>
+    </div>
+    <div class="panel-label">Result</div>
+    <div class="result-box" id="resultBox" style="color:var(--muted);border-color:var(--border2);">—</div>
+  </div>
+</main>
+
+<footer>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prev()">← Prev</button>
+    <button class="btn btn-accent" onclick="next()">Next →</button>
+    <button class="btn" onclick="reset()">Reset</button>
+  </div>
+  <div class="speed-wrap">
+    Speed:<input type="range" id="spd" min="600" max="3000" value="1800" step="100">
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">Auto Play</button>
+  </div>
+  <a href="cig_guide.html" class="btn btn-accent">Guide →</a>
+</footer>
+
+<script>
+const NP=[{id:0,x:120,y:20},{id:1,x:30,y:90},{id:2,x:210,y:90},{id:3,x:30,y:175},{id:4,x:120,y:175},{id:5,x:210,y:175}];
+const RE=[[0,1],[0,2],[1,2],[1,3],[1,4],[2,0],[4,2],[4,5]];
+
+const STAGES=[
+  {tag:'Stage 1 / 10 — Problem',
+   narrator:'Directed graph.<br>Does it contain a <span class="back">cycle?</span><br>Return <span class="hl">true</span> or <span class="hl">false.</span>',
+   concept:'KEY CONCEPT: CYCLE DETECTION',
+   quote:'"A cycle is a closed chain of vertices — you start at a vertex, traverse through others, and eventually return to the original. The first vertex is also the last."',
+   colors:[0,0,0,0,0,0],stack:[],et:{},cur:null,conf:[],res:null},
+  {tag:'Stage 2 / 10 — Directed + Adjacency List',
+   narrator:'Edges go <span class="hl">one direction only.</span><br>Adj list = outgoing edges<br>per node. [[1,2],[2,3,4]...]',
+   concept:'KEY CONCEPT: DIRECTED + ADJ LIST',
+   quote:'"An adjacency list represents the outgoing or outbound edges from a specific vertex. You can only travel along an edge in one direction — it\'s directed."',
+   colors:[0,0,0,0,0,0],stack:[],et:{},cur:null,conf:[],res:null},
+  {tag:'Stage 3 / 10 — Self-Loop = Cycle',
+   narrator:'Edge from node to <span class="hl">itself</span><br>= self-loop = <span class="back">instant cycle.</span><br>Always return true.',
+   concept:'KEY CONCEPT: SELF-LOOP IS A CYCLE',
+   quote:'"If I have vertex zero and an edge from vertex zero back to vertex zero — this is a cycle. A self loop. The first vertex is also the last."',
+   colors:[0,0,0,0,0,0],stack:[],et:{},cur:null,conf:[],res:null},
+  {tag:'Stage 4 / 10 — Back Edge = Cycle',
+   narrator:'A <span class="back">back edge</span> connects<br>a descendant → its ancestor.<br>Always signals a cycle.',
+   concept:'KEY CONCEPT: BACK EDGE → CYCLE',
+   quote:'"Whenever we have an edge from a descendant to one of its ancestors, there must be a cycle — because you can reach the descendant from the ancestor and now get back."',
+   colors:[0,0,0,0,0,0],stack:[],et:{'2-0':'back'},cur:2,conf:[2,0],res:null},
+  {tag:'Stage 5 / 10 — 3-Color DFS',
+   narrator:'<span style="color:var(--W)">WHITE (0)</span> = unvisited<br><span class="gray">GRAY (1)</span> = in recursion stack<br><span class="blk">BLACK (2)</span> = fully done',
+   concept:'KEY CONCEPT: WHITE / GRAY / BLACK',
+   quote:'"Gray stands for a node currently in the recursion stack. Black means fully finished — all descendants visited. White is unvisited."',
+   colors:[0,0,0,0,0,0],stack:[],et:{},cur:null,conf:[],res:null},
+  {tag:'Stage 6 / 10 — DFS(0): Mark GRAY',
+   narrator:'Call DFS(0).<br>Mark node 0 <span class="gray">GRAY.</span><br>Explore outgoing edges → 1, 2.',
+   concept:'KEY CONCEPT: MARK GRAY ON ENTRY',
+   quote:'"As soon as we call DFS on a node, we change that node\'s color to be gray — it\'s now in the recursion stack. We\'re actively processing it."',
+   colors:[1,0,0,0,0,0],stack:[0],et:{},cur:0,conf:[],res:null},
+  {tag:'Stage 7 / 10 — Tree Edges: 0→1→2',
+   narrator:'0→1: node 1 is WHITE<br>→ <span class="tree">tree edge</span>, DFS(1).<br>1→2: WHITE → DFS(2). Mark GRAY.',
+   concept:'KEY CONCEPT: WHITE = TREE EDGE',
+   quote:'"If the node is colored white, that means it has yet to be visited — we found a tree edge. We must now run DFS on that node."',
+   colors:[1,1,1,0,0,0],stack:[0,1,2],et:{'0-1':'tree','1-2':'tree'},cur:2,conf:[],res:null},
+  {tag:'Stage 8 / 10 — BACK EDGE: 2→0!',
+   narrator:'DFS(2) sees edge 2→0.<br>Node 0 is <span class="gray">GRAY</span> (in stack).<br>→ <span class="back">BACK EDGE = CYCLE!</span>',
+   concept:'KEY CONCEPT: GRAY NEIGHBOR = BACK EDGE',
+   quote:'"If this edge leads to a node that is colored gray, we found a back edge — that node is in the recursion stack, meaning it\'s an ancestor of the current node."',
+   colors:[1,1,1,0,0,0],stack:[0,1,2],et:{'0-1':'tree','1-2':'tree','2-0':'back'},cur:2,conf:[2,0],res:null},
+  {tag:'Stage 9 / 10 — Return true',
+   narrator:'Back edge confirmed.<br>Node 0 is ancestor of 2.<br>Return <span class="back">true</span> — cycle exists.',
+   concept:'KEY CONCEPT: CYCLE CONFIRMED',
+   quote:'"We found a back edge and we found a cycle, so we can return true. The graph does contain a cycle."',
+   colors:[1,1,1,0,0,0],stack:[0,1,2],et:{'0-1':'tree','1-2':'tree','2-0':'back'},cur:2,conf:[2,0],res:'true'},
+  {tag:'Stage 10 / 10 — Complexity',
+   narrator:'Time: <span class="hl">O(V + E)</span><br>Space: <span class="hl">O(V)</span><br>One colors array of size V.',
+   concept:'KEY CONCEPT: O(V+E) TIME · O(V) SPACE',
+   quote:'"The time complexity is O(V + E) — we visit every vertex and edge in the DFS. Space is O(V) for the colors array which is the size of our graph."',
+   colors:[2,2,2,2,2,2],stack:[],et:{'0-1':'tree','1-2':'tree','2-0':'back','1-3':'tree','1-4':'tree','4-5':'tree','4-2':'cross','0-2':'fwd'},cur:null,conf:[],res:null},
+];
+
+let cur=0,autoTimer=null;
+const arrowMap={default:'aD',tree:'aT',back:'aB',cross:'aC',fwd:'aF'};
+const arrowColors={aD:'#c8c2b4',aT:'#2255cc',aB:'#cc2200',aC:'#7722cc',aF:'#228844'};
+
+function buildArrows(svg){
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  Object.entries(arrowColors).forEach(([id,color])=>{
+    const m=document.createElementNS('http://www.w3.org/2000/svg','marker');
+    m.setAttribute('id',id);m.setAttribute('markerWidth','7');m.setAttribute('markerHeight','7');
+    m.setAttribute('refX','6');m.setAttribute('refY','3.5');m.setAttribute('orient','auto');
+    const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    p.setAttribute('points','0 0, 7 3.5, 0 7');p.setAttribute('fill',color);
+    m.appendChild(p);defs.appendChild(m);
+  });
+  svg.appendChild(defs);
+}
+
+function buildGraph(s){
+  const svg=document.getElementById('graphSvg');svg.innerHTML='';
+  buildArrows(svg);
+  RE.forEach(([a,b])=>{
+    const key=`${a}-${b}`,type=s.et[key]||'default';
+    const na=NP[a],nb=NP[b];
+    const dx=nb.x-na.x,dy=nb.y-na.y,len=Math.sqrt(dx*dx+dy*dy);
+    const ux=dx/len,uy=dy/len,r=21;
+    const x1=na.x+ux*r,y1=na.y+uy*r,x2=nb.x-ux*(r+6),y2=nb.y-uy*(r+6);
+    let el;
+    if(a===2&&b===0){
+      el=document.createElementNS('http://www.w3.org/2000/svg','path');
+      el.setAttribute('d',`M${x1},${y1} C${na.x+65},${na.y-18} ${nb.x+65},${nb.y+18} ${x2},${y2}`);
+    } else {
+      el=document.createElementNS('http://www.w3.org/2000/svg','line');
+      el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);
+    }
+    el.setAttribute('class',`ge ${type}`);
+    el.setAttribute('marker-end',`url(#${arrowMap[type]})`);
+    el.setAttribute('fill','none');
+    svg.appendChild(el);
+  });
+  NP.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',n.x);c.setAttribute('cy',n.y);c.setAttribute('r',21);
+    c.setAttribute('fill','white');
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',n.x);t.setAttribute('y',n.y);t.textContent=n.id;
+    g.appendChild(c);g.appendChild(t);svg.appendChild(g);
+    const col=s.colors[n.id];
+    let cls='gn '+['W','G','B'][col];
+    if(s.conf&&s.conf.includes(n.id))cls='gn conf';
+    else if(n.id===s.cur)cls+=' cur';
+    g.setAttribute('class',cls);
+  });
+}
+
+function buildColors(colors){
+  const el=document.getElementById('colorsRow');el.innerHTML='';
+  colors.forEach((c,i)=>{
+    const s=document.createElement('div');
+    s.className=`cs ${['W','G','B'][c]}`;
+    s.innerHTML=`<span class="cs-i">node ${i}</span><span class="cs-v">${c}·${'WGB'[c]}</span>`;
+    el.appendChild(s);
+  });
+}
+
+function buildStack(stack){
+  const el=document.getElementById('recStack');el.innerHTML='';
+  if(!stack||!stack.length){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">empty</span>';return;}
+  stack.forEach((item,i)=>{
+    const d=document.createElement('div');
+    d.className=`rsi${i===stack.length-1?' top':''}`;
+    d.textContent=`DFS(${item})`;el.appendChild(d);
+  });
+}
+
+function applyStage(s){
+  document.getElementById('stageTag').textContent=s.tag;
+  document.getElementById('narrator').innerHTML=s.narrator;
+  document.getElementById('concept').textContent=s.concept;
+  document.getElementById('quote').innerHTML=`<span>${s.quote}</span>`;
+  buildGraph(s);buildColors(s.colors);buildStack(s.stack);
+  const rb=document.getElementById('resultBox');
+  if(s.res==='true'){rb.textContent='→ return TRUE — cycle found';rb.className='result-box true';}
+  else if(s.res==='false'){rb.textContent='→ return FALSE — no cycle';rb.className='result-box false';}
+  else{rb.textContent='—';rb.style.cssText='color:var(--muted);border-color:var(--border2);';}
+  const pct=((cur+1)/STAGES.length*100).toFixed(0);
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pLabel').textContent=`Step ${cur+1} / ${STAGES.length}`;
+}
+
+function next(){if(cur<STAGES.length-1){cur++;applyStage(STAGES[cur]);}}
+function prev(){if(cur>0){cur--;applyStage(STAGES[cur]);}}
+function reset(){cur=0;applyStage(STAGES[0]);if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+  else{const spd=parseInt(document.getElementById('spd').value);document.getElementById('autoBtn').textContent='Stop';
+    autoTimer=setInterval(()=>{if(cur<STAGES.length-1)next();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}},spd);}
+}
+applyStage(STAGES[0]);
+</script>
+</body>
+</html>

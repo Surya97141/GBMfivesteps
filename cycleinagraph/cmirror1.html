@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror A — Cycle in Graph</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f8f6f1;--surface:#fff;--surface2:#f2efe8;--border:#ddd9ce;--border2:#c8c2b4;--ink:#1a1810;--muted:#8a8070;--muted2:#6a6050;--accent:#c45800;--W:#334488;--Wbg:rgba(51,68,136,.06);--Wb:rgba(51,68,136,.3);--G:#b85c00;--Gbg:rgba(184,92,0,.1);--Gb:rgba(184,92,0,.5);--B:#006b58;--Bbg:rgba(0,107,88,.08);--Bb:rgba(0,107,88,.4);--back:#cc2200;--tree:#2255cc;--code-bg:#fdfbf7;--la:rgba(196,88,0,.07);}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:230px 1fr 220px;overflow:hidden;}
+.graph-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+svg.graph{overflow:visible;}
+.ge{fill:none;}.ge.default{stroke:var(--border2);stroke-width:1.5;}.ge.tree{stroke:var(--tree);stroke-width:2;}.ge.back{stroke:var(--back);stroke-width:2.5;animation:pb .9s ease infinite;}
+@keyframes pb{0%,100%{opacity:1;}50%{opacity:.25;}}
+.gn circle{transition:all .35s;stroke-width:2;fill:white;}.gn text{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-anchor:middle;dominant-baseline:middle;}
+.gn.W circle{fill:var(--Wbg);stroke:var(--Wb);}.gn.W text{fill:var(--W);}
+.gn.G circle{fill:var(--Gbg);stroke:var(--Gb);filter:drop-shadow(0 0 6px rgba(184,92,0,.35));}.gn.G text{fill:var(--G);}
+.gn.B circle{fill:var(--Bbg);stroke:var(--Bb);}.gn.B text{fill:var(--B);}
+.gn.cur circle{stroke-width:3;filter:drop-shadow(0 0 8px rgba(196,88,0,.5));}
+.gn.conf circle{fill:rgba(204,34,0,.1);stroke:var(--back);stroke-width:3;}.gn.conf text{fill:var(--back);}
+.colors-row{display:flex;gap:3px;flex-wrap:wrap;}
+.cs{width:46px;height:40px;border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:all .3s;border-radius:2px;}
+.cs-i{font-size:.42rem;color:var(--muted);}.cs-v{font-size:.66rem;font-weight:600;}
+.cs.W{border-color:var(--Wb);background:var(--Wbg);}.cs.W .cs-v{color:var(--W);}
+.cs.G{border-color:var(--Gb);background:var(--Gbg);}.cs.G .cs-v{color:var(--G);}
+.cs.B{border-color:var(--Bb);background:var(--Bbg);}.cs.B .cs-v{color:var(--B);}
+.rec-stack{display:flex;flex-direction:column-reverse;gap:3px;}
+.rsi{padding:3px 10px;border:1px solid var(--border2);font-size:.65rem;color:var(--muted2);border-radius:2px;}
+.rsi.top{border-color:var(--Gb);color:var(--G);background:var(--Gbg);}
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);border-left:1px solid var(--border);}
+.code-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.code-step{font-size:.6rem;color:var(--accent);}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:var(--border2);flex-shrink:0;line-height:21px;user-select:none;}
+.cc{flex:1;padding:0 12px 0 4px;font-size:.68rem;line-height:21px;white-space:pre;color:var(--muted2);}
+.code-line.al{background:var(--la);border-left:3px solid var(--accent);}
+.code-line.al .ln{color:var(--accent);}
+.code-line.al .cc{color:var(--ink);}
+.code-line.jr{animation:jr .5s ease;}
+@keyframes jr{0%{background:rgba(196,88,0,.18);}100%{background:var(--la);}}
+.kw{color:#882200;}.fn{color:var(--accent);}.nm{color:#0044aa;}.cm{color:var(--muted);font-style:italic;}.op{color:#005588;}
+.teacher-bar{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.62rem;color:var(--muted);font-style:italic;line-height:1.4;flex-shrink:0;min-height:42px;transition:color .3s;}
+.teacher-bar.lit{color:var(--ink);}
+.vars-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.vb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vk{color:var(--muted2);}.vv{font-weight:600;font-size:.62rem;}
+.vv.chg{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(196,88,0,.15);}100%{background:transparent;}}
+.vv.g{color:var(--G);}.vv.b{color:var(--B);}.vv.r{color:var(--back);}
+.log-b{display:flex;flex-direction:column;gap:2px;max-height:150px;overflow-y:auto;}
+.ll{font-size:.58rem;padding:2px 6px;border-left:3px solid var(--border2);color:var(--muted);}
+.ll.g{border-color:var(--G);color:var(--G);}.ll.b{border-color:var(--B);color:var(--B);}.ll.r{border-color:var(--back);color:var(--back);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="cig_watch.html" class="nav-tab">01 Watch</a>
+    <a href="cig_guide.html" class="nav-tab">02 Guide</a>
+    <a href="cig_cma.html" class="nav-tab active">03 Mirror·A</a>
+    <a href="cig_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="cig_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="cig_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Cycle in Graph · Follow</div>
+</header>
+<main>
+  <div class="graph-panel">
+    <div class="panel-label">Graph</div>
+    <svg class="graph" id="graphSvg" width="210" height="200" viewBox="0 0 240 215"></svg>
+    <div class="panel-label">Colors</div>
+    <div class="colors-row" id="colorsRow"></div>
+    <div class="panel-label">Recursion Stack</div>
+    <div class="rec-stack" id="recStack"></div>
+  </div>
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title">Python · cycle_in_graph.py</div>
+      <div class="code-step">step <span id="stepNum">0</span>/<span id="stepTotal">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="teacher-bar" id="teacherBar">"We need to keep track of which nodes are in the recursion stack — if we reach a node currently in the stack, there must be a cycle."</div>
+  </div>
+  <div class="vars-panel">
+    <div class="panel-label">Variables</div>
+    <div class="vb">
+      <div class="vbt">State</div>
+      <div class="vbr"><span class="vk">node</span><span class="vv" id="vNode">—</span></div>
+      <div class="vbr"><span class="vk">neighbor</span><span class="vv" id="vNb">—</span></div>
+      <div class="vbr"><span class="vk">colors[node]</span><span class="vv" id="vCN">—</span></div>
+      <div class="vbr"><span class="vk">colors[nb]</span><span class="vv" id="vCNb">—</span></div>
+      <div class="vbr"><span class="vk">result</span><span class="vv" id="vRes">—</span></div>
+    </div>
+    <div class="panel-label">Log</div>
+    <div class="log-b" id="logB"></div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Step <span id="stepLabel">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="toggleAuto()" id="autoBtn">Auto</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="cig_cmb.html" class="btn btn-accent">→ Mirror·B</a>
+  </div>
+</footer>
+<script>
+const NP=[{id:0,x:120,y:20},{id:1,x:30,y:90},{id:2,x:210,y:90},{id:3,x:30,y:175},{id:4,x:120,y:175},{id:5,x:210,y:175}];
+const RE=[[0,1],[0,2],[1,2],[1,3],[1,4],[2,0],[4,2],[4,5]];
+const ADJ=[[1,2],[2,3,4],[0],[],[2,5],[]];
+const N=6;
+const CODE=[
+  {n:1,t:'<span class="kw">def</span> <span class="fn">cycle_in_graph</span>(graph):',id:'def'},
+  {n:2,t:'  colors <span class="op">=</span> [<span class="nm">0</span>] <span class="op">*</span> <span class="fn">len</span>(graph)  <span class="cm"># 0=white</span>',id:'init'},
+  {n:3,t:'  <span class="kw">for</span> node <span class="kw">in</span> <span class="fn">range</span>(<span class="fn">len</span>(graph)):',id:'outer_for'},
+  {n:4,t:'    <span class="kw">if</span> colors[node] <span class="op">==</span> <span class="nm">0</span>:',id:'check_white'},
+  {n:5,t:'      <span class="kw">if</span> <span class="fn">dfs</span>(node, graph, colors):',id:'call_dfs'},
+  {n:6,t:'        <span class="kw">return</span> <span class="kw">True</span>',id:'ret_true_outer'},
+  {n:7,t:'  <span class="kw">return</span> <span class="kw">False</span>',id:'ret_false'},
+  {n:8,t:'',id:'b1'},
+  {n:9,t:'<span class="kw">def</span> <span class="fn">dfs</span>(node, graph, colors):',id:'def_dfs'},
+  {n:10,t:'  colors[node] <span class="op">=</span> <span class="nm">1</span>           <span class="cm"># 1=gray: in stack</span>',id:'mark_gray'},
+  {n:11,t:'  <span class="kw">for</span> nb <span class="kw">in</span> graph[node]:',id:'for_nb'},
+  {n:12,t:'    <span class="kw">if</span> colors[nb] <span class="op">==</span> <span class="nm">1</span>:      <span class="cm"># gray = back edge!</span>',id:'check_gray'},
+  {n:13,t:'      <span class="kw">return</span> <span class="kw">True</span>         <span class="cm"># cycle!</span>',id:'ret_true_cycle'},
+  {n:14,t:'    <span class="kw">if</span> colors[nb] <span class="op">==</span> <span class="nm">0</span>:      <span class="cm"># white = tree edge</span>',id:'check_white_nb'},
+  {n:15,t:'      <span class="kw">if</span> <span class="fn">dfs</span>(nb, graph, colors):',id:'rec_dfs'},
+  {n:16,t:'        <span class="kw">return</span> <span class="kw">True</span>',id:'ret_true_rec'},
+  {n:17,t:'  colors[node] <span class="op">=</span> <span class="nm">2</span>           <span class="cm"># 2=black: done</span>',id:'mark_black'},
+  {n:18,t:'  <span class="kw">return</span> <span class="kw">False</span>',id:'ret_false_dfs'},
+];
+const QUOTES={
+  init:'"We start by initializing the colors array. All nodes start as white — zero — meaning unvisited."',
+  outer_for:'"We perform DFS on all nodes and specifically all the nodes that we\'ve not yet visited."',
+  mark_gray:'"As soon as we call DFS on a node, we change that node\'s color to be gray — it\'s now in the recursion stack."',
+  check_gray:'"If this edge leads to a node colored gray, we found a back edge — there must be a cycle!"',
+  check_white_nb:'"If the node is colored white, it has yet to be visited — tree edge. Run DFS on it."',
+  mark_black:'"We mark this node as black — done, fully processed. Edges to it can now be safely skipped."',
+  ret_true_cycle:'"We found a back edge. Return true — the graph has a cycle."',
+  ret_false:'"We\'ve gone through the entire graph without finding a back edge. Return false — no cycle."',
+};
+function computeSteps(){
+  const steps=[];
+  const colors=new Array(N).fill(0);
+  const log=(line,node,nb,res,logEntry)=>steps.push({line,colors:[...colors],node,nb,result:res,log:logEntry});
+  log('def',null,null,null,null);
+  log('init',null,null,null,{t:'b',m:'colors=[0,0,0,0,0,0] (all WHITE)'});
+  function dfs(node){
+    log('outer_for',node,null,null,null);
+    log('check_white',node,null,null,null);
+    log('call_dfs',node,null,null,null);
+    log('def_dfs',node,null,null,null);
+    colors[node]=1;
+    log('mark_gray',node,null,null,{t:'g',m:`colors[${node}]=1 (GRAY — in stack)`});
+    for(const nb of ADJ[node]){
+      log('for_nb',node,nb,null,null);
+      log('check_gray',node,nb,null,null);
+      if(colors[nb]===1){log('ret_true_cycle',node,nb,'true',{t:'r',m:`BACK EDGE ${node}→${nb}! Node ${nb} is GRAY → CYCLE!`});return true;}
+      log('check_white_nb',node,nb,null,null);
+      if(colors[nb]===0){log('rec_dfs',node,nb,null,null);if(dfs(nb)){log('ret_true_rec',node,nb,'true',{t:'r',m:`Cycle found via DFS(${nb})`});return true;}}
+    }
+    colors[node]=2;
+    log('mark_black',node,null,null,{t:'b',m:`colors[${node}]=2 (BLACK — done)`});
+    log('ret_false_dfs',node,null,'false',null);
+    return false;
+  }
+  for(let i=0;i<N;i++){if(colors[i]===0){const f=dfs(i);if(f)break;}}
+  log('ret_false',null,null,'false',{t:'b',m:'No cycle found. Return false.'});
+  return steps;
+}
+const STEPS=computeSteps();
+let cur=0,autoTimer=null;
+const arrowColors2={aD:'#c8c2b4',aT:'#2255cc',aB:'#cc2200'};
+function buildArrows(svg){
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  Object.entries(arrowColors2).forEach(([id,color])=>{
+    const m=document.createElementNS('http://www.w3.org/2000/svg','marker');
+    m.setAttribute('id',id);m.setAttribute('markerWidth','7');m.setAttribute('markerHeight','7');
+    m.setAttribute('refX','6');m.setAttribute('refY','3.5');m.setAttribute('orient','auto');
+    const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    p.setAttribute('points','0 0, 7 3.5, 0 7');p.setAttribute('fill',color);m.appendChild(p);defs.appendChild(m);
+  });
+  svg.appendChild(defs);
+}
+function buildCode(){
+  const cb=document.getElementById('codeBody');cb.innerHTML='';
+  CODE.forEach(l=>{const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;d.innerHTML=`<span class="ln">${l.n||''}</span><span class="cc">${l.t}</span>`;cb.appendChild(d);});
+  document.getElementById('stepTotal').textContent=STEPS.length;
+}
+function buildGraph(s){
+  const svg=document.getElementById('graphSvg');svg.innerHTML='';buildArrows(svg);
+  RE.forEach(([a,b])=>{
+    const isBack=s.line==='check_gray'&&a===s.node&&b===s.nb&&s.colors[b]===1;
+    const isTree=(s.line==='check_white_nb'||s.line==='rec_dfs')&&a===s.node&&b===s.nb&&s.colors[b]===0;
+    const type=isBack?'back':isTree?'tree':'default';
+    const na=NP[a],nb=NP[b];const dx=nb.x-na.x,dy=nb.y-na.y,len=Math.sqrt(dx*dx+dy*dy);const ux=dx/len,uy=dy/len,r=21;
+    const x1=na.x+ux*r,y1=na.y+uy*r,x2=nb.x-ux*(r+6),y2=nb.y-uy*(r+6);
+    let el;
+    if(a===2&&b===0){el=document.createElementNS('http://www.w3.org/2000/svg','path');el.setAttribute('d',`M${x1},${y1} C${na.x+65},${na.y-18} ${nb.x+65},${nb.y+18} ${x2},${y2}`);}
+    else{el=document.createElementNS('http://www.w3.org/2000/svg','line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);}
+    el.setAttribute('class',`ge ${type}`);el.setAttribute('marker-end',`url(#${type==='back'?'aB':type==='tree'?'aT':'aD'})`);el.setAttribute('fill','none');svg.appendChild(el);
+  });
+  const isConflict=s.line==='check_gray'&&s.colors[s.nb]===1;
+  NP.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',21);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=n.id;
+    g.appendChild(circle);g.appendChild(text);svg.appendChild(g);
+    const c=s.colors[n.id];let cls='gn '+['W','G','B'][c];
+    if(isConflict&&(n.id===s.node||n.id===s.nb))cls='gn conf';else if(n.id===s.node)cls+=' cur';
+    g.setAttribute('class',cls);
+  });
+}
+function renderCS(s){
+  const el=document.getElementById('colorsRow');el.innerHTML='';
+  s.colors.forEach((c,i)=>{const d=document.createElement('div');d.className=`cs ${['W','G','B'][c]}`;d.innerHTML=`<span class="cs-i">node ${i}</span><span class="cs-v">${c}·${'WGB'[c]}</span>`;el.appendChild(d);});
+}
+function renderRS(s){
+  const el=document.getElementById('recStack');el.innerHTML='';
+  const grays=s.colors.map((c,i)=>c===1?i:-1).filter(x=>x>=0);
+  if(!grays.length){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">empty</span>';return;}
+  grays.forEach((item,i)=>{const d=document.createElement('div');d.className=`rsi${i===grays.length-1?' top':''}`;d.textContent=`DFS(${item})`;el.appendChild(d);});
+}
+function setV(id,val,extra=''){const el=document.getElementById(id);if(!el)return;const p=el.textContent;el.textContent=String(val);if(p!==String(val)){el.className=`vv${extra} chg`;setTimeout(()=>el.className=`vv${extra}`,600);}}
+function applyStep(s){
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('al','jr'));
+  const lel=document.getElementById(`line-${s.line}`);
+  if(lel){lel.classList.add('al','jr');lel.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  buildGraph(s);renderCS(s);renderRS(s);
+  setV('vNode',s.node!==null?`node ${s.node}`:'—');
+  setV('vNb',s.nb!==null?`node ${s.nb}`:'—');
+  setV('vCN',s.node!==null?`${s.colors[s.node]}(${'WGB'[s.colors[s.node]]})`:'—',s.colors[s.node]===1?' g':s.colors[s.node]===2?' b':'');
+  setV('vCNb',s.nb!==null?`${s.colors[s.nb]}(${'WGB'[s.colors[s.nb]]})`:'—',s.colors[s.nb]===1?' g':s.colors[s.nb]===2?' b':'');
+  setV('vRes',s.result||'—',s.result==='true'?' r':s.result==='false'?' b':'');
+  document.getElementById('stepNum').textContent=cur;document.getElementById('stepLabel').textContent=cur;
+  const q=QUOTES[s.line];const tb=document.getElementById('teacherBar');
+  if(q){tb.textContent=q;tb.className='teacher-bar lit';}else{tb.className='teacher-bar';}
+  if(s.log){const lb=document.getElementById('logB');const li=document.createElement('div');li.className=`ll ${s.log.t}`;li.textContent=`${cur}: ${s.log.m}`;lb.appendChild(li);lb.scrollTop=lb.scrollHeight;}
+}
+function nextStep(){if(cur<STEPS.length-1){cur++;applyStep(STEPS[cur]);}}
+function prevStep(){if(cur>0){cur--;applyStep(STEPS[cur]);}}
+function toggleAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}else{document.getElementById('autoBtn').textContent='Stop';autoTimer=setInterval(()=>{if(cur<STEPS.length-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}},420);}}
+function resetAll(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}cur=0;document.getElementById('logB').innerHTML='';buildCode();applyStep(STEPS[0]);}
+buildCode();applyStep(STEPS[0]);
+</script>
+</body>
+</html>

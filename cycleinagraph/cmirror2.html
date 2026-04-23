@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror B — Cycle in Graph</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f8f6f1;--surface:#fff;--surface2:#f2efe8;--border:#ddd9ce;--border2:#c8c2b4;--ink:#1a1810;--muted:#8a8070;--muted2:#6a6050;--accent:#c45800;--W:#334488;--Wbg:rgba(51,68,136,.06);--Wb:rgba(51,68,136,.3);--G:#b85c00;--Gbg:rgba(184,92,0,.1);--Gb:rgba(184,92,0,.5);--B:#006b58;--Bbg:rgba(0,107,88,.08);--Bb:rgba(0,107,88,.4);--back:#cc2200;--tree:#2255cc;--right:#006b58;--wrong:#cc2200;--code-bg:#fdfbf7;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:230px 1fr 250px;overflow:hidden;}
+.graph-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+svg.graph{overflow:visible;}
+.ge{fill:none;}.ge.default{stroke:var(--border2);stroke-width:1.5;}.ge.back{stroke:var(--back);stroke-width:2.5;animation:pb .9s ease infinite;}
+@keyframes pb{0%,100%{opacity:1;}50%{opacity:.25;}}
+.gn circle{transition:all .3s;stroke-width:2;fill:white;}.gn text{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-anchor:middle;dominant-baseline:middle;}
+.gn.W circle{fill:var(--Wbg);stroke:var(--Wb);}.gn.W text{fill:var(--W);}
+.gn.G circle{fill:var(--Gbg);stroke:var(--Gb);filter:drop-shadow(0 0 5px rgba(184,92,0,.35));}.gn.G text{fill:var(--G);}
+.gn.B circle{fill:var(--Bbg);stroke:var(--Bb);}.gn.B text{fill:var(--B);}
+.gn.cur circle{stroke-width:3;}.gn.conf circle{fill:rgba(204,34,0,.1);stroke:var(--back);stroke-width:3;}.gn.conf text{fill:var(--back);}
+.colors-row{display:flex;gap:3px;flex-wrap:wrap;}
+.cs{width:46px;height:40px;border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:all .3s;border-radius:2px;}
+.cs-i{font-size:.42rem;color:var(--muted);}.cs-v{font-size:.66rem;font-weight:600;}
+.cs.W{border-color:var(--Wb);background:var(--Wbg);}.cs.W .cs-v{color:var(--W);}
+.cs.G{border-color:var(--Gb);background:var(--Gbg);}.cs.G .cs-v{color:var(--G);}
+.cs.B{border-color:var(--Bb);background:var(--Bbg);}.cs.B .cs-v{color:var(--B);}
+.sb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.sbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.sbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.sbr:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}.sv.g{color:var(--right);}.sv.r{color:var(--wrong);}.sv.a{color:var(--accent);}
+.stk{height:3px;background:var(--border);margin-top:3px;overflow:hidden;border-radius:2px;}
+.stf{height:100%;background:var(--accent);transition:width .4s;}
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);border-left:1px solid var(--border);}
+.code-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title2{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.code-q{font-size:.6rem;color:var(--accent);}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:var(--border2);flex-shrink:0;line-height:21px;user-select:none;}
+.cc{flex:1;padding:0 12px 0 4px;font-size:.68rem;line-height:21px;white-space:pre;color:var(--muted2);}
+.code-line.al{background:rgba(196,88,0,.07);border-left:3px solid var(--accent);}.code-line.al .ln{color:var(--accent);}.code-line.al .cc{color:var(--ink);}
+.code-line.dok{background:rgba(0,107,88,.06);border-left:3px solid rgba(0,107,88,.4);}
+.code-line.derr{background:rgba(204,34,0,.06);border-left:3px solid rgba(204,34,0,.4);}
+.kw{color:#882200;}.fn{color:var(--accent);}.nm{color:#0044aa;}.cm{color:var(--muted);font-style:italic;}.op{color:#005588;}
+.pz{flex-shrink:0;padding:.75rem 1rem;background:var(--surface2);border-top:1px solid var(--border);}
+.pq{font-size:.7rem;color:var(--ink);margin-bottom:.5rem;line-height:1.55;}.pq strong{color:var(--accent);}
+.popts{display:flex;flex-direction:column;gap:3px;}
+.popt{background:var(--surface);border:1px solid var(--border2);padding:5px 10px;font-size:.67rem;cursor:pointer;transition:all .2s;display:flex;gap:8px;align-items:center;color:var(--muted2);border-radius:2px;}
+.popt:hover{border-color:var(--accent);background:var(--bg);}
+.popt.sr{border-color:var(--right);background:var(--Bbg);color:var(--B);}
+.popt.sw{border-color:var(--wrong);background:rgba(204,34,0,.06);color:var(--back);}
+.popt.rv{border-color:var(--right);}
+.popt.dis{cursor:default;opacity:.5;}
+.okey{width:16px;height:16px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.58rem;color:var(--muted);flex-shrink:0;border-radius:2px;}
+.pfb{margin-top:.4rem;font-size:.67rem;padding:.4rem .6rem;line-height:1.5;display:none;border-radius:2px;}
+.pfb.show{display:block;}
+.pfb.ok{background:var(--Bbg);border:1px solid var(--Bb);color:var(--B);}
+.pfb.err{background:rgba(204,34,0,.06);border:1px solid rgba(204,34,0,.3);color:var(--back);}
+.tbar2{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.62rem;color:var(--muted);font-style:italic;flex-shrink:0;min-height:40px;transition:color .3s;}
+.tbar2.lit{color:var(--ink);}
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.vb2{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vk{color:var(--muted2);}.vv{font-weight:600;font-size:.62rem;}
+.vv.c{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(196,88,0,.15);}100%{background:transparent;}}
+.hist-log{display:flex;flex-direction:column;gap:2px;max-height:160px;overflow-y:auto;}
+.hi{font-size:.6rem;padding:2px 7px;display:flex;justify-content:space-between;}
+.hi.ok{color:var(--right);}.hi.err{color:var(--wrong);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="cig_watch.html" class="nav-tab">01 Watch</a>
+    <a href="cig_guide.html" class="nav-tab">02 Guide</a>
+    <a href="cig_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="cig_cmb.html" class="nav-tab active">04 Mirror·B</a>
+    <a href="cig_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="cig_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Cycle in Graph · Predict</div>
+</header>
+<main>
+  <div class="graph-panel">
+    <div class="panel-label">Graph State</div>
+    <svg class="graph" id="graphSvg" width="210" height="200" viewBox="0 0 240 215"></svg>
+    <div class="panel-label">Colors</div>
+    <div class="colors-row" id="colorsRow"></div>
+    <div class="panel-label">Score</div>
+    <div class="sb">
+      <div class="sbt">Accuracy</div>
+      <div class="sbr"><span class="sk">Correct</span><span class="sv g" id="scC">0</span></div>
+      <div class="sbr"><span class="sk">Wrong</span><span class="sv r" id="scW">0</span></div>
+      <div class="sbr"><span class="sk">Streak</span><span class="sv a" id="scS">0</span></div>
+      <div class="sbr"><span class="sk">Accuracy</span><span class="sv" id="scA">—</span></div>
+    </div>
+    <div class="stk"><div class="stf" id="sFill" style="width:0%"></div></div>
+  </div>
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title2">Predict what this line produces</div>
+      <div class="code-q">Q <span id="qN">1</span>/<span id="qT">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="pz">
+      <div class="pq" id="pQ">Loading...</div>
+      <div class="popts" id="pOpts"></div>
+      <div class="pfb" id="pFb"></div>
+    </div>
+    <div class="tbar2" id="tBar">Read the highlighted line. What does it produce right now?</div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Variables</div>
+    <div class="vb2">
+      <div class="vbt">Current</div>
+      <div class="vbr"><span class="vk">node</span><span class="vv" id="vN">—</span></div>
+      <div class="vbr"><span class="vk">neighbor (nb)</span><span class="vv" id="vNb">—</span></div>
+      <div class="vbr"><span class="vk">colors[node]</span><span class="vv" id="vCN">—</span></div>
+      <div class="vbr"><span class="vk">colors[nb]</span><span class="vv" id="vCNb">—</span></div>
+    </div>
+    <div class="panel-label">History</div>
+    <div class="hist-log" id="histLog"></div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Best streak: <span id="bestS">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="skipQ()">Skip →</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="cig_cmc.html" class="btn btn-accent">→ Write Mode</a>
+  </div>
+</footer>
+<script>
+const NP=[{id:0,x:120,y:20},{id:1,x:30,y:90},{id:2,x:210,y:90},{id:3,x:30,y:175},{id:4,x:120,y:175},{id:5,x:210,y:175}];
+const RE=[[0,1],[0,2],[1,2],[1,3],[1,4],[2,0],[4,2],[4,5]];
+const ADJ=[[1,2],[2,3,4],[0],[],[2,5],[]];
+const N=6;
+const CODE=[
+  {n:1,t:'<span class="kw">def</span> <span class="fn">cycle_in_graph</span>(graph):',id:'def'},
+  {n:2,t:'  colors <span class="op">=</span> [<span class="nm">0</span>] <span class="op">*</span> <span class="fn">len</span>(graph)',id:'init'},
+  {n:3,t:'  <span class="kw">for</span> node <span class="kw">in</span> <span class="fn">range</span>(<span class="fn">len</span>(graph)):',id:'outer_for'},
+  {n:4,t:'    <span class="kw">if</span> colors[node] <span class="op">==</span> <span class="nm">0</span>:',id:'check_white'},
+  {n:5,t:'      <span class="kw">if</span> <span class="fn">dfs</span>(node, graph, colors): <span class="kw">return</span> <span class="kw">True</span>',id:'call_dfs'},
+  {n:6,t:'  <span class="kw">return</span> <span class="kw">False</span>',id:'ret_false'},
+  {n:7,t:'',id:'b1'},
+  {n:8,t:'<span class="kw">def</span> <span class="fn">dfs</span>(node, graph, colors):',id:'def_dfs'},
+  {n:9,t:'  colors[node] <span class="op">=</span> <span class="nm">1</span>   <span class="cm"># gray: in stack</span>',id:'mark_gray'},
+  {n:10,t:'  <span class="kw">for</span> nb <span class="kw">in</span> graph[node]:',id:'for_nb'},
+  {n:11,t:'    <span class="kw">if</span> colors[nb] <span class="op">==</span> <span class="nm">1</span>: <span class="kw">return</span> <span class="kw">True</span>  <span class="cm"># back edge!</span>',id:'check_gray'},
+  {n:12,t:'    <span class="kw">if</span> colors[nb] <span class="op">==</span> <span class="nm">0</span>:   <span class="cm"># white: tree edge</span>',id:'check_white_nb'},
+  {n:13,t:'      <span class="kw">if</span> <span class="fn">dfs</span>(nb, graph, colors): <span class="kw">return</span> <span class="kw">True</span>',id:'rec_dfs'},
+  {n:14,t:'  colors[node] <span class="op">=</span> <span class="nm">2</span>   <span class="cm"># black: done</span>',id:'mark_black'},
+  {n:15,t:'  <span class="kw">return</span> <span class="kw">False</span>',id:'ret_false_dfs'},
+];
+const QUESTIONS=[
+  {line:'check_gray',mkQ:(s)=>({
+    q:`Line 11: <strong>if colors[${s.nb}] == 1</strong> — colors[${s.nb}] = ${s.colors[s.nb]} (${['WHITE','GRAY','BLACK'][s.colors[s.nb]]}). Is this a back edge?`,
+    opts:[
+      {t:`${s.colors[s.nb]===1?'YES — GRAY = in stack = ancestor → back edge → return True':'NO — not GRAY, no back edge here'}`,correct:true},
+      {t:`${s.colors[s.nb]===0?'YES — WHITE = back edge':'YES — BLACK = back edge'}`,correct:false},
+      {t:`Always return True when a neighbor is visited`,correct:false},
+    ],
+    ex:s.colors[s.nb]===1?`colors[${s.nb}] IS 1 (GRAY) = in recursion stack = ancestor of node ${s.node}. Back edge ${s.node}→${s.nb} found. Return True — cycle!`:`colors[${s.nb}]=${s.colors[s.nb]} (${'WGB'[s.colors[s.nb]]}) — not GRAY. No back edge. Continue checking.`,
+    quote:'"If this edge leads to a node that is colored gray, we found a back edge — that node is in the recursion stack, meaning it\'s an ancestor."'
+  })},
+  {line:'check_white_nb',mkQ:(s)=>({
+    q:`Line 12: <strong>if colors[${s.nb}] == 0</strong> — colors[${s.nb}] = ${s.colors[s.nb]}. Tree edge?`,
+    opts:[
+      {t:`${s.colors[s.nb]===0?'YES — WHITE = unvisited → tree edge → call DFS('+s.nb+')':'NO — already visited, skip this branch'}`,correct:true},
+      {t:`${s.colors[s.nb]===0?'NO — skip all unvisited nodes':'YES — recurse on everything'}`,correct:false},
+      {t:`Only recurse if node is GRAY`,correct:false},
+    ],
+    ex:s.colors[s.nb]===0?`WHITE (0) = unvisited. Tree edge! Call DFS(${s.nb}) to explore its subtree.`:`colors[${s.nb}]=${s.colors[s.nb]} (${'WGB'[s.colors[s.nb]]}) — already visited. Skip. Only recurse on WHITE (0) nodes.`,
+    quote:'"If the node is colored white, that means it has yet to be visited — we found a tree edge. We must now run DFS on that node."'
+  })},
+  {line:'mark_gray',mkQ:(s)=>({
+    q:`Line 9: <strong>colors[${s.node}] = 1</strong>. DFS(${s.node}) just started. What does GRAY mean?`,
+    opts:[
+      {t:`Node ${s.node} is now IN the recursion stack. Any edge back to it = back edge = CYCLE`,correct:true},
+      {t:`Node ${s.node} is fully finished`,correct:false},
+      {t:`Node ${s.node} has been skipped`,correct:false},
+    ],
+    ex:`GRAY (1) = "in-flight" — we're actively processing node ${s.node}. If any descendant has an edge back to ${s.node} while it's still gray, that's a back edge → cycle.`,
+    quote:'"As soon as we call DFS on a node, we change that node\'s color to be gray — it\'s now in the recursion stack. We\'re actively processing it."'
+  })},
+  {line:'mark_black',mkQ:(s)=>({
+    q:`Line 14: <strong>colors[${s.node}] = 2</strong>. DFS(${s.node}) just finished. What does BLACK mean?`,
+    opts:[
+      {t:`Node ${s.node} fully done. Edges to it now = cross/forward edges — NOT back edges`,correct:true},
+      {t:`Node ${s.node} has a cycle through it`,correct:false},
+      {t:`Node ${s.node} needs to be revisited`,correct:false},
+    ],
+    ex:`BLACK = fully processed. All of ${s.node}'s descendants explored. If another node finds an edge to ${s.node} now, it's a cross or forward edge — safe to skip.`,
+    quote:'"We mark this node as black — it\'s done, fully processed. If we find an edge to it later, we don\'t care. It\'s not going to lead us to a cycle."'
+  })},
+  {line:'check_white',mkQ:(s)=>({
+    q:`Line 4: <strong>if colors[${s.node}] == 0</strong> — colors[${s.node}] = ${s.colors[s.node]}. Call DFS?`,
+    opts:[
+      {t:`${s.colors[s.node]===0?'YES — WHITE → call DFS('+s.node+')':'NO — already visited, skip'}`,correct:true},
+      {t:`Always call DFS on every node regardless`,correct:false},
+      {t:`${s.colors[s.node]===0?'NO — skip unvisited nodes':'Call DFS anyway'}`,correct:false},
+    ],
+    ex:s.colors[s.node]===0?`colors[${s.node}]=0 (WHITE) → unvisited. We must explore its entire connected component via DFS.`:`colors[${s.node}]=${s.colors[s.node]} (${'WGB'[s.colors[s.node]]}) → already processed. Skip.`,
+    quote:'"We perform DFS on all of our nodes and specifically all of the nodes that we\'ve not yet visited."'
+  })},
+];
+function computePredSteps(){
+  const steps=[];const colors=new Array(N).fill(0);
+  function push(line,node,nb){steps.push({line,colors:[...colors],node,nb});}
+  function dfs(node){
+    push('mark_gray',node,null);colors[node]=1;
+    for(const nb of ADJ[node]){
+      push('for_nb',node,nb);push('check_gray',node,nb);
+      if(colors[nb]===1){return true;}
+      push('check_white_nb',node,nb);
+      if(colors[nb]===0){push('rec_dfs',node,nb);if(dfs(nb))return true;}
+    }
+    push('mark_black',node,null);colors[node]=2;return false;
+  }
+  for(let i=0;i<N;i++){push('check_white',i,null);if(colors[i]===0){push('call_dfs',i,null);const f=dfs(i);if(f)break;}}
+  return steps;
+}
+const QLINES=new Set(QUESTIONS.map(q=>q.line));
+const ALL_STEPS=computePredSteps();
+const PRED_STEPS=ALL_STEPS.filter(s=>QLINES.has(s.line));
+let cur=0,answered=false,correct=0,wrong=0,streak=0,bestStreak=0,history=[];
+const arrowC={aD:'#c8c2b4',aB:'#cc2200'};
+function buildArrows(svg){const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');Object.entries(arrowC).forEach(([id,color])=>{const m=document.createElementNS('http://www.w3.org/2000/svg','marker');m.setAttribute('id',id);m.setAttribute('markerWidth','7');m.setAttribute('markerHeight','7');m.setAttribute('refX','6');m.setAttribute('refY','3.5');m.setAttribute('orient','auto');const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');p.setAttribute('points','0 0, 7 3.5, 0 7');p.setAttribute('fill',color);m.appendChild(p);defs.appendChild(m);});svg.appendChild(defs);}
+function buildCode(){const cb=document.getElementById('codeBody');cb.innerHTML='';CODE.forEach(l=>{const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;d.innerHTML=`<span class="ln">${l.n||''}</span><span class="cc">${l.t}</span>`;cb.appendChild(d);});document.getElementById('qT').textContent=PRED_STEPS.length;}
+function buildGraph(s){
+  const svg=document.getElementById('graphSvg');svg.innerHTML='';buildArrows(svg);
+  RE.forEach(([a,b])=>{
+    const isBack=s.line==='check_gray'&&a===s.node&&b===s.nb&&s.colors[b]===1;
+    const na=NP[a],nb=NP[b];const dx=nb.x-na.x,dy=nb.y-na.y,len=Math.sqrt(dx*dx+dy*dy);const ux=dx/len,uy=dy/len,r=21;
+    const x1=na.x+ux*r,y1=na.y+uy*r,x2=nb.x-ux*(r+6),y2=nb.y-uy*(r+6);
+    let el;
+    if(a===2&&b===0){el=document.createElementNS('http://www.w3.org/2000/svg','path');el.setAttribute('d',`M${x1},${y1} C${na.x+65},${na.y-18} ${nb.x+65},${nb.y+18} ${x2},${y2}`);}
+    else{el=document.createElementNS('http://www.w3.org/2000/svg','line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);}
+    el.setAttribute('class',`ge ${isBack?'back':'default'}`);el.setAttribute('marker-end',`url(#${isBack?'aB':'aD'})`);el.setAttribute('fill','none');svg.appendChild(el);
+  });
+  const isConflict=s.line==='check_gray'&&s.colors[s.nb]===1;
+  NP.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',21);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=n.id;
+    g.appendChild(circle);g.appendChild(text);svg.appendChild(g);
+    const c=s.colors[n.id];let cls='gn '+['W','G','B'][c];
+    if(isConflict&&(n.id===s.node||n.id===s.nb))cls='gn conf';else if(n.id===s.node)cls+=' cur';
+    g.setAttribute('class',cls);
+  });
+}
+function renderCS(s){const el=document.getElementById('colorsRow');el.innerHTML='';s.colors.forEach((c,i)=>{const d=document.createElement('div');d.className=`cs ${['W','G','B'][c]}`;d.innerHTML=`<span class="cs-i">node ${i}</span><span class="cs-v">${c}·${'WGB'[c]}</span>`;el.appendChild(d);});}
+function setV(id,val){const el=document.getElementById(id);if(!el)return;const p=el.textContent;el.textContent=String(val);if(p!==String(val)){el.className='vv c';setTimeout(()=>el.className='vv',600);}}
+function renderQ(){
+  if(cur>=PRED_STEPS.length){showComplete();return;}
+  const s=PRED_STEPS[cur];answered=false;
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('al','dok','derr'));
+  const lel=document.getElementById(`line-${s.line}`);if(lel){lel.classList.add('al');lel.scrollIntoView({block:'center',behavior:'smooth'});}
+  buildGraph(s);renderCS(s);
+  setV('vN',s.node!==null?`node ${s.node}`:'—');
+  setV('vNb',s.nb!==null?`node ${s.nb}`:'—');
+  setV('vCN',s.node!==null?`${s.colors[s.node]}(${'WGB'[s.colors[s.node]]})`:'—');
+  setV('vCNb',s.nb!==null?`${s.colors[s.nb]}(${'WGB'[s.colors[s.nb]]})`:'—');
+  document.getElementById('qN').textContent=cur+1;
+  const qDef=QUESTIONS.find(q=>q.line===s.line);if(!qDef){skipQ();return;}
+  const qData=qDef.mkQ(s);
+  document.getElementById('pQ').innerHTML=qData.q;
+  const opts=[...qData.opts];for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
+  const oc=document.getElementById('pOpts');oc.innerHTML='';
+  ['A','B','C'].forEach((k,i)=>{const btn=document.createElement('div');btn.className='popt';btn.innerHTML=`<span class="okey">${k}</span>${opts[i].t}`;btn.onclick=()=>select(btn,opts[i].correct,qData,opts,oc);oc.appendChild(btn);});
+  document.getElementById('pFb').className='pfb';
+  document.getElementById('tBar').textContent='Read the highlighted line. What does it produce right now?';
+  document.getElementById('tBar').className='tbar2';
+}
+function select(btn,isOk,qData,opts,container){
+  if(answered)return;answered=true;
+  container.querySelectorAll('.popt').forEach(b=>b.classList.add('dis'));
+  const fb=document.getElementById('pFb');const lel=document.getElementById(`line-${PRED_STEPS[cur].line}`);
+  if(isOk){btn.classList.add('sr');correct++;streak++;if(streak>bestStreak)bestStreak=streak;fb.textContent='✓ '+qData.ex;fb.className='pfb show ok';if(lel)lel.classList.add('dok');history.push({ok:true,q:qData.q.replace(/<[^>]+>/g,'').slice(0,40)});}
+  else{btn.classList.add('sw');opts.forEach((o,i)=>{if(o.correct)container.querySelectorAll('.popt')[i].classList.add('rv');});wrong++;streak=0;fb.textContent='✗ '+qData.ex;fb.className='pfb show err';if(lel)lel.classList.add('derr');history.push({ok:false,q:qData.q.replace(/<[^>]+>/g,'').slice(0,40)});}
+  document.getElementById('tBar').textContent=qData.quote;document.getElementById('tBar').className='tbar2 lit';
+  const hl=document.getElementById('histLog');const item=document.createElement('div');item.className=`hi ${isOk?'ok':'err'}`;item.innerHTML=`<span>${isOk?'✓':'✗'}</span><span style="font-size:.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px;">${history[history.length-1].q}</span>`;hl.appendChild(item);hl.scrollTop=hl.scrollHeight;
+  document.getElementById('scC').textContent=correct;document.getElementById('scW').textContent=wrong;document.getElementById('scS').textContent=streak;document.getElementById('bestS').textContent=bestStreak;const tot=correct+wrong;document.getElementById('scA').textContent=tot?Math.round(correct/tot*100)+'%':'—';document.getElementById('sFill').style.width=Math.min(streak*15,100)+'%';
+  setTimeout(()=>{cur++;renderQ();},isOk?1000:2300);
+}
+function skipQ(){cur++;renderQ();}
+function showComplete(){document.getElementById('pQ').innerHTML=`<strong>All done!</strong> Accuracy: ${Math.round(correct/(correct+wrong||1)*100)}%`;document.getElementById('pOpts').innerHTML=`<a href="cig_cmc.html" style="display:inline-block;margin-top:.5rem;padding:8px 20px;background:var(--accent);color:#fff;font-size:.7rem;text-decoration:none;font-weight:600;">→ Write Mode</a>`;}
+function resetAll(){cur=0;correct=0;wrong=0;streak=0;bestStreak=0;history=[];answered=false;document.getElementById('histLog').innerHTML='';document.getElementById('scC').textContent=0;document.getElementById('scW').textContent=0;document.getElementById('scS').textContent=0;document.getElementById('scA').textContent='—';document.getElementById('sFill').style.width='0%';buildCode();renderQ();}
+buildCode();renderQ();
+</script>
+</body>
+</html>

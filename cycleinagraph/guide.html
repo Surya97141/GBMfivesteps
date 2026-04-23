@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide — Cycle in Graph</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f8f6f1;--surface:#fff;--surface2:#f2efe8;--border:#ddd9ce;--border2:#c8c2b4;--ink:#1a1810;--muted:#8a8070;--muted2:#6a6050;--accent:#c45800;--accent2:#e06a00;--W:#334488;--Wbg:rgba(51,68,136,.06);--Wb:rgba(51,68,136,.3);--G:#b85c00;--Gbg:rgba(184,92,0,.1);--Gb:rgba(184,92,0,.5);--B:#006b58;--Bbg:rgba(0,107,88,.08);--Bb:rgba(0,107,88,.4);--back:#cc2200;--tree:#2255cc;--right:#006b58;--wrong:#cc2200;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 340px;overflow:hidden;}
+.center{padding:1.75rem 2.5rem;display:flex;flex-direction:column;gap:1.2rem;border-right:1px solid var(--border2);overflow-y:auto;}
+.inst-box{background:var(--surface);border:1px solid var(--border2);border-top:3px solid var(--accent);padding:.85rem 1.1rem;display:flex;gap:.9rem;}
+.inst-icon{width:28px;height:28px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;}
+.inst-text{font-size:.72rem;line-height:1.7;}
+.inst-text strong{color:var(--accent);}
+.teacher-flash{padding:.6rem .9rem;border-left:3px solid var(--accent);font-size:.68rem;color:var(--muted2);font-style:italic;line-height:1.5;min-height:2.5rem;transition:all .3s;}
+.teacher-flash.lit{color:var(--ink);border-color:var(--G);}
+.phase-label{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--accent);}
+svg.graph{overflow:visible;}
+.ge{fill:none;}.ge.default{stroke:var(--border2);stroke-width:1.5;}.ge.tree{stroke:var(--tree);stroke-width:2;}.ge.back{stroke:var(--back);stroke-width:2.5;animation:pb .9s ease infinite;}
+@keyframes pb{0%,100%{opacity:1;}50%{opacity:.25;}}
+.gn circle{transition:all .25s;stroke-width:2;fill:white;}
+.gn text{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-anchor:middle;dominant-baseline:middle;}
+.gn.W circle{fill:var(--Wbg);stroke:var(--Wb);}.gn.W text{fill:var(--W);}
+.gn.G circle{fill:var(--Gbg);stroke:var(--Gb);filter:drop-shadow(0 0 6px rgba(184,92,0,.4));}.gn.G text{fill:var(--G);}
+.gn.B circle{fill:var(--Bbg);stroke:var(--Bb);}.gn.B text{fill:var(--B);}
+.gn.clk circle{cursor:pointer;stroke:var(--accent);stroke-width:2.5;animation:clkp .9s ease infinite;}
+.gn.clk:hover circle{transform:scale(1.06);filter:drop-shadow(0 0 8px rgba(196,88,0,.5));}
+.gn.cur circle{stroke-width:3;}
+.gn.conf circle{fill:rgba(204,34,0,.1);stroke:var(--back);stroke-width:3;animation:cfp .5s ease infinite;}.gn.conf text{fill:var(--back);}
+@keyframes clkp{0%,100%{stroke-opacity:1;}50%{stroke-opacity:.3;}}
+@keyframes cfp{0%,100%{opacity:1;}50%{opacity:.35;}}
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.colors-row{display:flex;gap:3px;flex-wrap:wrap;}
+.cs{width:50px;height:42px;border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:all .3s;border-radius:2px;}
+.cs-i{font-size:.44rem;color:var(--muted);}.cs-v{font-size:.68rem;font-weight:600;}
+.cs.W{border-color:var(--Wb);background:var(--Wbg);}.cs.W .cs-v{color:var(--W);}
+.cs.G{border-color:var(--Gb);background:var(--Gbg);}.cs.G .cs-v{color:var(--G);}
+.cs.B{border-color:var(--Bb);background:var(--Bbg);}.cs.B .cs-v{color:var(--B);}
+.rec-stack{display:flex;flex-direction:column-reverse;gap:3px;}
+.rsi{padding:3px 10px;border:1px solid var(--border2);font-size:.65rem;color:var(--muted2);border-radius:2px;}
+.rsi.top{border-color:var(--Gb);color:var(--G);background:var(--Gbg);}
+.state-block{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.state-title{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.state-row{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.state-row:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}
+.sv.g{color:var(--G);}.sv.b{color:var(--B);}.sv.r{color:var(--back);}
+.hint-box{background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--G);padding:.65rem .75rem;font-size:.68rem;color:var(--muted2);line-height:1.6;min-height:3rem;border-radius:0 2px 2px 0;}
+.toast{position:fixed;top:66px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--surface);border:1px solid var(--border2);padding:8px 18px;font-size:.7rem;opacity:0;transition:all .25s;z-index:100;pointer-events:none;max-width:380px;text-align:center;border-radius:2px;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.good{border-color:var(--right);color:var(--right);}
+.toast.bad{border-color:var(--wrong);color:var(--wrong);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="cig_watch.html" class="nav-tab">01 Watch</a>
+    <a href="cig_guide.html" class="nav-tab active">02 Guide</a>
+    <a href="cig_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="cig_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="cig_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="cig_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Cycle in Graph · Guide</div>
+</header>
+<main>
+  <div class="center">
+    <div class="inst-box">
+      <div class="inst-icon">▶</div>
+      <div class="inst-text" id="instText"><strong>You drive the DFS.</strong> Click the highlighted node to call DFS on it. The 3-color algorithm runs through you — watch GRAY nodes accumulate in the stack.</div>
+    </div>
+    <div class="teacher-flash" id="teacherFlash">"As soon as we call DFS on a node, we change that node's color to be gray — it's now in the recursion stack."</div>
+    <div class="phase-label" id="phaseLabel">Phase: Start DFS</div>
+    <div style="display:flex;justify-content:center;">
+      <svg class="graph" id="graphSvg" width="340" height="230" viewBox="0 0 240 215"></svg>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Colors (0=W 1=G 2=B)</div>
+    <div class="colors-row" id="colorsRow"></div>
+    <div class="panel-label">Recursion Stack</div>
+    <div class="rec-stack" id="recStack"></div>
+    <div class="panel-label">State</div>
+    <div class="state-block">
+      <div class="state-title">Algorithm</div>
+      <div class="state-row"><span class="sk">Phase</span><span class="sv g" id="sPhase">init</span></div>
+      <div class="state-row"><span class="sk">Processing</span><span class="sv" id="sCur">—</span></div>
+      <div class="state-row"><span class="sk">Neighbor</span><span class="sv" id="sNb">—</span></div>
+      <div class="state-row"><span class="sk">Neighbor color</span><span class="sv" id="sNbC">—</span></div>
+      <div class="state-row"><span class="sk">Result</span><span class="sv r" id="sRes">—</span></div>
+    </div>
+    <div class="panel-label">Hint</div>
+    <div class="hint-box" id="hintBox">Click node 0 to begin DFS. It will be marked GRAY (in recursion stack).</div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);" id="footerStatus">Click node 0 to start</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="showHint()">Hint</button>
+    <button class="btn" onclick="autoStep()">Auto Step</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="cig_cma.html" class="btn btn-accent">→ Mirror·A</a>
+  </div>
+</footer>
+<script>
+const NP=[{id:0,x:120,y:20},{id:1,x:30,y:90},{id:2,x:210,y:90},{id:3,x:30,y:175},{id:4,x:120,y:175},{id:5,x:210,y:175}];
+const RE=[[0,1],[0,2],[1,2],[1,3],[1,4],[2,0],[4,2],[4,5]];
+const ADJ=[[1,2],[2,3,4],[0],[],[2,5],[]];
+const N=6;
+const QUOTES={
+  enter:'"As soon as we call DFS on a node, we change that node\'s color to be gray — it\'s now in the recursion stack."',
+  white:'"If the node is colored white, that means it has yet to be visited — we found a tree edge. Run DFS on it."',
+  gray:'"If this edge leads to a node that is colored gray, we found a back edge — there must be a cycle!"',
+  black:'"If the node is black, we don\'t care about this edge — it\'s a cross or forward edge, not a back edge. We skip it."',
+  finish:'"We mark this node as black — it\'s done, fully processed. All descendants are visited."',
+  done:'"We\'ve gone through the entire graph without finding a back edge. Return false — no cycle."',
+};
+
+function buildScript(){
+  const steps=[];
+  const colors=new Array(N).fill(0);
+  function dfs(node){
+    colors[node]=1;
+    steps.push({type:'enter',node,nb:null,colors:[...colors]});
+    for(const nb of ADJ[node]){
+      if(colors[nb]===1){steps.push({type:'gray',node,nb,colors:[...colors]});return true;}
+      if(colors[nb]===0){steps.push({type:'white',node,nb,colors:[...colors]});if(dfs(nb))return true;}
+      else{steps.push({type:'black',node,nb,colors:[...colors]});}
+    }
+    colors[node]=2;
+    steps.push({type:'finish',node,nb:null,colors:[...colors]});
+    return false;
+  }
+  for(let i=0;i<N;i++){if(colors[i]===0)if(dfs(i))break;}
+  if(steps[steps.length-1]?.type!=='gray')steps.push({type:'done',node:null,nb:null,colors:[...colors]});
+  return steps;
+}
+
+const SCRIPT=buildScript();
+let idx=0,colors=new Array(N).fill(0),edgeTypes={},confNodes=[],done=false;
+
+const arrowColors={aD:'#c8c2b4',aT:'#2255cc',aB:'#cc2200'};
+function buildArrows(svg){
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  Object.entries(arrowColors).forEach(([id,color])=>{
+    const m=document.createElementNS('http://www.w3.org/2000/svg','marker');
+    m.setAttribute('id',id);m.setAttribute('markerWidth','7');m.setAttribute('markerHeight','7');
+    m.setAttribute('refX','6');m.setAttribute('refY','3.5');m.setAttribute('orient','auto');
+    const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    p.setAttribute('points','0 0, 7 3.5, 0 7');p.setAttribute('fill',color);
+    m.appendChild(p);defs.appendChild(m);
+  });
+  svg.appendChild(defs);
+}
+
+function getExpected(){
+  for(let i=idx;i<SCRIPT.length;i++){if(SCRIPT[i].type==='enter')return SCRIPT[i].node;}
+  return null;
+}
+
+function handleClick(nodeId){
+  if(done)return;
+  processAutoSteps();
+  if(done||idx>=SCRIPT.length)return;
+  const step=SCRIPT[idx];
+  if(step.type!=='enter')return;
+  if(nodeId!==step.node){showToast(`Click node ${step.node} — next DFS call`,'bad');return;}
+  applyStep(SCRIPT[idx]);idx++;
+  processAutoSteps();
+}
+
+function processAutoSteps(){
+  while(idx<SCRIPT.length){
+    const step=SCRIPT[idx];
+    if(step.type==='enter')break;
+    applyStep(step);idx++;
+    if(step.type==='gray'||step.type==='done'){done=true;break;}
+  }
+}
+
+function applyStep(step){
+  colors=[...step.colors];
+  if(step.type==='white'&&step.nb!==null)edgeTypes[`${step.node}-${step.nb}`]='tree';
+  if(step.type==='gray'&&step.nb!==null){edgeTypes[`${step.node}-${step.nb}`]='back';confNodes=[step.node,step.nb];}
+  buildGraph();renderColors();renderStack();
+  const msgs={
+    enter:`DFS(${step.node}) called. Node ${step.node} marked GRAY. Exploring neighbors...`,
+    white:`${step.node}→${step.nb}: node ${step.nb} is WHITE → tree edge. Call DFS(${step.nb}).`,
+    gray:`${step.node}→${step.nb}: node ${step.nb} is GRAY (in stack) → BACK EDGE! Return TRUE.`,
+    black:`${step.node}→${step.nb}: node ${step.nb} is BLACK → skip (cross/forward edge).`,
+    finish:`DFS(${step.node}) finished. Mark node ${step.node} BLACK (done).`,
+    done:'All nodes processed. No back edges found. Return FALSE — no cycle.',
+  };
+  document.getElementById('instText').innerHTML=msgs[step.type]||'';
+  setQuote(step.type);
+  document.getElementById('sPhase').textContent=step.type;
+  document.getElementById('sCur').textContent=step.node!==null?`node ${step.node}`:'—';
+  document.getElementById('sNb').textContent=step.nb!==null?`node ${step.nb}`:'—';
+  document.getElementById('sNbC').textContent=step.nb!==null?`${colors[step.nb]}(${'WGB'[colors[step.nb]]})`:'—';
+  document.getElementById('phaseLabel').textContent=`Phase: ${step.type}`;
+  if(step.type==='gray'){
+    document.getElementById('sRes').textContent='TRUE';
+    document.getElementById('sRes').style.color='var(--back)';
+    setHint(`Back edge ${step.node}→${step.nb}! Node ${step.nb} is GRAY = ancestor. Cycle confirmed. Return TRUE.`);
+    document.getElementById('footerStatus').textContent='RESULT: true — cycle detected';
+  } else if(step.type==='done'){
+    document.getElementById('sRes').textContent='FALSE';
+    document.getElementById('sRes').style.color='var(--B)';
+    setHint('No back edges found. Return FALSE — no cycle in this graph.');
+    document.getElementById('footerStatus').textContent='RESULT: false — no cycle';
+  } else if(step.type==='enter'){
+    setHint(`Node ${step.node} is now GRAY — in the recursion stack. Any edge back to it = back edge = cycle.`);
+    const exp=getExpected();
+    if(exp!==null)document.getElementById('footerStatus').textContent=`Next: click node ${exp}`;
+  }
+}
+
+function buildGraph(){
+  const svg=document.getElementById('graphSvg');svg.innerHTML='';
+  buildArrows(svg);
+  const aMap={default:'aD',tree:'aT',back:'aB'};
+  RE.forEach(([a,b])=>{
+    const key=`${a}-${b}`,type=edgeTypes[key]||'default';
+    const na=NP[a],nb=NP[b];
+    const dx=nb.x-na.x,dy=nb.y-na.y,len=Math.sqrt(dx*dx+dy*dy);
+    const ux=dx/len,uy=dy/len,r=21;
+    const x1=na.x+ux*r,y1=na.y+uy*r,x2=nb.x-ux*(r+6),y2=nb.y-uy*(r+6);
+    let el;
+    if(a===2&&b===0){el=document.createElementNS('http://www.w3.org/2000/svg','path');el.setAttribute('d',`M${x1},${y1} C${na.x+65},${na.y-18} ${nb.x+65},${nb.y+18} ${x2},${y2}`);}
+    else{el=document.createElementNS('http://www.w3.org/2000/svg','line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);}
+    el.setAttribute('class',`ge ${type}`);el.setAttribute('marker-end',`url(#${aMap[type]})`);el.setAttribute('fill','none');svg.appendChild(el);
+  });
+  const expected=getExpected();
+  NP.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r',21);
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',n.x);text.setAttribute('y',n.y);text.textContent=n.id;
+    g.appendChild(circle);g.appendChild(text);svg.appendChild(g);
+    g.onclick=()=>handleClick(n.id);
+    const col=colors[n.id];
+    let cls='gn '+['W','G','B'][col];
+    if(confNodes.includes(n.id))cls='gn conf';
+    else if(!done&&n.id===expected)cls+=' clk';
+    g.setAttribute('class',cls);
+  });
+}
+
+function renderColors(){
+  const el=document.getElementById('colorsRow');el.innerHTML='';
+  colors.forEach((c,i)=>{
+    const s=document.createElement('div');s.className=`cs ${['W','G','B'][c]}`;
+    s.innerHTML=`<span class="cs-i">node ${i}</span><span class="cs-v">${c}·${'WGB'[c]}</span>`;el.appendChild(s);
+  });
+}
+
+function renderStack(){
+  const el=document.getElementById('recStack');el.innerHTML='';
+  const grays=colors.map((c,i)=>c===1?i:-1).filter(x=>x>=0);
+  if(!grays.length){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">empty</span>';return;}
+  grays.forEach((item,i)=>{
+    const d=document.createElement('div');d.className=`rsi${i===grays.length-1?' top':''}`;d.textContent=`DFS(${item})`;el.appendChild(d);
+  });
+}
+
+function setHint(t){document.getElementById('hintBox').textContent=t;}
+function setQuote(k){const el=document.getElementById('teacherFlash');el.textContent=QUOTES[k]||'';el.className='teacher-flash lit';setTimeout(()=>el.className='teacher-flash',4000);}
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;setTimeout(()=>t.className='toast',2800);}
+function showHint(){const exp=getExpected();if(exp!==null)showToast(`Click node ${exp} — next DFS call`,'good');}
+function autoStep(){processAutoSteps();if(!done&&idx<SCRIPT.length&&SCRIPT[idx].type==='enter')handleClick(SCRIPT[idx].node);}
+function resetAll(){idx=0;colors=new Array(N).fill(0);edgeTypes={};confNodes=[];done=false;document.getElementById('sRes').textContent='—';document.getElementById('sRes').style.color='';buildGraph();renderColors();renderStack();document.getElementById('instText').innerHTML='<strong>You drive the DFS.</strong> Click the highlighted node to call DFS on it.';document.getElementById('phaseLabel').textContent='Phase: Start DFS';document.getElementById('footerStatus').textContent='Click node 0 to start';setHint('Click node 0 to begin DFS. It will be marked GRAY (in recursion stack).');document.getElementById('sPhase').textContent='init';document.getElementById('sCur').textContent='—';document.getElementById('sNb').textContent='—';document.getElementById('sNbC').textContent='—';}
+resetAll();
+</script>
+</body>
+</html>
