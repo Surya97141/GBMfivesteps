@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo — Boggle Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f7f4ee;--surface:#fff;--surface2:#f0ece3;--border:#ddd7c8;--border2:#c8c0aa;--ink:#1c1a14;--muted:#8a8070;--muted2:#6a6050;--accent:#c45800;--accent2:#e06a00;--found:#2d6a2d;--found-bg:rgba(45,106,45,.08);--found-b:rgba(45,106,45,.4);--active:#b85c00;--active-bg:rgba(184,92,0,.12);--active-b:rgba(184,92,0,.5);--visited:#2255aa;--visited-bg:rgba(34,85,170,.08);--visited-b:rgba(34,85,170,.3);--right:#2d6a2d;--wrong:#aa2222;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;}
+
+/* CENTER */
+.center{padding:2rem 2.5rem;display:flex;flex-direction:column;align-items:center;gap:1.5rem;border-right:1px solid var(--border2);position:relative;overflow:hidden;}
+.solo-header{text-align:center;}
+.solo-header h2{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--ink);margin-bottom:.3rem;}
+.solo-header p{font-size:.72rem;color:var(--muted);line-height:1.6;}
+
+/* BOARD */
+.board-wrap{display:flex;flex-direction:column;align-items:center;gap:.75rem;}
+.board{display:grid;gap:5px;padding:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;user-select:none;}
+.cell{width:58px;height:58px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;border:1px solid var(--border2);background:var(--surface);color:var(--ink);border-radius:3px;cursor:pointer;transition:all .2s;position:relative;}
+.cell:hover{border-color:var(--accent);background:var(--active-bg);}
+.cell.active{background:var(--active-bg);border-color:var(--active-b);color:var(--active);border-width:2px;box-shadow:0 0 10px rgba(184,92,0,.25);}
+.cell.visited{background:var(--visited-bg);border-color:var(--visited-b);color:var(--visited);}
+.cell.not-neighbor{opacity:.4;cursor:not-allowed;}
+.cell.found-cell{background:var(--found-bg);border-color:var(--found-b);color:var(--found);animation:fc .4s ease;}
+@keyframes fc{0%{transform:scale(1.15);}100%{transform:scale(1);}}
+.cell .step-n{position:absolute;top:3px;right:5px;font-size:.45rem;font-family:'JetBrains Mono',monospace;color:var(--muted);font-weight:400;}
+
+/* WORD CHALLENGE */
+.challenge-area{display:flex;flex-direction:column;gap:.6rem;align-items:center;width:100%;}
+.target-word{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:700;color:var(--ink);letter-spacing:.15em;}
+.target-sub{font-size:.62rem;color:var(--muted);text-align:center;}
+.current-path{display:flex;align-items:center;gap:3px;flex-wrap:wrap;justify-content:center;min-height:36px;}
+.path-letter{padding:4px 10px;border:1px solid var(--visited-b);background:var(--visited-bg);color:var(--visited);font-size:.9rem;font-weight:700;border-radius:2px;animation:li .15s ease;}
+@keyframes li{from{opacity:0;transform:scale(.7);}to{opacity:1;transform:scale(1);}}
+.path-letter.cur{border-color:var(--active-b);background:var(--active-bg);color:var(--active);}
+.action-btns{display:flex;gap:.5rem;}
+
+/* Overlay */
+.overlay{position:absolute;inset:0;background:rgba(247,244,238,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;opacity:0;pointer-events:none;transition:opacity .3s;z-index:10;text-align:center;padding:2rem;}
+.overlay.show{opacity:1;pointer-events:all;}
+.overlay-title{font-family:'Playfair Display',serif;font-size:3rem;font-weight:700;}
+.overlay-sub{font-size:.75rem;color:var(--muted2);line-height:1.7;max-width:380px;}
+.overlay-btns{display:flex;gap:.75rem;}
+.ob{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:8px 20px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);cursor:pointer;transition:all .2s;text-decoration:none;text-transform:uppercase;display:inline-block;border-radius:2px;}
+.ob:hover{background:var(--surface2);}
+.ob.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+
+/* RIGHT PANEL */
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+
+.challenge-list{display:flex;flex-direction:column;gap:.4rem;}
+.ch{border:1px solid var(--border2);padding:.5rem .75rem;font-size:.68rem;cursor:pointer;transition:all .2s;border-radius:2px;}
+.ch:hover{border-color:var(--accent);background:var(--bg);}
+.ch.active{border-color:var(--accent);background:var(--active-bg);}
+.ch.solved{border-color:var(--found-b);background:var(--found-bg);color:var(--found);}
+.ch.failed{border-color:var(--wrong);background:rgba(170,34,34,.04);}
+.ch-word{font-weight:700;font-family:'Playfair Display',serif;font-size:.9rem;}
+.ch-hint{font-size:.58rem;color:var(--muted);margin-top:2px;}
+
+.score-b{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.score-t{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.score-r{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.score-r:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}.sv.g{color:var(--right);}.sv.r{color:var(--wrong);}
+.clock-wrap{font-size:.65rem;color:var(--muted);}
+.clock-wrap span{color:var(--ink);font-weight:600;}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.mode-note{font-size:.65rem;color:var(--wrong);letter-spacing:.04em;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="boggle_watch.html" class="nav-tab">01 Watch</a>
+    <a href="boggle_guide.html" class="nav-tab">02 Guide</a>
+    <a href="boggle_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="boggle_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="boggle_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="boggle_solo.html" class="nav-tab active">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Boggle Board · Solo</div>
+</header>
+<main>
+  <div class="center" id="centerPanel">
+    <div class="overlay" id="overlay">
+      <div class="overlay-title" id="overlayTitle">—</div>
+      <div class="overlay-sub" id="overlaySub"></div>
+      <div class="overlay-btns">
+        <button class="ob primary" onclick="nextChallenge()">Next →</button>
+        <button class="ob" onclick="resetCurrent()">Try Again</button>
+        <a href="boggle_guide.html" class="ob">← Guide</a>
+      </div>
+    </div>
+
+    <div class="solo-header">
+      <h2>Trace the word.</h2>
+      <p>Click adjacent cells in order to spell the target word.<br>Adjacent = horizontal, vertical, or diagonal. No position reuse.</p>
+    </div>
+
+    <div class="challenge-area">
+      <div class="target-word" id="targetWord">—</div>
+      <div class="target-sub" id="targetSub">Find this word on the board</div>
+      <div class="current-path" id="currentPath"></div>
+    </div>
+
+    <div class="board-wrap">
+      <div class="board" id="board" style="grid-template-columns:repeat(4,58px);"></div>
+    </div>
+
+    <div class="action-btns">
+      <button class="btn" onclick="undoLast()">← Undo</button>
+      <button class="btn btn-accent" onclick="submitPath()">Submit ✓</button>
+      <button class="btn" onclick="clearPath()">Clear</button>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Challenges</div>
+    <div class="challenge-list" id="challengeList"></div>
+
+    <div class="panel-label">Score</div>
+    <div class="score-b">
+      <div class="score-t">Progress</div>
+      <div class="score-r"><span class="sk">Solved</span><span class="sv g" id="scC">0</span></div>
+      <div class="score-r"><span class="sk">Attempts</span><span class="sv r" id="scW">0</span></div>
+      <div class="score-r"><span class="sk">Accuracy</span><span class="sv" id="scA">—</span></div>
+    </div>
+
+    <div class="panel-label">Timer</div>
+    <div class="clock-wrap">Elapsed: <span id="clock">00:00</span></div>
+
+    <div class="panel-label">Rules reminder</div>
+    <div style="font-size:.63rem;color:var(--muted2);line-height:1.8;">
+      ① Letters must be adjacent<br>
+      ② Diagonal counts<br>
+      ③ No position reuse<br>
+      ④ Backtracking reveals different paths
+    </div>
+  </div>
+</main>
+<footer>
+  <div class="mode-note">Click cells to spell the word.</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="skipChallenge()">Skip →</button>
+    <button class="btn" onclick="resetAll()">Reset All</button>
+    <a href="boggle_guide.html" class="btn">← Guide</a>
+  </div>
+</footer>
+<script>
+// 4x4 board
+const BOARD=[['T','H','I','S'],['W','A','T','S'],['O','A','H','G'],['F','G','D','T']];
+const ROWS=4,COLS=4;
+
+// Challenges: word to find + hint about where/how
+const CHALLENGES=[
+  {word:'THIS',hint:'T-H-I-S across the top row',answer:[[0,0],[0,1],[0,2],[0,3]]},
+  {word:'IS',hint:'I then S — top row right side',answer:[[0,2],[0,3]]},
+  {word:'THAT',hint:'T-H-A-T — top left then diagonal',answer:[[0,0],[0,1],[1,1],[1,2]]},
+  {word:'HASH',hint:'H-A-S-H — top right area',answer:[[0,1],[1,1],[1,3],[2,2]]},
+  {word:'WITH',hint:'W-I-T-H — starts bottom left area',answer:[[1,0],[0,2],[1,2],[2,2]]},
+  {word:'AAHS',hint:'Multiple A paths — explore!',answer:null}, // free-form
+  {word:'THAW',hint:'T-H-A-W',answer:[[0,0],[0,1],[1,1],[1,0]]},
+  {word:'GASH',hint:'G-A-S-H near bottom',answer:[[2,3],[2,1],[1,3],[2,2]]},
+];
+
+function getNeighbors(r,c){const nb=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(dr===0&&dc===0)continue;const nr=r+dr,nc=c+dc;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS)nb.push([nr,nc]);}return nb;}
+function isAdjacent(r1,c1,r2,c2){return Math.abs(r1-r2)<=1&&Math.abs(c1-c2)<=1&&!(r1===r2&&c1===c2);}
+function key(r,c){return `${r},${c}`;}
+
+// Validate if a path spells a word correctly (adjacency + no reuse)
+function validatePath(path,word){
+  if(path.length!==word.length)return false;
+  const visited=new Set();
+  for(let i=0;i<path.length;i++){
+    const[r,c]=path[i];
+    if(BOARD[r][c]!==word[i])return false;
+    const k=key(r,c);if(visited.has(k))return false;
+    visited.add(k);
+    if(i>0){const[pr,pc]=path[i-1];if(!isAdjacent(pr,pc,r,c))return false;}
+  }
+  return true;
+}
+
+// Check if word exists anywhere on board (for free-form)
+function wordExistsOnBoard(word){
+  function dfs(r,c,idx,visited){
+    if(idx===word.length)return true;
+    if(r<0||r>=ROWS||c<0||c>=COLS)return false;
+    const k=key(r,c);
+    if(visited.has(k)||BOARD[r][c]!==word[idx])return false;
+    visited.add(k);
+    const nbs=getNeighbors(r,c);
+    for(const[nr,nc]of nbs){if(dfs(nr,nc,idx+1,visited))return true;}
+    visited.delete(k);return false;
+  }
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){if(BOARD[r][c]===word[0]&&dfs(r,c,0,new Set()))return true;}
+  return false;
+}
+
+let curChallenge=0,path=[],solved=0,attempts=0;
+let results=new Array(CHALLENGES.length).fill(null);
+let startTime=null,clockTimer=null;
+
+function getCh(){return CHALLENGES[curChallenge];}
+
+function buildBoard(){
+  const board=document.getElementById('board');board.innerHTML='';
+  const ch=getCh();
+  const visited=new Set(path.map(([r,c])=>key(r,c)));
+  const lastCell=path.length>0?path[path.length-1]:null;
+  const validNext=lastCell?getNeighbors(lastCell[0],lastCell[1]).filter(([nr,nc])=>!visited.has(key(nr,nc))):null;
+  BOARD.forEach((row,r)=>{
+    row.forEach((letter,c)=>{
+      const cell=document.createElement('div');cell.className='cell';
+      const k=key(r,c);
+      const pathIdx=path.findIndex(([pr,pc])=>pr===r&&pc===c);
+      const isActive=pathIdx===path.length-1&&path.length>0;
+      const isVisited=pathIdx>=0&&!isActive;
+      const isValidNext=validNext&&validNext.some(([nr,nc])=>nr===r&&nc===c);
+      const isNotNeighbor=path.length>0&&!isValidNext&&!isVisited&&!isActive;
+      if(isActive)cell.classList.add('active');
+      else if(isVisited)cell.classList.add('visited');
+      if(isNotNeighbor)cell.classList.add('not-neighbor');
+      cell.textContent=letter;
+      if(pathIdx>=0){const sn=document.createElement('span');sn.className='step-n';sn.textContent=pathIdx+1;cell.appendChild(sn);}
+      cell.onclick=()=>handleCellClick(r,c);
+      board.appendChild(cell);
+    });
+  });
+}
+
+function handleCellClick(r,c){
+  if(!startTime){startTime=Date.now();clockTimer=setInterval(updateClock,1000);}
+  const k=key(r,c);
+  const visited=new Set(path.map(([pr,pc])=>key(pr,pc)));
+  if(visited.has(k))return; // already used
+  if(path.length>0){
+    const[lr,lc]=path[path.length-1];
+    if(!isAdjacent(lr,lc,r,c))return; // not adjacent
+  }
+  path.push([r,c]);
+  renderPath();buildBoard();
+  // Auto-submit if path matches word length
+  const ch=getCh();
+  if(path.length===ch.word.length)autoCheck();
+}
+
+function autoCheck(){
+  const ch=getCh();
+  const spelled=path.map(([r,c])=>BOARD[r][c]).join('');
+  if(validatePath(path,ch.word)){
+    // Correct!
+    setTimeout(()=>showResult(true),150);
+  }
+  // If wrong length but right letters... let user submit manually
+}
+
+function submitPath(){
+  const ch=getCh();const spelled=path.map(([r,c])=>BOARD[r][c]).join('');
+  attempts++;
+  if(validatePath(path,ch.word)||(ch.answer===null&&wordExistsOnBoard(spelled)&&spelled===ch.word)){
+    showResult(true);
+  } else {
+    showResult(false,spelled);
+  }
+}
+
+function showResult(isCorrect,spelled=''){
+  const ch=getCh();
+  const ot=document.getElementById('overlayTitle');
+  const os=document.getElementById('overlaySub');
+  if(isCorrect){
+    solved++;results[curChallenge]='solved';
+    ot.textContent='Correct!';ot.style.color='var(--right)';
+    os.textContent=`You found "${ch.word}" on the board. ${path.map(([r,c])=>`[${r},${c}]`).join('→')}`;
+  } else {
+    results[curChallenge]='failed';
+    ot.textContent='Not quite.';ot.style.color='var(--wrong)';
+    os.textContent=spelled?`"${spelled}" at that path is ${spelled===ch.word?'right letters but wrong adjacency!':'wrong spelling'}. ${ch.hint}.`:`${ch.hint}.`;
+  }
+  const sc=document.getElementById('scA');const tot=solved+Math.max(0,attempts-solved);
+  sc.textContent=tot?Math.round(solved/attempts*100)+'%':'—';
+  document.getElementById('scC').textContent=solved;
+  document.getElementById('scW').textContent=attempts;
+  updateChallengeList();
+  document.getElementById('overlay').classList.add('show');
+}
+
+function nextChallenge(){
+  document.getElementById('overlay').classList.remove('show');
+  if(curChallenge<CHALLENGES.length-1){curChallenge++;path=[];loadChallenge();}
+  else showFinalScore();
+}
+
+function resetCurrent(){path=[];document.getElementById('overlay').classList.remove('show');buildBoard();renderPath();}
+function undoLast(){if(path.length>0){path.pop();buildBoard();renderPath();}}
+function clearPath(){path=[];buildBoard();renderPath();}
+function skipChallenge(){if(curChallenge<CHALLENGES.length-1){curChallenge++;path=[];loadChallenge();}}
+
+function renderPath(){
+  const el=document.getElementById('currentPath');el.innerHTML='';
+  const ch=getCh();
+  if(!path.length){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">click cells to trace</span>';return;}
+  path.forEach(([r,c],i)=>{
+    const div=document.createElement('div');
+    div.className=`path-letter${i===path.length-1?' cur':''}`;
+    div.textContent=BOARD[r][c];el.appendChild(div);
+  });
+  // Show remaining chars needed
+  const spelled=path.map(([r,c])=>BOARD[r][c]).join('');
+  const target=ch.word;
+  if(spelled.length<target.length){
+    const remaining=target.slice(spelled.length);
+    const rem=document.createElement('span');rem.style.cssText='font-size:.65rem;color:var(--muted);margin-left:6px;';rem.textContent='(need: '+remaining+')';el.appendChild(rem);
+  } else if(spelled===target){
+    const done=document.createElement('span');done.style.cssText='font-size:.65rem;color:var(--found);margin-left:6px;font-weight:600;';done.textContent='✓ Submit!';el.appendChild(done);
+  } else {
+    const wrong=document.createElement('span');wrong.style.cssText='font-size:.65rem;color:var(--wrong);margin-left:6px;';wrong.textContent='✗ wrong letters';el.appendChild(wrong);
+  }
+}
+
+function loadChallenge(){
+  const ch=getCh();
+  document.getElementById('targetWord').textContent=ch.word;
+  document.getElementById('targetSub').textContent=ch.hint;
+  buildBoard();renderPath();updateChallengeList();
+}
+
+function buildChallengeList(){
+  const cl=document.getElementById('challengeList');cl.innerHTML='';
+  CHALLENGES.forEach((ch,i)=>{
+    const d=document.createElement('div');
+    let cls='ch';
+    if(i===curChallenge)cls+=' active';
+    if(results[i]==='solved')cls+=' solved';
+    if(results[i]==='failed')cls+=' failed';
+    d.className=cls;
+    d.innerHTML=`<div class="ch-word">${ch.word}</div><div class="ch-hint">${ch.hint}</div>`;
+    d.onclick=()=>{curChallenge=i;path=[];loadChallenge();};
+    cl.appendChild(d);
+  });
+}
+
+function updateChallengeList(){
+  document.querySelectorAll('.ch').forEach((el,i)=>{
+    let cls='ch';
+    if(i===curChallenge)cls+=' active';
+    if(results[i]==='solved')cls+=' solved';
+    if(results[i]==='failed')cls+=' failed';
+    el.className=cls;
+  });
+}
+
+function showFinalScore(){
+  document.getElementById('overlayTitle').textContent=`${solved} / ${CHALLENGES.length}`;
+  document.getElementById('overlayTitle').style.color=solved>=CHALLENGES.length*0.75?'var(--right)':'var(--wrong)';
+  document.getElementById('overlaySub').textContent=`You traced ${solved} of ${CHALLENGES.length} words correctly on the Boggle board.`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function updateClock(){
+  const e=Math.floor((Date.now()-startTime)/1000);
+  const m=Math.floor(e/60).toString().padStart(2,'0');
+  const s=(e%60).toString().padStart(2,'0');
+  document.getElementById('clock').textContent=`${m}:${s}`;
+}
+
+function resetAll(){
+  curChallenge=0;path=[];solved=0;attempts=0;
+  results.fill(null);startTime=null;clearInterval(clockTimer);
+  document.getElementById('clock').textContent='00:00';
+  document.getElementById('scC').textContent=0;document.getElementById('scW').textContent=0;document.getElementById('scA').textContent='—';
+  document.getElementById('overlay').classList.remove('show');
+  buildChallengeList();loadChallenge();
+}
+
+buildChallengeList();loadChallenge();
+</script>
+</body>
+</html>

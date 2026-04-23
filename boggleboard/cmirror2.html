@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror B — Boggle Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f7f4ee;--surface:#fff;--surface2:#f0ece3;--border:#ddd7c8;--border2:#c8c0aa;--ink:#1c1a14;--muted:#8a8070;--muted2:#6a6050;--accent:#c45800;--found:#2d6a2d;--found-bg:rgba(45,106,45,.08);--found-b:rgba(45,106,45,.4);--active:#b85c00;--active-bg:rgba(184,92,0,.12);--active-b:rgba(184,92,0,.5);--visited:#2255aa;--visited-bg:rgba(34,85,170,.08);--visited-b:rgba(34,85,170,.3);--trie-node:#5c3a8a;--right:#2d6a2d;--wrong:#aa2222;--code-bg:#fdfbf7;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:200px 1fr 250px;overflow:hidden;}
+
+.board-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.board{display:grid;gap:3px;padding:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:2px;}
+.cell{width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;border:1px solid var(--border2);background:var(--surface);color:var(--muted2);border-radius:2px;transition:all .3s;}
+.cell.active{background:var(--active-bg);border-color:var(--active-b);color:var(--active);}
+.cell.visited{background:var(--visited-bg);border-color:var(--visited-b);color:var(--visited);}
+.sb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.sbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.sbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.sbr:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}.sv.g{color:var(--right);}.sv.r{color:var(--wrong);}.sv.a{color:var(--accent);}
+.stk{height:3px;background:var(--border);margin-top:3px;overflow:hidden;border-radius:2px;}
+.stf{height:100%;background:var(--accent);transition:width .4s;}
+
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);}
+.code-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title2{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.code-q{font-size:.6rem;color:var(--accent);}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:var(--border2);flex-shrink:0;line-height:21px;user-select:none;}
+.cc{flex:1;padding:0 12px 0 4px;font-size:.67rem;line-height:21px;white-space:pre;color:var(--muted2);}
+.code-line.al{background:var(--la,rgba(196,88,0,.07));border-left:3px solid var(--accent);}.code-line.al .ln{color:var(--accent);}.code-line.al .cc{color:var(--ink);}
+.code-line.dok{background:rgba(45,106,45,.06);border-left:3px solid rgba(45,106,45,.4);}
+.code-line.derr{background:rgba(170,34,34,.06);border-left:3px solid rgba(170,34,34,.4);}
+.kw{color:#882200;}.fn{color:var(--accent);}.nm{color:#0044aa;}.cm{color:var(--muted);font-style:italic;}.op{color:#005588;}.st{color:var(--found);}
+.pz{flex-shrink:0;padding:.75rem 1rem;background:var(--surface2);border-top:1px solid var(--border);}
+.pq{font-size:.7rem;color:var(--ink);margin-bottom:.5rem;line-height:1.55;}.pq strong{color:var(--accent);}
+.popts{display:flex;flex-direction:column;gap:3px;}
+.popt{background:var(--surface);border:1px solid var(--border2);padding:5px 10px;font-size:.67rem;cursor:pointer;transition:all .2s;display:flex;gap:8px;align-items:center;color:var(--muted2);border-radius:2px;}
+.popt:hover{border-color:var(--accent);background:var(--bg);}
+.popt.sr{border-color:var(--found-b);background:var(--found-bg);color:var(--found);}
+.popt.sw{border-color:var(--wrong);background:rgba(170,34,34,.06);color:var(--wrong);}
+.popt.rv{border-color:var(--found-b);}
+.popt.dis{cursor:default;opacity:.5;}
+.okey{width:16px;height:16px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.58rem;color:var(--muted);flex-shrink:0;border-radius:2px;}
+.pfb{margin-top:.4rem;font-size:.67rem;padding:.4rem .6rem;line-height:1.5;display:none;border-radius:2px;}
+.pfb.show{display:block;}
+.pfb.ok{background:var(--found-bg);border:1px solid var(--found-b);color:var(--found);}
+.pfb.err{background:rgba(170,34,34,.06);border:1px solid rgba(170,34,34,.3);color:var(--wrong);}
+.tbar2{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.62rem;color:var(--muted);font-style:italic;flex-shrink:0;min-height:40px;transition:color .3s;}
+.tbar2.lit{color:var(--ink);}
+
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.vb2{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vk{color:var(--muted2);}.vv{font-weight:600;font-size:.62rem;}
+.vv.c{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(196,88,0,.15);}100%{background:transparent;}}
+.hist-log{display:flex;flex-direction:column;gap:2px;max-height:160px;overflow-y:auto;}
+.hi{font-size:.6rem;padding:2px 7px;display:flex;justify-content:space-between;}
+.hi.ok{color:var(--right);}.hi.err{color:var(--wrong);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="boggle_watch.html" class="nav-tab">01 Watch</a>
+    <a href="boggle_guide.html" class="nav-tab">02 Guide</a>
+    <a href="boggle_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="boggle_cmb.html" class="nav-tab active">04 Mirror·B</a>
+    <a href="boggle_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="boggle_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Boggle Board · Predict</div>
+</header>
+<main>
+  <div class="board-panel">
+    <div class="panel-label">Board State</div>
+    <div class="board" id="board" style="grid-template-columns:repeat(4,38px);"></div>
+    <div class="panel-label">Score</div>
+    <div class="sb">
+      <div class="sbt">Accuracy</div>
+      <div class="sbr"><span class="sk">Correct</span><span class="sv g" id="scC">0</span></div>
+      <div class="sbr"><span class="sk">Wrong</span><span class="sv r" id="scW">0</span></div>
+      <div class="sbr"><span class="sk">Streak</span><span class="sv a" id="scS">0</span></div>
+      <div class="sbr"><span class="sk">Accuracy</span><span class="sv" id="scA">—</span></div>
+    </div>
+    <div class="stk"><div class="stf" id="sFill" style="width:0%"></div></div>
+  </div>
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title2">Predict what this line does</div>
+      <div class="code-q">Q <span id="qN">1</span>/<span id="qT">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="pz">
+      <div class="pq" id="pQ">Loading...</div>
+      <div class="popts" id="pOpts"></div>
+      <div class="pfb" id="pFb"></div>
+    </div>
+    <div class="tbar2" id="tBar">Read the highlighted line. What does it do right now?</div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Variables</div>
+    <div class="vb2">
+      <div class="vbt">Current</div>
+      <div class="vbr"><span class="vk">position</span><span class="vv" id="vRC">—</span></div>
+      <div class="vbr"><span class="vk">letter</span><span class="vv" id="vL">—</span></div>
+      <div class="vbr"><span class="vk">path</span><span class="vv" id="vP">—</span></div>
+      <div class="vbr"><span class="vk">in trie?</span><span class="vv" id="vT">—</span></div>
+      <div class="vbr"><span class="vk">visited?</span><span class="vv" id="vV">—</span></div>
+    </div>
+    <div class="panel-label">History</div>
+    <div class="hist-log" id="histLog"></div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Best streak: <span id="bestS">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="skipQ()">Skip →</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="boggle_cmc.html" class="btn btn-accent">→ Write Mode</a>
+  </div>
+</footer>
+<script>
+const BOARD_G=[['T','H','I','S'],['W','A','T','S'],['O','A','H','G'],['F','G','D','T']];
+const WORDS_G=['THIS','IS','HASH','A'];
+const ROWS=4,COLS=4;
+const CODE=[
+  {n:1,t:'<span class="kw">def</span> <span class="fn">boggle_board</span>(board, words):',id:'def'},
+  {n:2,t:'  trie <span class="op">=</span> <span class="fn">build_trie</span>(words)',id:'build_trie'},
+  {n:3,t:'  found <span class="op">=</span> {}',id:'init_found'},
+  {n:4,t:'  visited <span class="op">=</span> [[<span class="kw">False</span>]*cols ...]',id:'init_visited'},
+  {n:5,t:'  <span class="kw">for</span> r,c <span class="kw">in</span> board:',id:'outer_loop'},
+  {n:6,t:'    <span class="fn">explore</span>(r, c, trie, ...)',id:'call_explore'},
+  {n:7,t:'  <span class="kw">return</span> <span class="fn">list</span>(found.values())',id:'ret'},
+  {n:8,t:'',id:'b1'},
+  {n:9,t:'<span class="kw">def</span> <span class="fn">explore</span>(r, c, trie, ...):',id:'def_explore'},
+  {n:10,t:'  letter <span class="op">=</span> board[r][c]',id:'get_letter'},
+  {n:11,t:'  <span class="kw">if</span> letter <span class="kw">not in</span> trie: <span class="kw">return</span>',id:'check_trie'},
+  {n:12,t:'  visited[r][c] <span class="op">=</span> <span class="kw">True</span>',id:'mark_visited'},
+  {n:13,t:'  trie <span class="op">=</span> trie[letter]',id:'dive_trie'},
+  {n:14,t:'  <span class="kw">if</span> <span class="st">\'*\'</span> <span class="kw">in</span> trie:',id:'check_end'},
+  {n:15,t:'    found[trie[<span class="st">\'*\'</span>]] <span class="op">=</span> trie[<span class="st">\'*\'</span>]',id:'add_word'},
+  {n:16,t:'  <span class="kw">for</span> (nr,nc) <span class="kw">in</span> <span class="fn">neighbors</span>(r,c):',id:'for_neighbors'},
+  {n:17,t:'    <span class="kw">if not</span> visited[nr][nc]:',id:'check_visited'},
+  {n:18,t:'      <span class="fn">explore</span>(nr,nc,trie,...)',id:'recurse'},
+  {n:19,t:'  visited[r][c] <span class="op">=</span> <span class="kw">False</span>  <span class="cm"># backtrack</span>',id:'unmark'},
+];
+const QUESTIONS=[
+  {line:'check_trie',mkQ:(s)=>({
+    q:`Line 11: <strong>if letter not in trie: return</strong> — letter="${s.letter}", in trie? ${s.inTrie?'YES':'NO'}`,
+    opts:[
+      {t:`${s.inTrie?'Letter IS in trie → continue exploring':'Letter NOT in trie → return (prune)'}`,correct:true},
+      {t:`${s.inTrie?'Not in trie → return':'In trie → return'}`,correct:false},
+      {t:`Always return at this check`,correct:false},
+    ],
+    ex:s.inTrie?`"${s.letter}" IS in the trie at this level. We continue — mark as visited and dive deeper.`:`"${s.letter}" is NOT in the trie. No word can start with this path. Return immediately — prune this branch.`,
+    quote:'"Checking if a character is contained in our trie at the next level is just accessing a value in a hash table, constant time. If it\'s not there, we skip it."'
+  })},
+  {line:'mark_visited',mkQ:(s)=>({
+    q:`Line 12: <strong>visited[${s.r}][${s.c}] = True</strong>. Why mark before exploring neighbors?`,
+    opts:[
+      {t:`Block reuse: prevents this cell from being visited again in THIS branch`,correct:true},
+      {t:`Mark it as found (word complete)`,correct:false},
+      {t:`Signal to parent call that we succeeded`,correct:false},
+    ],
+    ex:`Marking [${s.r},${s.c}]="${s.letter}" visited prevents us from using it again in the same word path. Other branches (when we backtrack) will unmark it.`,
+    quote:'"Before I visit this node, I\'m going to mark it as visited. We cannot reuse a character at a given position more than once."'
+  })},
+  {line:'check_end',mkQ:(s)=>({
+    q:`Line 14: <strong>if '*' in trie</strong> — current path = "${s.path}". Is this a complete word?`,
+    opts:[
+      {t:`${s.isWord?'"'+s.path+'" IS a complete word → add to found':'Current path is NOT a complete word yet → keep exploring'}`,correct:true},
+      {t:`${s.isWord?'Not a word, skip':'It\'s complete, stop DFS'}`,correct:false},
+      {t:`Only stop when neighbors are exhausted`,correct:false},
+    ],
+    ex:s.isWord?`"*" IS in the trie at this level — "${s.path}" is a complete word! Add it to found. But we still continue exploring neighbors (longer words possible).`:`"*" is NOT in the trie. "${s.path}" is not a complete word yet. Keep exploring neighbors.`,
+    quote:'"At the end of words, we would have an asterisk or some kind of end symbol denoting we\'ve got a full string here. We add the word and keep exploring."'
+  })},
+  {line:'check_visited',mkQ:(s)=>({
+    q:`Line 17: <strong>if not visited[${s.nbR}][${s.nbC}]</strong> — cell="${s.nbLetter}", visited=${s.nbVisited}. Recurse?`,
+    opts:[
+      {t:`${!s.nbVisited?'NOT visited → recurse into this neighbor':'ALREADY visited → skip (no reuse)'}`,correct:true},
+      {t:`${!s.nbVisited?'Visited → skip':'Not visited → still skip'}`,correct:false},
+      {t:`Always recurse regardless`,correct:false},
+    ],
+    ex:!s.nbVisited?`[${s.nbR},${s.nbC}]="${s.nbLetter}" is NOT visited in this branch → explore it recursively.`:`[${s.nbR},${s.nbC}]="${s.nbLetter}" IS already visited in this branch → skip. Can\'t reuse a position.`,
+    quote:'"We have to keep track of nodes that we\'ve already visited. We are not allowed to repeat characters."'
+  })},
+  {line:'unmark',mkQ:(s)=>({
+    q:`Line 19: <strong>visited[${s.r}][${s.c}] = False</strong>. Why un-mark AFTER exploring all neighbors?`,
+    opts:[
+      {t:`Backtracking: other branches from parent should still be able to use this cell`,correct:true},
+      {t:`We made a mistake and need to undo`,correct:false},
+      {t:`The cell was never found in the trie`,correct:false},
+    ],
+    ex:`After fully exploring all paths through [${s.r},${s.c}]="${s.letter}", we un-mark it. This lets other DFS branches from the parent cell use this position — they're separate paths.`,
+    quote:'"In the code, we\'re gonna flip a boolean now that we\'ve explored all the neighbors. This is the backtracking step — mark it as unvisited."'
+  })},
+];
+function buildTrie(words){const root={};words.forEach(w=>{let n=root;for(const ch of w){if(!n[ch])n[ch]={};n=n[ch];}n['*']=w;});return root;}
+function getNeighbors(r,c){const nb=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(dr===0&&dc===0)continue;const nr=r+dr,nc=c+dc;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS)nb.push([nr,nc]);}return nb;}
+const TRIE_G=buildTrie(WORDS_G);
+function computePredSteps(){
+  const steps=[];
+  const visited=Array.from({length:ROWS},()=>new Array(COLS).fill(false));
+  function push(line,r,c,letter,path,inTrie,isWord,nbR,nbC,nbLetter,nbVisited){
+    steps.push({line,r,c,letter,path,inTrie,isWord,nbR,nbC,nbLetter,nbVisited,visitedSnap:visited.map(row=>[...row])});
+  }
+  function explore(r,c,trieNode,path){
+    const letter=BOARD_G[r][c];
+    const inTrie=letter in trieNode;
+    push('check_trie',r,c,letter,path,inTrie,false,null,null,null,null);
+    if(!inTrie)return;
+    visited[r][c]=true;
+    push('mark_visited',r,c,letter,path+letter,inTrie,false,null,null,null,null);
+    const nextTrie=trieNode[letter];
+    const isWord='*' in nextTrie;
+    push('check_end',r,c,letter,path+letter,true,isWord,null,null,null,null);
+    getNeighbors(r,c).forEach(([nr,nc])=>{
+      push('check_visited',r,c,letter,path+letter,true,false,nr,nc,BOARD_G[nr][nc],visited[nr][nc]);
+      if(!visited[nr][nc])explore(nr,nc,nextTrie,path+letter);
+    });
+    visited[r][c]=false;
+    push('unmark',r,c,letter,path,true,false,null,null,null,null);
+  }
+  let count=0;
+  for(let r=0;r<ROWS&&count<3;r++)for(let c=0;c<COLS&&count<3;c++){explore(r,c,TRIE_G,'');count++;}
+  return steps;
+}
+const QLINES=new Set(QUESTIONS.map(q=>q.line));
+const ALL_STEPS=computePredSteps();
+const PRED_STEPS=ALL_STEPS.filter(s=>QLINES.has(s.line));
+let cur=0,answered=false,correct=0,wrong=0,streak=0,bestStreak=0,history=[];
+function buildCode(){const cb=document.getElementById('codeBody');cb.innerHTML='';CODE.forEach(l=>{const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;d.innerHTML=`<span class="ln">${l.n||''}</span><span class="cc">${l.t}</span>`;cb.appendChild(d);});document.getElementById('qT').textContent=PRED_STEPS.length;}
+function buildBoard(s){const board=document.getElementById('board');board.innerHTML='';BOARD_G.forEach((row,r)=>{row.forEach((letter,c)=>{const cell=document.createElement('div');cell.className='cell';cell.textContent=letter;if(s.r===r&&s.c===c)cell.classList.add('active');else if(s.visitedSnap&&s.visitedSnap[r][c])cell.classList.add('visited');board.appendChild(cell);});});}
+function setV(id,val){const el=document.getElementById(id);if(!el)return;const p=el.textContent;el.textContent=String(val);if(p!==String(val)){el.className='vv c';setTimeout(()=>el.className='vv',600);}}
+function renderQ(){
+  if(cur>=PRED_STEPS.length){showComplete();return;}
+  const s=PRED_STEPS[cur];answered=false;
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('al','dok','derr'));
+  const lel=document.getElementById(`line-${s.line}`);if(lel){lel.classList.add('al');lel.scrollIntoView({block:'center',behavior:'smooth'});}
+  buildBoard(s);
+  setV('vRC',s.r!==null?`[${s.r},${s.c}]`:'—');setV('vL',s.letter||'—');setV('vP',s.path||'—');
+  setV('vT',s.inTrie!==undefined?(s.inTrie?'YES':'NO'):'—');
+  setV('vV',s.nbVisited!==undefined&&s.nbVisited!==null?(s.nbVisited?'YES':'NO'):'—');
+  document.getElementById('qN').textContent=cur+1;
+  const qDef=QUESTIONS.find(q=>q.line===s.line);if(!qDef){skipQ();return;}
+  const qData=qDef.mkQ(s);
+  document.getElementById('pQ').innerHTML=qData.q;
+  const opts=[...qData.opts];for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
+  const oc=document.getElementById('pOpts');oc.innerHTML='';
+  ['A','B','C'].forEach((k,i)=>{const btn=document.createElement('div');btn.className='popt';btn.innerHTML=`<span class="okey">${k}</span>${opts[i].t}`;btn.onclick=()=>select(btn,opts[i].correct,qData,opts,oc);oc.appendChild(btn);});
+  document.getElementById('pFb').className='pfb';
+  document.getElementById('tBar').textContent='Read the highlighted line. What does it do right now?';document.getElementById('tBar').className='tbar2';
+}
+function select(btn,isOk,qData,opts,container){
+  if(answered)return;answered=true;
+  container.querySelectorAll('.popt').forEach(b=>b.classList.add('dis'));
+  const fb=document.getElementById('pFb');const lel=document.getElementById(`line-${PRED_STEPS[cur].line}`);
+  if(isOk){btn.classList.add('sr');correct++;streak++;if(streak>bestStreak)bestStreak=streak;fb.textContent='✓ '+qData.ex;fb.className='pfb show ok';if(lel)lel.classList.add('dok');history.push({ok:true,q:qData.q.replace(/<[^>]+>/g,'').slice(0,40)});}
+  else{btn.classList.add('sw');opts.forEach((o,i)=>{if(o.correct)container.querySelectorAll('.popt')[i].classList.add('rv');});wrong++;streak=0;fb.textContent='✗ '+qData.ex;fb.className='pfb show err';if(lel)lel.classList.add('derr');history.push({ok:false,q:qData.q.replace(/<[^>]+>/g,'').slice(0,40)});}
+  document.getElementById('tBar').textContent=qData.quote;document.getElementById('tBar').className='tbar2 lit';
+  const hl=document.getElementById('histLog');const item=document.createElement('div');item.className=`hi ${isOk?'ok':'err'}`;item.innerHTML=`<span>${isOk?'✓':'✗'}</span><span style="font-size:.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px;">${history[history.length-1].q}</span>`;hl.appendChild(item);hl.scrollTop=hl.scrollHeight;
+  document.getElementById('scC').textContent=correct;document.getElementById('scW').textContent=wrong;document.getElementById('scS').textContent=streak;document.getElementById('bestS').textContent=bestStreak;const tot=correct+wrong;document.getElementById('scA').textContent=tot?Math.round(correct/tot*100)+'%':'—';document.getElementById('sFill').style.width=Math.min(streak*15,100)+'%';
+  setTimeout(()=>{cur++;renderQ();},isOk?1000:2300);
+}
+function skipQ(){cur++;renderQ();}
+function showComplete(){document.getElementById('pQ').innerHTML=`<strong>All done!</strong> Accuracy: ${Math.round(correct/(correct+wrong||1)*100)}%`;document.getElementById('pOpts').innerHTML=`<a href="boggle_cmc.html" style="display:inline-block;margin-top:.5rem;padding:8px 20px;background:var(--accent);color:#fff;font-size:.7rem;text-decoration:none;font-weight:600;border-radius:2px;">→ Write Mode</a>`;}
+function resetAll(){cur=0;correct=0;wrong=0;streak=0;bestStreak=0;history=[];answered=false;document.getElementById('histLog').innerHTML='';document.getElementById('scC').textContent=0;document.getElementById('scW').textContent=0;document.getElementById('scS').textContent=0;document.getElementById('scA').textContent='—';document.getElementById('sFill').style.width='0%';buildCode();renderQ();}
+buildCode();renderQ();
+</script>
+</body>
+</html>

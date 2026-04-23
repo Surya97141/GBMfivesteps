@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch — Boggle Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f7f4ee;--surface:#fff;--surface2:#f0ece3;--border:#ddd7c8;--border2:#c8c0aa;
+  --ink:#1c1a14;--muted:#8a8070;--muted2:#6a6050;
+  --accent:#c45800;--accent2:#e06a00;
+  --found:#2d6a2d;--found-bg:rgba(45,106,45,.08);--found-b:rgba(45,106,45,.4);
+  --active:#b85c00;--active-bg:rgba(184,92,0,.12);--active-b:rgba(184,92,0,.5);
+  --visited:#2255aa;--visited-bg:rgba(34,85,170,.08);--visited-b:rgba(34,85,170,.3);
+  --wrong:#aa2222;
+  --trie-node:#5c3a8a;--trie-bg:rgba(92,58,138,.08);--trie-b:rgba(92,58,138,.35);
+}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);letter-spacing:.04em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}
+.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+
+main{display:grid;grid-template-columns:1fr 460px;overflow:hidden;}
+
+.left-panel{padding:2.5rem 3rem;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--border2);overflow:hidden;}
+.stage-tag{font-size:.53rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-bottom:.7rem;}
+.narrator{font-family:'Playfair Display',serif;font-size:1.85rem;font-weight:400;line-height:1.45;color:var(--ink);min-height:9rem;}
+.narrator .hl{color:var(--accent);font-weight:700;}
+.narrator .found{color:var(--found);}
+.narrator .active{color:var(--active);}
+.narrator .trie{color:var(--trie-node);}
+.concept{display:inline-block;margin-top:1.2rem;font-size:.52rem;letter-spacing:.22em;text-transform:uppercase;background:var(--ink);color:var(--bg);padding:4px 12px;}
+.quote{margin-top:1.5rem;padding:.8rem 1rem;border-left:3px solid var(--accent);font-size:.7rem;color:var(--muted2);line-height:1.65;min-height:3.5rem;}
+.quote span{color:var(--ink);}
+.progress-wrap{margin-top:2rem;}
+.progress-bar{height:3px;background:var(--border);}
+.progress-fill{height:100%;background:var(--accent);transition:width .5s ease;}
+.progress-label{font-size:.53rem;color:var(--muted);margin-top:.4rem;}
+
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1.1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+
+/* BOGGLE BOARD */
+.board-wrap{display:flex;justify-content:center;}
+.board{display:grid;gap:4px;padding:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;width:fit-content;}
+.cell{width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;border:1px solid var(--border2);background:var(--surface);color:var(--muted2);border-radius:2px;transition:all .3s;user-select:none;}
+.cell.active{background:var(--active-bg);border-color:var(--active-b);color:var(--active);box-shadow:0 0 8px rgba(184,92,0,.25);}
+.cell.visited{background:var(--visited-bg);border-color:var(--visited-b);color:var(--visited);}
+.cell.found{background:var(--found-bg);border-color:var(--found-b);color:var(--found);}
+
+/* TRIE display */
+.trie-display{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.trie-node-chip{padding:2px 8px;border:1px solid var(--trie-b);background:var(--trie-bg);color:var(--trie-node);font-size:.65rem;font-weight:600;border-radius:2px;}
+.trie-node-chip.active{border-color:var(--active-b);background:var(--active-bg);color:var(--active);}
+.trie-path{font-size:.6rem;color:var(--muted);padding:2px 5px;}
+
+/* Words found */
+.words-found{display:flex;flex-wrap:wrap;gap:4px;}
+.word-chip{padding:3px 10px;border:1px solid var(--found-b);background:var(--found-bg);color:var(--found);font-size:.68rem;font-weight:600;border-radius:2px;animation:wIn .3s ease;}
+@keyframes wIn{from{opacity:0;transform:scale(.8);}to{opacity:1;transform:scale(1);}}
+.word-searching{padding:3px 10px;border:1px solid var(--active-b);background:var(--active-bg);color:var(--active);font-size:.68rem;font-weight:600;border-radius:2px;}
+
+/* DFS path */
+.path-display{display:flex;align-items:center;gap:3px;flex-wrap:wrap;}
+.path-cell{padding:2px 7px;border:1px solid var(--visited-b);background:var(--visited-bg);color:var(--visited);font-size:.7rem;font-weight:700;border-radius:2px;}
+.path-cell.cur{border-color:var(--active-b);background:var(--active-bg);color:var(--active);}
+.path-arrow{font-size:.6rem;color:var(--muted);}
+
+.result-box{padding:.65rem 1rem;border:1px solid var(--border2);font-size:.75rem;font-weight:600;transition:all .3s;border-radius:2px;}
+.result-box.done{border-color:var(--found-b);color:var(--found);background:var(--found-bg);}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.btn-accent:hover{background:var(--accent2);border-color:var(--accent2);}
+.speed-wrap{display:flex;align-items:center;gap:.75rem;font-size:.57rem;color:var(--muted);}
+.speed-wrap input{accent-color:var(--accent);width:80px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="boggle_watch.html" class="nav-tab active">01 Watch</a>
+    <a href="boggle_guide.html" class="nav-tab">02 Guide</a>
+    <a href="boggle_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="boggle_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="boggle_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="boggle_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Boggle Board · Watch</div>
+</header>
+
+<main>
+  <div class="left-panel">
+    <div>
+      <div class="stage-tag" id="stageTag">Stage 1 of 10 — Problem</div>
+      <div class="narrator" id="narrator">A 2D board of letters.<br>A list of words.<br>Which words <span class="found">exist</span> in the board?</div>
+      <div class="concept" id="concept">KEY CONCEPT: BOGGLE BOARD</div>
+      <div class="quote" id="quote"><span>"You want to write a function that returns only the words from the list that are also found in the boggle board — where characters must be adjacent horizontally, vertically, or diagonally."</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+      <div class="progress-label" id="pLabel">Step 1 / 10</div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Boggle Board (4×4)</div>
+    <div class="board-wrap">
+      <div class="board" id="board" style="grid-template-columns:repeat(4,42px);"></div>
+    </div>
+
+    <div class="panel-label">DFS Path (current branch)</div>
+    <div class="path-display" id="pathDisplay"><span style="font-size:.62rem;color:var(--muted);">—</span></div>
+
+    <div class="panel-label">Trie — current level</div>
+    <div class="trie-display" id="trieDisplay"><span style="font-size:.62rem;color:var(--muted);">building...</span></div>
+
+    <div class="panel-label">Words Found</div>
+    <div class="words-found" id="wordsFound"><span style="font-size:.62rem;color:var(--muted);">none yet</span></div>
+
+    <div class="panel-label">Result</div>
+    <div class="result-box" id="resultBox" style="color:var(--muted);border-color:var(--border2);">—</div>
+  </div>
+</main>
+
+<footer>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prev()">← Prev</button>
+    <button class="btn btn-accent" onclick="next()">Next →</button>
+    <button class="btn" onclick="reset()">Reset</button>
+  </div>
+  <div class="speed-wrap">
+    Speed:<input type="range" id="spd" min="600" max="3000" value="1800" step="100">
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">Auto Play</button>
+  </div>
+  <a href="boggle_guide.html" class="btn btn-accent">Guide →</a>
+</footer>
+
+<script>
+// 4x4 board used in examples
+const BOARD_LETTERS=[
+  ['T','H','I','S'],
+  ['W','A','T','S'],
+  ['O','A','H','G'],
+  ['F','G','D','T']
+];
+const WORDS_LIST=['THIS','IS','THAT','HASH','WITH','A','THAW'];
+
+const STAGES=[
+  {
+    tag:'Stage 1 / 10 — Problem',
+    narrator:'A 2D board of letters.<br>A list of words.<br>Which words <span class="found">exist</span> in the board?',
+    concept:'KEY CONCEPT: BOGGLE BOARD',
+    quote:'"You want to write a function that returns only the words from the list that are also found in the boggle board — where characters must be adjacent horizontally, vertically, or diagonally."',
+    active:[],visited:[],path:[],searching:null,found:[],trieKeys:['T','H','I','A','W'],trieActive:null,res:null
+  },
+  {
+    tag:'Stage 2 / 10 — Adjacency Rules',
+    narrator:'Letters must be <span class="hl">adjacent.</span><br>8 neighbors: up, down, left, right,<br>and all 4 diagonals.',
+    concept:'KEY CONCEPT: 8-WAY ADJACENCY',
+    quote:'"All of the characters have to be adjacent either horizontally, vertically, or diagonally in the boggle board. They can be weirdly positioned so long as they are adjacent."',
+    active:[[0,0]],visited:[],path:['T'],searching:'T',found:[],trieKeys:['T','H','I','A','W'],trieActive:'T',res:null
+  },
+  {
+    tag:'Stage 3 / 10 — No Reuse',
+    narrator:'You <span class="hl">cannot</span> reuse a position.<br>Even if the letter appears<br>multiple times on the board.',
+    concept:'KEY CONCEPT: NO POSITION REUSE',
+    quote:'"You cannot reuse a character at a given position more than once. If I had a word that had the letter T twice in it, I wouldn\'t be able to use this particular letter T more than once."',
+    active:[],visited:[[0,0],[0,1],[0,2],[0,3]],path:['T','H','I','S'],searching:'THIS',found:[],trieKeys:['T→H→I→S✓'],trieActive:null,res:null
+  },
+  {
+    tag:'Stage 4 / 10 — Build a Trie',
+    narrator:'Naive search is <span class="hl">too slow.</span><br>Build a <span class="trie">Trie</span> from the word list<br>for fast character matching.',
+    concept:'KEY CONCEPT: TRIE FOR STRING MATCHING',
+    quote:'"Tries are very useful when dealing with a bunch of strings and you have to do some sort of string matching. They lend themselves really well to these types of problems."',
+    active:[],visited:[],path:[],searching:null,found:[],trieKeys:['T→H,I,A','W→I','I→S','A→'],trieActive:null,res:null
+  },
+  {
+    tag:'Stage 5 / 10 — Trie Lookup = O(1)',
+    narrator:'Is this letter in the <span class="trie">Trie</span> right now?<br>Just a hash table lookup.<br>Constant time — not a list scan.',
+    concept:'KEY CONCEPT: O(1) TRIE LOOKUP',
+    quote:'"Checking if a character is contained in our trie at the next level is just accessing a value in a hash table, which is a constant time operation."',
+    active:[[0,0]],visited:[],path:['T'],searching:null,found:[],trieKeys:['T','H','I','A','W'],trieActive:'T',res:null
+  },
+  {
+    tag:'Stage 6 / 10 — DFS from each cell',
+    narrator:'Start DFS at every cell.<br>At each step: is this char<br>in the current <span class="trie">Trie</span> level?',
+    concept:'KEY CONCEPT: DFS + TRIE TRAVERSAL',
+    quote:'"We iterate through all characters because every character is a potential contender for the first character of a word in our list."',
+    active:[[0,0]],visited:[[0,0]],path:['T'],searching:'T...',found:[],trieKeys:['T'],trieActive:'T',res:null
+  },
+  {
+    tag:'Stage 7 / 10 — Track visited (per branch)',
+    narrator:'Mark cells <span class="active">visited</span> as you go.<br>Un-mark after backtracking.<br>Only block within this branch.',
+    concept:'KEY CONCEPT: BACKTRACKING VISITED MATRIX',
+    quote:'"We\'ll have a completely separate auxiliary data structure to keep track of all nodes visited so far. But only for the current branch of exploration."',
+    active:[[0,3]],visited:[[0,0],[0,1],[0,2]],path:['T','H','I','S'],searching:'THIS',found:[],trieKeys:['T→H→I→S✓'],trieActive:'S✓',res:null
+  },
+  {
+    tag:'Stage 8 / 10 — Word found! Un-mark.',
+    narrator:'End symbol in Trie = <span class="found">word found!</span><br>Add to results. Keep going.<br>Then un-mark — explore siblings.',
+    concept:'KEY CONCEPT: END SYMBOL → WORD FOUND',
+    quote:'"At the end of words, we would have an asterisk or some kind of end symbol denoting we\'ve got a full string here. We store the word then keep exploring."',
+    active:[[0,3]],visited:[],path:[],searching:null,found:['THIS','IS'],trieKeys:['T→H→I→S✓'],trieActive:null,res:null
+  },
+  {
+    tag:'Stage 9 / 10 — Deduplication',
+    narrator:'A word may appear <span class="hl">multiple times</span><br>on the board. Use a hash set<br>to return it only once.',
+    concept:'KEY CONCEPT: HASH SET DEDUPLICATION',
+    quote:'"You can have a word that appears multiple times in the boggle board, but you only want to return it once. We keep track of found words in a hash table."',
+    active:[],visited:[],path:[],searching:null,found:['THIS','IS','THAT','A'],trieKeys:[],trieActive:null,res:null
+  },
+  {
+    tag:'Stage 10 / 10 — Complexity',
+    narrator:'Time: <span class="hl">O(W·S + N·M·8ˢ)</span><br>Space: <span class="hl">O(W·S + N·M)</span><br>W=words, S=longest, N×M=board.',
+    concept:'KEY CONCEPT: O(WS + NM·8ˢ) TIME',
+    quote:'"It\'s gonna be W*S for building the trie, and then N*M times eight to the power of S. Each cell explores at most 8 neighbors, at most S levels deep."',
+    active:[],visited:[],path:[],searching:null,found:['THIS','IS','THAT','A'],trieKeys:[],trieActive:null,res:'["THIS","IS","THAT","A"]'
+  },
+];
+
+let cur=0,autoTimer=null;
+
+function buildBoard(s){
+  const board=document.getElementById('board');board.innerHTML='';
+  BOARD_LETTERS.forEach((row,r)=>{
+    row.forEach((letter,c)=>{
+      const cell=document.createElement('div');
+      cell.className='cell';cell.textContent=letter;
+      const isActive=s.active&&s.active.some(([ar,ac])=>ar===r&&ac===c);
+      const isVisited=s.visited&&s.visited.some(([vr,vc])=>vr===r&&vc===c);
+      const inFound=s.found&&s.found.length>0&&!s.active&&!s.visited;
+      if(isActive)cell.classList.add('active');
+      else if(isVisited)cell.classList.add('visited');
+      board.appendChild(cell);
+    });
+  });
+}
+
+function buildPath(s){
+  const el=document.getElementById('pathDisplay');el.innerHTML='';
+  if(!s.path||s.path.length===0){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">—</span>';return;}
+  s.path.forEach((ch,i)=>{
+    if(i>0){const arr=document.createElement('span');arr.className='path-arrow';arr.textContent='→';el.appendChild(arr);}
+    const c=document.createElement('div');
+    c.className=`path-cell${i===s.path.length-1?' cur':''}`;c.textContent=ch;
+    el.appendChild(c);
+  });
+}
+
+function buildTrie(s){
+  const el=document.getElementById('trieDisplay');el.innerHTML='';
+  if(!s.trieKeys||s.trieKeys.length===0){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">—</span>';return;}
+  s.trieKeys.forEach(k=>{
+    const chip=document.createElement('div');
+    chip.className=`trie-node-chip${k===s.trieActive?' active':''}`;chip.textContent=k;
+    el.appendChild(chip);
+  });
+}
+
+function buildFound(s){
+  const el=document.getElementById('wordsFound');el.innerHTML='';
+  if(!s.found||s.found.length===0){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">none yet</span>';return;}
+  if(s.searching){
+    const sc=document.createElement('div');sc.className='word-searching';sc.textContent=s.searching+'...';el.appendChild(sc);
+  }
+  s.found.forEach(w=>{
+    const chip=document.createElement('div');chip.className='word-chip';chip.textContent=w;el.appendChild(chip);
+  });
+}
+
+function applyStage(s){
+  document.getElementById('stageTag').textContent=s.tag;
+  document.getElementById('narrator').innerHTML=s.narrator;
+  document.getElementById('concept').textContent=s.concept;
+  document.getElementById('quote').innerHTML=`<span>${s.quote}</span>`;
+  buildBoard(s);buildPath(s);buildTrie(s);buildFound(s);
+  const rb=document.getElementById('resultBox');
+  if(s.res){rb.textContent='→ return '+s.res;rb.className='result-box done';}
+  else{rb.textContent='—';rb.style.cssText='color:var(--muted);border-color:var(--border2);';}
+  const pct=((cur+1)/STAGES.length*100).toFixed(0);
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pLabel').textContent=`Step ${cur+1} / ${STAGES.length}`;
+}
+
+function next(){if(cur<STAGES.length-1){cur++;applyStage(STAGES[cur]);}}
+function prev(){if(cur>0){cur--;applyStage(STAGES[cur]);}}
+function reset(){cur=0;applyStage(STAGES[0]);if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+  else{const spd=parseInt(document.getElementById('spd').value);document.getElementById('autoBtn').textContent='Stop';
+    autoTimer=setInterval(()=>{if(cur<STAGES.length-1)next();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}},spd);}
+}
+applyStage(STAGES[0]);
+</script>
+</body>
+</html>

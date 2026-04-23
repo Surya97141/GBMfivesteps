@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror C — Boggle Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f7f4ee;--surface:#fff;--surface2:#f0ece3;--border:#ddd7c8;--border2:#c8c0aa;--ink:#1c1a14;--muted:#8a8070;--muted2:#6a6050;--accent:#c45800;--accent2:#e06a00;--found:#2d6a2d;--found-bg:rgba(45,106,45,.08);--found-b:rgba(45,106,45,.4);--active:#b85c00;--active-bg:rgba(184,92,0,.12);--active-b:rgba(184,92,0,.5);--right:#2d6a2d;--wrong:#aa2222;--code-bg:#fdfbf7;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:220px 1fr 240px;overflow:hidden;}
+
+.left-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.board{display:grid;gap:3px;padding:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:2px;}
+.cell{width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;border:1px solid var(--border2);background:var(--surface);color:var(--muted2);border-radius:2px;}
+.vb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vbk{color:var(--muted2);}.vbv{font-weight:600;}.vbv.ok{color:var(--right);}.vbv.err{color:var(--wrong);}.vbv.p{color:var(--muted);}
+.run-result{padding:.7rem .8rem;border:1px solid var(--border2);font-size:.68rem;line-height:1.6;min-height:56px;border-radius:2px;transition:all .3s;}
+.run-result.idle{color:var(--muted);}
+.run-result.pass{border-color:var(--right);background:var(--found-bg);color:var(--right);}
+.run-result.fail{border-color:var(--wrong);background:rgba(170,34,34,.05);color:var(--wrong);}
+.tc-list{display:flex;flex-direction:column;gap:3px;}
+.tc{font-size:.64rem;padding:4px 8px;border:1px solid var(--border2);display:flex;justify-content:space-between;border-radius:2px;}
+.tc.pass{border-color:var(--right);color:var(--right);}
+.tc.fail{border-color:var(--wrong);color:var(--wrong);}
+.tc.idle{color:var(--muted);}
+
+.editor-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);}
+.editor-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.editor-title{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.editor-status{font-size:.6rem;color:var(--muted);transition:color .3s;}
+.editor-status.ok{color:var(--right);}.editor-status.err{color:var(--wrong);}
+.editor-wrap{flex:1;display:grid;grid-template-columns:36px 1fr;overflow:hidden;}
+.gutter{background:var(--surface2);border-right:1px solid var(--border);padding:.5rem 0;overflow:hidden;}
+.gl{height:21px;text-align:right;padding:0 7px;font-size:.58rem;color:var(--border2);line-height:21px;user-select:none;}
+.gl.ok{color:var(--right);}
+.editor-area{position:relative;overflow:hidden;}
+.editor-hl{position:absolute;top:0;left:0;right:0;padding:.5rem 0;pointer-events:none;z-index:1;}
+.hl-line{height:21px;}.hl-line.ok{background:rgba(45,106,45,.05);}
+textarea#codeEd{position:absolute;top:0;left:0;right:0;bottom:0;background:transparent;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:.68rem;line-height:21px;border:none;outline:none;resize:none;padding:.5rem .75rem;z-index:2;caret-color:var(--accent);white-space:pre;overflow-wrap:normal;overflow:auto;tab-size:4;}
+.hint-strip{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.63rem;color:var(--muted);font-style:italic;flex-shrink:0;min-height:40px;transition:color .3s;}
+.hint-strip.lit{color:var(--ink);}
+
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.scaffold-block{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.scaffold-title{padding:4px 8px;background:var(--surface2);font-size:.5rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.scaffold-content{padding:.5rem .7rem;font-size:.64rem;line-height:1.75;color:var(--muted2);}
+.scaffold-content code{color:var(--accent);background:rgba(196,88,0,.07);padding:1px 4px;border-radius:2px;}
+.scaffold-content strong{color:var(--ink);font-weight:600;}
+.ins-btn{font-family:'JetBrains Mono',monospace;font-size:.54rem;padding:2px 7px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;border-radius:2px;}
+.ins-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.btn-danger{border-color:rgba(170,34,34,.4);color:var(--wrong);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="boggle_watch.html" class="nav-tab">01 Watch</a>
+    <a href="boggle_guide.html" class="nav-tab">02 Guide</a>
+    <a href="boggle_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="boggle_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="boggle_cmc.html" class="nav-tab active">05 Mirror·C</a>
+    <a href="boggle_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Boggle Board · Write</div>
+</header>
+<main>
+  <div class="left-panel">
+    <div class="panel-label">Board</div>
+    <div class="board" id="board" style="grid-template-columns:repeat(4,38px);">
+    </div>
+
+    <div class="panel-label">Checks (10)</div>
+    <div class="vb">
+      <div class="vbt">Key Concepts</div>
+      <div class="vbr"><span class="vbk">def boggle_board</span><span class="vbv p" id="c1">—</span></div>
+      <div class="vbr"><span class="vbk">build_trie(words)</span><span class="vbv p" id="c2">—</span></div>
+      <div class="vbr"><span class="vbk">visited matrix init</span><span class="vbv p" id="c3">—</span></div>
+      <div class="vbr"><span class="vbk">outer r,c loop</span><span class="vbv p" id="c4">—</span></div>
+      <div class="vbr"><span class="vbk">def explore/dfs</span><span class="vbv p" id="c5">—</span></div>
+      <div class="vbr"><span class="vbk">trie check (not in)</span><span class="vbv p" id="c6">—</span></div>
+      <div class="vbr"><span class="vbk">mark visited=True</span><span class="vbv p" id="c7">—</span></div>
+      <div class="vbr"><span class="vbk">end symbol check (*)</span><span class="vbv p" id="c8">—</span></div>
+      <div class="vbr"><span class="vbk">neighbors loop</span><span class="vbv p" id="c9">—</span></div>
+      <div class="vbr"><span class="vbk">unmark visited=False</span><span class="vbv p" id="c10">—</span></div>
+    </div>
+
+    <div class="panel-label">Run</div>
+    <div class="run-result idle" id="runResult">Write and click Run.</div>
+  </div>
+
+  <div class="editor-panel">
+    <div class="editor-header">
+      <div class="editor-title">solution.py — write from memory</div>
+      <div class="editor-status" id="edStatus">0 / 10 checks</div>
+    </div>
+    <div class="editor-wrap">
+      <div class="gutter" id="gutter"></div>
+      <div class="editor-area">
+        <div class="editor-hl" id="edHl"></div>
+        <textarea id="codeEd" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
+placeholder="# Write boggle_board(board, words) from memory.
+#
+# Key ideas:
+#   1. Build a Trie from words list
+#   2. DFS from every cell
+#   3. At each step: is this letter in the Trie?
+#   4. Track visited per branch (backtrack after!)
+#   5. End symbol (*) in Trie = word found
+#
+# Time:  O(W*S + N*M*8^S)
+# Space: O(W*S + N*M)
+"></textarea>
+      </div>
+    </div>
+    <div class="hint-strip" id="hintStrip">Start typing. Checks light up as you write each concept.</div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Scaffold</div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>Main function</span><button class="ins-btn" onclick="ins('main')">Insert</button></div>
+      <div class="scaffold-content">
+        1. <code>trie = build_trie(words)</code><br>
+        2. <code>found = {}</code> (dedup hash set)<br>
+        3. <code>visited = [[False]*cols...]</code><br>
+        4. Loop over all <code>r, c</code><br>
+        5. Call <code>explore(r, c, trie, ...)</code><br>
+        6. <code>return list(found.values())</code>
+      </div>
+    </div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>explore() DFS</span><button class="ins-btn" onclick="ins('explore')">Insert</button></div>
+      <div class="scaffold-content">
+        1. <code>letter = board[r][c]</code><br>
+        2. <code>if letter not in trie: return</code><br>
+        3. <code>visited[r][c] = True</code><br>
+        4. <code>trie = trie[letter]</code><br>
+        5. <code>if '*' in trie: found[word]=word</code><br>
+        6. Loop neighbors, if not visited: recurse<br>
+        7. <code>visited[r][c] = False</code> ← backtrack!<br>
+        <strong>Step 7 is the most commonly forgotten!</strong>
+      </div>
+    </div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>build_trie()</span><button class="ins-btn" onclick="ins('trie')">Insert</button></div>
+      <div class="scaffold-content">
+        <code>root = {}</code><br>
+        For each word, each char:<br>
+        &nbsp;&nbsp;<code>if ch not in node: node[ch]={}</code><br>
+        &nbsp;&nbsp;<code>node = node[ch]</code><br>
+        End: <code>node['*'] = word</code>
+      </div>
+    </div>
+
+    <div class="panel-label">Test Cases</div>
+    <div class="tc-list">
+      <div class="tc idle" id="tc0">TC1: board+["THIS","IS"] → ["THIS","IS"]</div>
+      <div class="tc idle" id="tc1">TC2: board+["FAKE"] → []</div>
+      <div class="tc idle" id="tc2">TC3: board+["A"] → ["A"]</div>
+      <div class="tc idle" id="tc3">TC4: 1×1 board [["A"]]+["A"] → ["A"]</div>
+    </div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Lines: <span id="lineCount">0</span> | Checks: <span id="checkCount">0</span>/10</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn btn-accent" onclick="runCode()">▶ Run</button>
+    <button class="btn" onclick="lintCode()">Lint</button>
+    <button class="btn" onclick="showSolution()">Reveal</button>
+    <button class="btn btn-danger" onclick="clearEd()">Clear</button>
+    <a href="boggle_solo.html" class="btn btn-accent">→ Solo</a>
+  </div>
+</footer>
+<script>
+const BOARD_MC=[['T','H','I','S'],['W','A','T','S'],['O','A','H','G'],['F','G','D','T']];
+
+// Build board display
+function buildBoardDisplay(){
+  const board=document.getElementById('board');board.innerHTML='';
+  BOARD_MC.forEach(row=>{row.forEach(letter=>{const cell=document.createElement('div');cell.className='cell';cell.textContent=letter;board.appendChild(cell);});});
+}
+
+const SOLUTION=`def boggle_board(board, words):
+    trie = build_trie(words)
+    found = {}
+    num_rows = len(board)
+    num_cols = len(board[0])
+    visited = [[False] * num_cols for _ in range(num_rows)]
+    for r in range(num_rows):
+        for c in range(num_cols):
+            explore(r, c, board, trie, visited, found)
+    return list(found.values())
+
+def explore(r, c, board, trie, visited, found):
+    letter = board[r][c]
+    if letter not in trie:
+        return
+    visited[r][c] = True
+    trie = trie[letter]
+    if '*' in trie:
+        found[trie['*']] = trie['*']
+    num_rows = len(board)
+    num_cols = len(board[0])
+    neighbors = get_neighbors(r, c, num_rows, num_cols)
+    for row, col in neighbors:
+        if not visited[row][col]:
+            explore(row, col, board, trie, visited, found)
+    visited[r][c] = False
+
+def get_neighbors(r, c, num_rows, num_cols):
+    neighbors = []
+    for dr in [-1, 0, 1]:
+        for dc in [-1, 0, 1]:
+            if dr == 0 and dc == 0:
+                continue
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < num_rows and 0 <= nc < num_cols:
+                neighbors.append([nr, nc])
+    return neighbors
+
+def build_trie(words):
+    root = {}
+    for word in words:
+        node = root
+        for letter in word:
+            if letter not in node:
+                node[letter] = {}
+            node = node[letter]
+        node['*'] = word
+    return root`;
+
+const SCAFFOLDS={
+  main:`def boggle_board(board, words):
+    trie = build_trie(words)
+    found = {}
+    num_rows = len(board)
+    num_cols = len(board[0])
+    visited = [[False] * num_cols for _ in range(num_rows)]
+    for r in range(num_rows):
+        for c in range(num_cols):
+            explore(r, c, board, trie, visited, found)
+    return list(found.values())
+
+`,
+  explore:`def explore(r, c, board, trie, visited, found):
+    letter = board[r][c]
+    if letter not in trie:
+        return
+    visited[r][c] = True
+    trie = trie[letter]
+    if '*' in trie:
+        found[trie['*']] = trie['*']
+    num_rows = len(board)
+    num_cols = len(board[0])
+    for row, col in get_neighbors(r, c, num_rows, num_cols):
+        if not visited[row][col]:
+            explore(row, col, board, trie, visited, found)
+    visited[r][c] = False
+
+`,
+  trie:`def build_trie(words):
+    root = {}
+    for word in words:
+        node = root
+        for letter in word:
+            if letter not in node:
+                node[letter] = {}
+            node = node[letter]
+        node['*'] = word
+    return root
+
+def get_neighbors(r, c, num_rows, num_cols):
+    neighbors = []
+    for dr in [-1, 0, 1]:
+        for dc in [-1, 0, 1]:
+            if dr == 0 and dc == 0:
+                continue
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < num_rows and 0 <= nc < num_cols:
+                neighbors.append([nr, nc])
+    return neighbors`
+};
+
+// Reference implementation for test running
+function buildTrie(words){const root={};words.forEach(w=>{let n=root;for(const ch of w){if(!n[ch])n[ch]={};n=n[ch];}n['*']=w;});return root;}
+function getNeighbors(r,c,rows,cols){const nb=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(dr===0&&dc===0)continue;const nr=r+dr,nc=c+dc;if(nr>=0&&nr<rows&&nc>=0&&nc<cols)nb.push([nr,nc]);}return nb;}
+function runBoggle(board,words){
+  const trie=buildTrie(words);const found={};
+  const rows=board.length,cols=board[0].length;
+  const visited=Array.from({length:rows},()=>new Array(cols).fill(false));
+  function explore(r,c,trieNode){
+    const letter=board[r][c];if(!(letter in trieNode))return;
+    visited[r][c]=true;trieNode=trieNode[letter];
+    if('*' in trieNode)found[trieNode['*']]=trieNode['*'];
+    getNeighbors(r,c,rows,cols).forEach(([nr,nc])=>{if(!visited[nr][nc])explore(nr,nc,trieNode);});
+    visited[r][c]=false;
+  }
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)explore(r,c,trie);
+  return Object.values(found).sort();
+}
+
+const TC_CASES=[
+  {board:BOARD_MC,words:['THIS','IS'],expected:['IS','THIS'],label:'TC1: THIS,IS on main board'},
+  {board:BOARD_MC,words:['FAKE','ZZZZ'],expected:[],label:'TC2: words not on board → []'},
+  {board:BOARD_MC,words:['A'],expected:['A'],label:'TC3: single letter A'},
+  {board:[['A']],words:['A','B'],expected:['A'],label:'TC4: 1×1 board'},
+];
+
+function lintCode(){
+  const code=document.getElementById('codeEd').value;let passed=0;
+  const checks=[
+    {id:'c1',test:()=>/def\s+boggle_board/.test(code)},
+    {id:'c2',test:()=>/build_trie/.test(code)&&/def\s+build_trie/.test(code)},
+    {id:'c3',test:()=>/visited.*False/.test(code)&&/\[\[/.test(code)},
+    {id:'c4',test:()=>/for\s+r\s+in\s+range/.test(code)&&/for\s+c\s+in\s+range/.test(code)},
+    {id:'c5',test:()=>/def\s+explore/.test(code)},
+    {id:'c6',test:()=>/letter\s+not\s+in\s+trie/.test(code)||/not\s+in\s+trie/.test(code)},
+    {id:'c7',test:()=>/visited\[r\]\[c\]\s*=\s*True/.test(code)||/visited\[row\]\[col\]\s*=\s*True/.test(code)},
+    {id:'c8',test:()=>/\'\*\'\s+in\s+trie/.test(code)||/"\*"\s+in\s+trie/.test(code)},
+    {id:'c9',test:()=>/for\s+.*neighbor/.test(code)||/get_neighbors/.test(code)},
+    {id:'c10',test:()=>/visited\[r\]\[c\]\s*=\s*False/.test(code)||/visited\[row\]\[col\]\s*=\s*False/.test(code)},
+  ];
+  checks.forEach(ch=>{const ok=ch.test();if(ok)passed++;const el=document.getElementById(ch.id);if(el){el.textContent=ok?'✓':'✗';el.className=`vbv ${ok?'ok':'err'}`;} });
+  document.getElementById('checkCount').textContent=passed;
+  const st=document.getElementById('edStatus');st.textContent=`${passed} / 10 checks`;st.className=passed===10?'editor-status ok':'editor-status err';
+  updateGutter();return passed;
+}
+
+function runCode(){
+  lintCode();
+  const rr=document.getElementById('runResult');rr.className='run-result idle';rr.textContent='Running...';
+  setTimeout(()=>{
+    let allPass=true;
+    TC_CASES.forEach((tc,i)=>{
+      try{
+        const got=runBoggle(tc.board.map(r=>[...r]),tc.words);
+        const pass=JSON.stringify(got)===JSON.stringify(tc.expected);
+        if(!pass)allPass=false;
+        const el=document.getElementById(`tc${i}`);
+        if(el){el.className=`tc ${pass?'pass':'fail'}`;el.textContent=tc.label+(pass?' ✓':` ✗ got [${got.join(',')}]`);}
+      }catch(e){allPass=false;const el=document.getElementById(`tc${i}`);if(el){el.className='tc fail';el.textContent=tc.label+' ✗ error';}}
+    });
+    if(allPass){rr.className='run-result pass';rr.textContent='✓ All 4 tests pass! Trie + DFS + backtracking working. Go to Solo!';}
+    else{rr.className='run-result fail';rr.textContent='✗ Some tests failed. Check: trie check, visited mark/unmark, end symbol check.';}
+  },300);
+}
+
+function liveAnalyze(){
+  const code=document.getElementById('codeEd').value;if(code.length<10)return;
+  const hints=[
+    [/def\s+boggle_board/,'✓ Main function defined. Build the trie.'],
+    [/build_trie/,'✓ Trie build found. Initialize visited matrix.'],
+    [/visited.*False/,'✓ Visited matrix found. Write the outer r,c loops.'],
+    [/for\s+r\s+in\s+range/,'✓ Outer loop found. Define the explore() DFS function.'],
+    [/def\s+explore/,'✓ explore() defined. Check if letter is in trie.'],
+    [/not\s+in\s+trie/,'✓ Trie check found. Mark visited[r][c] = True.'],
+    [/visited\[r\]\[c\]\s*=\s*True/,'✓ Mark visited found. Check for end symbol (*).'],
+    [/\'\*\'\s+in\s+trie/,'✓ End symbol check found. Loop through neighbors.'],
+    [/get_neighbors|for.*neighbor/,'✓ Neighbor loop found. Un-mark after (backtrack!).'],
+    [/visited\[r\]\[c\]\s*=\s*False/,'✓ Backtrack unmark found! Run the tests.'],
+  ];
+  for(const[pat,hint]of hints){if(pat.test(code)){setHint(hint);break;}}
+  updateGutter();
+}
+
+function setHint(t){const h=document.getElementById('hintStrip');h.textContent=t;h.className='hint-strip lit';}
+function updateGutter(){
+  const ta=document.getElementById('codeEd');const lines=ta.value.split('\n');
+  const g=document.getElementById('gutter');const hl=document.getElementById('edHl');
+  g.innerHTML='';hl.innerHTML='';
+  document.getElementById('lineCount').textContent=lines.length;
+  lines.forEach((_,i)=>{const gl=document.createElement('div');gl.className='gl';gl.textContent=i+1;g.appendChild(gl);const hline=document.createElement('div');hline.className='hl-line';hl.appendChild(hline);});
+}
+function ins(key){const ta=document.getElementById('codeEd');const ex=ta.value;const add=SCAFFOLDS[key];if(ex.includes(add.trim().slice(0,20)))return;ta.value=ex+'\n'+add;updateGutter();lintCode();}
+function showSolution(){if(!confirm('Reveal?'))return;document.getElementById('codeEd').value=SOLUTION;updateGutter();lintCode();}
+function clearEd(){
+  document.getElementById('codeEd').value='';
+  for(let i=1;i<=10;i++){const el=document.getElementById(`c${i}`);if(el){el.textContent='—';el.className='vbv p';}}
+  document.getElementById('runResult').className='run-result idle';document.getElementById('runResult').textContent='Write and click Run.';
+  TC_CASES.forEach((_,i)=>{const el=document.getElementById(`tc${i}`);if(el){el.className='tc idle';el.textContent=TC_CASES[i].label;}});
+  document.getElementById('checkCount').textContent='0';document.getElementById('edStatus').textContent='0 / 10 checks';document.getElementById('edStatus').className='editor-status';
+  updateGutter();
+}
+document.getElementById('codeEd').addEventListener('input',liveAnalyze);
+document.getElementById('codeEd').addEventListener('keydown',(e)=>{if(e.key==='Tab'){e.preventDefault();const ta=e.target,s=ta.selectionStart;ta.value=ta.value.slice(0,s)+'    '+ta.value.slice(ta.selectionEnd);ta.selectionStart=ta.selectionEnd=s+4;}});
+buildBoardDisplay();updateGutter();
+</script>
+</body>
+</html>
