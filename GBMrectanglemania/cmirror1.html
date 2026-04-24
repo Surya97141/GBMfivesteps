@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror A — Rectangle Mania</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f4f2ed;--surface:#fffef9;--surface2:#ede9df;--border:#ccc8bc;--border2:#b0aa98;--ink:#1e1c16;--muted:#7a7668;--muted2:#56533f;--accent:#3d2fa0;--pt:#3d2fa0;--pt-bg:rgba(61,47,160,.1);--pt-b:rgba(61,47,160,.45);--rect:#c47c00;--rect-bg:rgba(196,124,0,.1);--rect-b:rgba(196,124,0,.5);--found:#2a6e3a;--found-bg:rgba(42,110,58,.09);--found-b:rgba(42,110,58,.45);--grid-line:#ddd9cc;--code-bg:#f9f8f3;--la:rgba(61,47,160,.07);}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:230px 1fr 220px;overflow:hidden;}
+.plot-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+svg.plot{overflow:visible;background:var(--surface);border:1px solid var(--border2);border-radius:3px;}
+.grid-line{stroke:var(--grid-line);stroke-width:1;}
+.coord-dot{transition:all .3s;}
+.coord-dot.normal{fill:var(--pt-bg);stroke:var(--pt-b);stroke-width:2;}
+.coord-dot.p1{fill:var(--pt-bg);stroke:var(--accent);stroke-width:2.5;filter:drop-shadow(0 0 5px rgba(61,47,160,.4));}
+.coord-dot.p2{fill:var(--rect-bg);stroke:var(--rect-b);stroke-width:2.5;}
+.coord-dot.checking{fill:rgba(196,124,0,.15);stroke:var(--rect-b);stroke-width:2.5;}
+.coord-dot.found-c{fill:var(--found-bg);stroke:var(--found-b);stroke-width:2.5;}
+.coord-label{font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:middle;}
+.rect-box{fill:none;stroke-width:2;}
+.rect-box.candidate{stroke:var(--rect-b);stroke-dasharray:5,3;}
+.rect-box.found{stroke:var(--found-b);fill:var(--found-bg);}
+.vb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vk{color:var(--muted2);}.vv{font-weight:600;font-size:.62rem;}
+.vv.chg{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(61,47,160,.15);}100%{background:transparent;}}
+.vv.a{color:var(--accent);}.vv.r{color:var(--rect);}.vv.f{color:var(--found);}
+.log-b{display:flex;flex-direction:column;gap:2px;max-height:130px;overflow-y:auto;}
+.ll{font-size:.58rem;padding:2px 6px;border-left:3px solid var(--border2);color:var(--muted);}
+.ll.a{border-color:var(--accent);color:var(--accent);}.ll.f{border-color:var(--found);color:var(--found);}
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);}
+.code-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.code-step{font-size:.6rem;color:var(--accent);}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:var(--border2);flex-shrink:0;line-height:21px;user-select:none;}
+.cc{flex:1;padding:0 12px 0 4px;font-size:.67rem;line-height:21px;white-space:pre;color:var(--muted2);}
+.code-line.al{background:var(--la);border-left:3px solid var(--accent);}.code-line.al .ln{color:var(--accent);}.code-line.al .cc{color:var(--ink);}
+.code-line.jr{animation:jr .5s ease;}
+@keyframes jr{0%{background:rgba(61,47,160,.2);}100%{background:var(--la);}}
+.kw{color:#882200;}.fn{color:var(--accent);}.nm{color:#0044aa;}.cm{color:var(--muted);font-style:italic;}.op{color:#005588;}.st{color:var(--found);}
+.teacher-bar{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.62rem;color:var(--muted);font-style:italic;line-height:1.4;flex-shrink:0;min-height:42px;transition:color .3s;}
+.teacher-bar.lit{color:var(--ink);}
+.vars-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="rect_watch.html" class="nav-tab">01 Watch</a>
+    <a href="rect_guide.html" class="nav-tab">02 Guide</a>
+    <a href="rect_cma.html" class="nav-tab active">03 Mirror·A</a>
+    <a href="rect_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="rect_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="rect_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Rectangle Mania · Follow</div>
+</header>
+<main>
+  <div class="plot-panel">
+    <div class="panel-label">Plot</div>
+    <svg class="plot" id="plotSvg" width="190" height="170" viewBox="-15 -15 190 170"></svg>
+    <div class="panel-label">Variables</div>
+    <div class="vb">
+      <div class="vbt">State</div>
+      <div class="vbr"><span class="vk">p1 (bot-left)</span><span class="vv" id="vP1">—</span></div>
+      <div class="vbr"><span class="vk">p2 (top-right)</span><span class="vv" id="vP2">—</span></div>
+      <div class="vbr"><span class="vk">top-left need</span><span class="vv" id="vTL">—</span></div>
+      <div class="vbr"><span class="vk">bot-right need</span><span class="vv" id="vBR">—</span></div>
+      <div class="vbr"><span class="vk">both found?</span><span class="vv" id="vBoth">—</span></div>
+      <div class="vbr"><span class="vk">count</span><span class="vv f" id="vCount">0</span></div>
+    </div>
+    <div class="panel-label">Log</div>
+    <div class="log-b" id="logB"></div>
+  </div>
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title">Python · rectangle_mania.py</div>
+      <div class="code-step">step <span id="stepNum">0</span>/<span id="stepTotal">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="teacher-bar" id="teacherBar">"Treat every coordinate as a potential bottom-left corner, then do a double for loop and treat every coordinate in the upper-right as a top-right corner."</div>
+  </div>
+  <div class="vars-panel">
+    <div class="panel-label">Hash Set</div>
+    <div id="hashSetDisplay" style="display:flex;flex-wrap:wrap;gap:3px;font-size:.63rem;"></div>
+    <div class="panel-label">Found</div>
+    <div id="foundDisplay" style="display:flex;flex-direction:column;gap:3px;"></div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Step <span id="stepLabel">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="toggleAuto()" id="autoBtn">Auto</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="rect_cmb.html" class="btn btn-accent">→ Mirror·B</a>
+  </div>
+</footer>
+<script>
+const COORDS=[[0,0],[0,1],[1,1],[1,0],[2,1],[2,0]];
+const COORD_SET=new Set(COORDS.map(([x,y])=>`${x},${y}`));
+const PX=55,PY=55,OX=20,OY=140;
+function toSVG([x,y]){return [OX+x*PX,OY-y*PY];}
+function inSet(x,y){return COORD_SET.has(`${x},${y}`);}
+
+const CODE=[
+  {n:1,t:'<span class="kw">def</span> <span class="fn">rectangle_mania</span>(coords):',id:'def'},
+  {n:2,t:'  coord_set <span class="op">=</span> <span class="fn">set</span>(<span class="fn">map</span>(<span class="fn">tuple</span>, coords))',id:'build_set'},
+  {n:3,t:'  count <span class="op">=</span> <span class="nm">0</span>',id:'init_count'},
+  {n:4,t:'  <span class="kw">for</span> p1 <span class="kw">in</span> coords:  <span class="cm"># bottom-left</span>',id:'outer_loop'},
+  {n:5,t:'    x1, y1 <span class="op">=</span> p1',id:'unpack_p1'},
+  {n:6,t:'    <span class="kw">for</span> p2 <span class="kw">in</span> coords:  <span class="cm"># top-right</span>',id:'inner_loop'},
+  {n:7,t:'      x2, y2 <span class="op">=</span> p2',id:'unpack_p2'},
+  {n:8,t:'      <span class="kw">if</span> x2 <span class="op"><=</span> x1 <span class="kw">or</span> y2 <span class="op"><=</span> y1:',id:'check_pos'},
+  {n:9,t:'        <span class="kw">continue</span>  <span class="cm"># not upper-right</span>',id:'skip'},
+  {n:10,t:'      top_left <span class="op">=</span> (x1, y2)',id:'compute_tl'},
+  {n:11,t:'      bot_right <span class="op">=</span> (x2, y1)',id:'compute_br'},
+  {n:12,t:'      <span class="kw">if</span> top_left <span class="kw">in</span> coord_set <span class="op">and</span> \\',id:'check_both'},
+  {n:13,t:'         bot_right <span class="kw">in</span> coord_set:',id:'check_both2'},
+  {n:14,t:'        count <span class="op">+=</span> <span class="nm">1</span>',id:'inc_count'},
+  {n:15,t:'  <span class="kw">return</span> count',id:'ret'},
+];
+
+const QUOTES={
+  build_set:'"We store every point in a hash table for fast lookup. Checking if a point exists is O(1)."',
+  outer_loop:'"Treat every coordinate as a potential bottom-left corner of a rectangle."',
+  inner_loop:'"For every other coordinate, check if it could be the top-right corner — upper-right of p1."',
+  check_pos:'"The top-right must have both x2 > x1 and y2 > y1. Otherwise it\'s not upper-right."',
+  compute_tl:'"If (x1,y1) is bottom-left and (x2,y2) is top-right, then top-left is (x1, y2) — same X as bottom-left, same Y as top-right."',
+  compute_br:'"Bottom-right is (x2, y1) — same X as top-right, same Y as bottom-left."',
+  check_both:'"If both top-left and bottom-right exist in our hash set, we have a valid rectangle!"',
+  inc_count:'"Count it! We will never double count because bottom-left is always the unique anchor."',
+  ret:'"Return the total count of rectangles found."',
+};
+
+function computeSteps(){
+  const steps=[];
+  const foundRects=[];let count=0;
+  function log(line,p1,p2,tl,br,both,logEntry){steps.push({line,p1:p1?[...p1]:null,p2:p2?[...p2]:null,tl,br,both,count,foundRects:[...foundRects],log:logEntry});}
+  log('def',null,null,null,null,null,null);
+  log('build_set',null,null,null,null,null,{t:'a',m:'coord_set = {(0,0),(0,1),(1,1),(1,0),(2,1),(2,0)}'});
+  log('init_count',null,null,null,null,null,{t:'a',m:'count = 0'});
+  COORDS.forEach(p1=>{
+    const[x1,y1]=p1;
+    log('outer_loop',p1,null,null,null,null,null);
+    log('unpack_p1',p1,null,null,null,null,{t:'a',m:`p1 = (${x1},${y1})`});
+    COORDS.forEach(p2=>{
+      const[x2,y2]=p2;
+      log('inner_loop',p1,p2,null,null,null,null);
+      log('unpack_p2',p1,p2,null,null,null,null);
+      log('check_pos',p1,p2,null,null,null,null);
+      if(x2<=x1||y2<=y1){log('skip',p1,p2,null,null,null,null);return;}
+      const tl=[x1,y2],br=[x2,y1];
+      log('compute_tl',p1,p2,tl,null,null,{t:'a',m:`top-left = (${x1},${y2})`});
+      log('compute_br',p1,p2,tl,br,null,{t:'a',m:`bot-right = (${x2},${y1})`});
+      log('check_both',p1,p2,tl,br,null,null);log('check_both2',p1,p2,tl,br,null,null);
+      const tlE=inSet(tl[0],tl[1]),brE=inSet(br[0],br[1]);
+      if(tlE&&brE){
+        count++;
+        const rk=`${x1},${y1}-${x2},${y2}`;
+        if(!foundRects.includes(rk))foundRects.push(rk);
+        log('inc_count',p1,p2,tl,br,true,{t:'f',m:`✓ Rectangle! (${x1},${y1})↔(${x2},${y2}) count=${count}`});
+      } else {
+        log('check_both',p1,p2,tl,br,false,{t:'a',m:`✗ (${tl[0]},${tl[1]}) in set:${tlE} | (${br[0]},${br[1]}) in set:${brE}`});
+      }
+    });
+  });
+  log('ret',null,null,null,null,null,{t:'f',m:`return ${count}`});
+  return steps;
+}
+
+const STEPS=computeSteps();
+let cur=0,autoTimer=null;
+
+function buildCode(){
+  const cb=document.getElementById('codeBody');cb.innerHTML='';
+  CODE.forEach(l=>{const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;d.innerHTML=`<span class="ln">${l.n||''}</span><span class="cc">${l.t}</span>`;cb.appendChild(d);});
+  document.getElementById('stepTotal').textContent=STEPS.length;
+}
+
+function buildPlot(s){
+  const svg=document.getElementById('plotSvg');svg.innerHTML='';
+  for(let x=0;x<=2;x++){const[px]=toSVG([x,0]);const ln=document.createElementNS('http://www.w3.org/2000/svg','line');ln.setAttribute('x1',px);ln.setAttribute('y1',OY-PY*1.3);ln.setAttribute('x2',px);ln.setAttribute('y2',OY+8);ln.setAttribute('class','grid-line');svg.appendChild(ln);}
+  for(let y=0;y<=1;y++){const[,py]=toSVG([0,y]);const ln=document.createElementNS('http://www.w3.org/2000/svg','line');ln.setAttribute('x1',OX-8);ln.setAttribute('y1',py);ln.setAttribute('x2',OX+PX*2.3);ln.setAttribute('y2',py);ln.setAttribute('class','grid-line');svg.appendChild(ln);}
+  // Found rects
+  s.foundRects&&s.foundRects.forEach(rk=>{
+    const[a,b]=rk.split('-');const[x1,y1]=a.split(',').map(Number);const[x2,y2]=b.split(',').map(Number);
+    const[sx1,sy1]=toSVG([x1,y2]);const[sx2,sy2]=toSVG([x2,y1]);
+    const r=document.createElementNS('http://www.w3.org/2000/svg','rect');r.setAttribute('x',sx1);r.setAttribute('y',sy1);r.setAttribute('width',sx2-sx1);r.setAttribute('height',sy2-sy1);r.setAttribute('class','rect-box found');svg.appendChild(r);
+  });
+  // Candidate
+  if(s.p1&&s.p2&&s.line!=='skip'){
+    const[x1,y1]=s.p1,[x2,y2]=s.p2;
+    if(x2>x1&&y2>y1){const[sx1,sy1]=toSVG([x1,y2]);const[sx2,sy2]=toSVG([x2,y1]);const r=document.createElementNS('http://www.w3.org/2000/svg','rect');r.setAttribute('x',sx1);r.setAttribute('y',sy1);r.setAttribute('width',sx2-sx1);r.setAttribute('height',sy2-sy1);r.setAttribute('class','rect-box candidate');svg.appendChild(r);}
+  }
+  COORDS.forEach(([x,y])=>{
+    const[px,py]=toSVG([x,y]);
+    const isP1=s.p1&&s.p1[0]===x&&s.p1[1]===y;
+    const isP2=s.p2&&s.p2[0]===x&&s.p2[1]===y;
+    const isTL=s.tl&&s.tl[0]===x&&s.tl[1]===y;
+    const isBR=s.br&&s.br[0]===x&&s.br[1]===y;
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',px);circle.setAttribute('cy',py);circle.setAttribute('r',7);
+    let cls='coord-dot ';
+    if(isP1)cls+='p1';else if(isP2)cls+='p2';else if(isTL||isBR)cls+='checking';else cls+='normal';
+    circle.setAttribute('class',cls);svg.appendChild(circle);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',px);t.setAttribute('y',py-11);t.setAttribute('class','coord-label');t.setAttribute('fill',isP1?'var(--accent)':isP2?'var(--rect)':'var(--muted)');t.textContent=`(${x},${y})`;svg.appendChild(t);
+  });
+}
+
+function setV(id,val,extra=''){const el=document.getElementById(id);if(!el)return;const p=el.textContent;el.textContent=String(val);if(p!==String(val)){el.className=`vv${extra} chg`;setTimeout(()=>el.className=`vv${extra}`,600);}}
+
+function applyStep(s){
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('al','jr'));
+  const lel=document.getElementById(`line-${s.line}`);if(lel){lel.classList.add('al','jr');lel.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  buildPlot(s);
+  setV('vP1',s.p1?`(${s.p1.join(',')})` :'—');
+  setV('vP2',s.p2?`(${s.p2.join(',')})` :'—',' r');
+  setV('vTL',s.tl?`(${s.tl.join(',')})` :'—');
+  setV('vBR',s.br?`(${s.br.join(',')})` :'—');
+  setV('vBoth',s.both===true?'✓ YES':s.both===false?'✗ NO':'—',s.both===true?' f':'');
+  setV('vCount',s.count,' f');
+  document.getElementById('stepNum').textContent=cur;document.getElementById('stepLabel').textContent=cur;
+  // Hash set
+  const hs=document.getElementById('hashSetDisplay');hs.innerHTML='';
+  COORDS.forEach(([x,y])=>{const d=document.createElement('span');d.style.cssText='padding:2px 6px;border:1px solid var(--pt-b);background:var(--pt-bg);color:var(--pt);font-size:.62rem;border-radius:2px;font-weight:600;';const isTL=s.tl&&s.tl[0]===x&&s.tl[1]===y;const isBR=s.br&&s.br[0]===x&&s.br[1]===y;if(isTL||isBR)d.style.cssText='padding:2px 6px;border:1px solid var(--rect-b);background:var(--rect-bg);color:var(--rect);font-size:.62rem;border-radius:2px;font-weight:600;';d.textContent=`(${x},${y})`;hs.appendChild(d);});
+  // Found
+  const fd=document.getElementById('foundDisplay');fd.innerHTML='';
+  s.foundRects&&s.foundRects.forEach(rk=>{const d=document.createElement('div');d.style.cssText='padding:2px 8px;border:1px solid var(--found-b);background:var(--found-bg);color:var(--found);font-size:.63rem;border-radius:2px;font-weight:600;';d.textContent=rk;fd.appendChild(d);});
+  const q=QUOTES[s.line];const tb=document.getElementById('teacherBar');
+  if(q){tb.textContent=q;tb.className='teacher-bar lit';}else{tb.className='teacher-bar';}
+  if(s.log){const lb=document.getElementById('logB');const li=document.createElement('div');li.className=`ll ${s.log.t}`;li.textContent=`${cur}: ${s.log.m}`;lb.appendChild(li);lb.scrollTop=lb.scrollHeight;}
+}
+
+function nextStep(){if(cur<STEPS.length-1){cur++;applyStep(STEPS[cur]);}}
+function prevStep(){if(cur>0){cur--;applyStep(STEPS[cur]);}}
+function toggleAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}else{document.getElementById('autoBtn').textContent='Stop';autoTimer=setInterval(()=>{if(cur<STEPS.length-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}},420);}}
+function resetAll(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}cur=0;document.getElementById('logB').innerHTML='';buildCode();applyStep(STEPS[0]);}
+buildCode();applyStep(STEPS[0]);
+</script>
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch — Rectangle Mania</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f4f2ed;--surface:#fffef9;--surface2:#ede9df;--border:#ccc8bc;--border2:#b0aa98;
+  --ink:#1e1c16;--muted:#7a7668;--muted2:#56533f;
+  --accent:#3d2fa0;--accent2:#5545cc;
+  --pt:#3d2fa0;--pt-bg:rgba(61,47,160,.1);--pt-b:rgba(61,47,160,.45);
+  --rect:#c47c00;--rect-bg:rgba(196,124,0,.1);--rect-b:rgba(196,124,0,.5);
+  --found:#2a6e3a;--found-bg:rgba(42,110,58,.09);--found-b:rgba(42,110,58,.45);
+  --grid-line:#ddd9cc;
+}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);letter-spacing:.04em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}
+.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 460px;overflow:hidden;}
+.left-panel{padding:2.5rem 3rem;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--border2);overflow:hidden;}
+.stage-tag{font-size:.53rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-bottom:.7rem;}
+.narrator{font-family:'Playfair Display',serif;font-size:1.85rem;font-weight:400;line-height:1.45;color:var(--ink);min-height:9rem;}
+.narrator .hl{color:var(--accent);font-weight:700;}
+.narrator .rect{color:var(--rect);}
+.narrator .found{color:var(--found);}
+.narrator .pt{color:var(--pt);}
+.concept{display:inline-block;margin-top:1.2rem;font-size:.52rem;letter-spacing:.22em;text-transform:uppercase;background:var(--ink);color:var(--bg);padding:4px 12px;}
+.quote{margin-top:1.5rem;padding:.8rem 1rem;border-left:3px solid var(--accent);font-size:.7rem;color:var(--muted2);line-height:1.65;min-height:3.5rem;}
+.quote span{color:var(--ink);}
+.progress-wrap{margin-top:2rem;}
+.progress-bar{height:3px;background:var(--border);}
+.progress-fill{height:100%;background:var(--accent);transition:width .5s ease;}
+.progress-label{font-size:.53rem;color:var(--muted);margin-top:.4rem;}
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1.1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+
+/* COORDINATE PLOT */
+.plot-wrap{display:flex;justify-content:center;}
+svg.plot{overflow:visible;background:var(--surface);border:1px solid var(--border2);border-radius:3px;}
+.grid-line{stroke:var(--grid-line);stroke-width:1;}
+.axis{stroke:var(--border2);stroke-width:1.5;}
+.coord-dot{r:6;transition:all .3s;}
+.coord-dot.normal{fill:var(--pt-bg);stroke:var(--pt-b);stroke-width:2;}
+.coord-dot.hl{fill:var(--pt-bg);stroke:var(--accent);stroke-width:2.5;filter:drop-shadow(0 0 5px rgba(61,47,160,.4));}
+.coord-dot.rect-corner{fill:var(--rect-bg);stroke:var(--rect-b);stroke-width:2.5;}
+.coord-dot.found-corner{fill:var(--found-bg);stroke:var(--found-b);stroke-width:2.5;}
+.coord-label{font-family:'JetBrains Mono',monospace;font-size:9px;fill:var(--muted);text-anchor:middle;}
+.rect-box{fill:none;stroke-width:2;stroke-dasharray:5,3;transition:all .4s;}
+.rect-box.candidate{stroke:var(--rect-b);}
+.rect-box.found{stroke:var(--found-b);stroke-dasharray:none;fill:var(--found-bg);}
+.check-line{stroke:var(--rect-b);stroke-width:1.5;stroke-dasharray:4,3;}
+.check-line.valid{stroke:var(--found-b);}
+
+/* Hash set display */
+.hash-display{display:flex;flex-wrap:wrap;gap:4px;}
+.hash-chip{padding:3px 8px;border:1px solid var(--pt-b);background:var(--pt-bg);color:var(--pt);font-size:.63rem;border-radius:2px;font-weight:600;}
+.hash-chip.checking{border-color:var(--rect-b);background:var(--rect-bg);color:var(--rect);}
+.hash-chip.found{border-color:var(--found-b);background:var(--found-bg);color:var(--found);}
+
+/* Count display */
+.count-display{padding:.65rem 1rem;border:1px solid var(--border2);font-size:1.1rem;font-weight:700;border-radius:2px;transition:all .3s;font-family:'Playfair Display',serif;}
+.count-display.updated{border-color:var(--found-b);color:var(--found);background:var(--found-bg);}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.btn-accent:hover{background:var(--accent2);border-color:var(--accent2);}
+.speed-wrap{display:flex;align-items:center;gap:.75rem;font-size:.57rem;color:var(--muted);}
+.speed-wrap input{accent-color:var(--accent);width:80px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="rect_watch.html" class="nav-tab active">01 Watch</a>
+    <a href="rect_guide.html" class="nav-tab">02 Guide</a>
+    <a href="rect_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="rect_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="rect_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="rect_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Rectangle Mania · Watch</div>
+</header>
+<main>
+  <div class="left-panel">
+    <div>
+      <div class="stage-tag" id="stageTag">Stage 1 of 10 — Problem</div>
+      <div class="narrator" id="narrator">Given XY <span class="pt">coordinates,</span><br>count all axis-aligned<br><span class="found">rectangles</span> formed.</div>
+      <div class="concept" id="concept">KEY CONCEPT: RECTANGLE COUNTING</div>
+      <div class="quote" id="quote"><span>"We're gonna be given a list of coordinates and you have to write a function that returns the number of rectangles that can be formed using these coordinates."</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+      <div class="progress-label" id="pLabel">Step 1 / 10</div>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Coordinate Plot</div>
+    <div class="plot-wrap"><svg class="plot" id="plotSvg" width="260" height="200" viewBox="-20 -10 260 200"></svg></div>
+    <div class="panel-label">Hash Set (all points)</div>
+    <div class="hash-display" id="hashDisplay"></div>
+    <div class="panel-label">Rectangle Count</div>
+    <div class="count-display" id="countDisplay" style="color:var(--muted);border-color:var(--border2);">0 rectangles</div>
+  </div>
+</main>
+<footer>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prev()">← Prev</button>
+    <button class="btn btn-accent" onclick="next()">Next →</button>
+    <button class="btn" onclick="reset()">Reset</button>
+  </div>
+  <div class="speed-wrap">
+    Speed:<input type="range" id="spd" min="600" max="3000" value="1800" step="100">
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">Auto Play</button>
+  </div>
+  <a href="rect_guide.html" class="btn btn-accent">Guide →</a>
+</footer>
+<script>
+// Coords: (0,0),(0,1),(1,1),(1,0),(2,1),(2,0)
+// Plot layout: x→right, y→up. SVG flips y.
+// Rectangles: (0,0)-(1,1), (1,0)-(2,1), (0,0)-(2,1)
+const COORDS=[[0,0],[0,1],[1,1],[1,0],[2,1],[2,0]];
+const PX=60, PY=60, ORIGIN_X=30, ORIGIN_Y=160; // plot scaling
+
+function toSVG([x,y]){return [ORIGIN_X+x*PX, ORIGIN_Y-y*PY];}
+
+const STAGES=[
+  {
+    tag:'Stage 1 / 10 — Problem',
+    narrator:'Given XY <span class="pt">coordinates,</span><br>count all axis-aligned<br><span class="found">rectangles</span> formed.',
+    concept:'KEY CONCEPT: RECTANGLE COUNTING',
+    quote:'"We\'re gonna be given a list of coordinates and you have to write a function that returns the number of rectangles formed using these coordinates."',
+    hlPts:[],rects:[],checking:null,count:0,hashHl:[]
+  },
+  {
+    tag:'Stage 2 / 10 — Axis-aligned only',
+    narrator:'Only <span class="hl">axis-aligned</span> rectangles count.<br>Sides must be parallel to X and Y.<br>Rotated shapes = not valid.',
+    concept:'KEY CONCEPT: AXIS-ALIGNED ONLY',
+    quote:'"The rectangles have to be proper rectangles, meaning their sides have to be parallel to the X and Y axes. Rotated doesn\'t count."',
+    hlPts:[[0,0],[0,1],[1,1],[1,0]],rects:[{x:0,y:0,w:1,h:1,cls:'found'}],checking:null,count:1,hashHl:[]
+  },
+  {
+    tag:'Stage 3 / 10 — Example: 3 rectangles',
+    narrator:'These 6 points form <span class="found">3 rectangles:</span><br>small left, small right,<br>and one large spanning both.',
+    concept:'KEY CONCEPT: ANSWER = 3',
+    quote:'"In the example in front of me, we\'ve got these six coordinates. And the answer is gonna be three — they form three rectangles."',
+    hlPts:COORDS,rects:[{x:0,y:0,w:1,h:1,cls:'found'},{x:1,y:0,w:1,h:1,cls:'found'},{x:0,y:0,w:2,h:1,cls:'found'}],checking:null,count:3,hashHl:[]
+  },
+  {
+    tag:'Stage 4 / 10 — 4 corners needed',
+    narrator:'A rectangle needs <span class="hl">4 corners.</span><br>Focus: find valid corner groups,<br>not shapes directly.',
+    concept:'KEY CONCEPT: FIND 4 CORNERS',
+    quote:'"The key to solving this question is to realize that in order to have a rectangle, we need to have four corners. If we find four corners, then we\'ve found a rectangle."',
+    hlPts:[],rects:[],checking:null,count:0,hashHl:[]
+  },
+  {
+    tag:'Stage 5 / 10 — Elegant solution: diagonal pair',
+    narrator:'Pick any two points where<br>one is <span class="rect">upper-right</span> of the other.<br>They are a potential diagonal pair.',
+    concept:'KEY CONCEPT: BOTTOM-LEFT ↔ TOP-RIGHT DIAGONAL',
+    quote:'"Treat every coordinate as a potential bottom-left corner. For every other coordinate in the upper-right, treat it as a top-right corner."',
+    hlPts:[[0,0],[1,1]],rects:[],checking:[[0,0],[1,1]],count:0,hashHl:[]
+  },
+  {
+    tag:'Stage 6 / 10 — Check two missing corners',
+    narrator:'If (x₁,y₁) and (x₂,y₂) are diagonal,<br>we need <span class="rect">(x₁,y₂)</span> and <span class="rect">(x₂,y₁)</span><br>to exist in our hash set.',
+    concept:'KEY CONCEPT: CHECK TOP-LEFT + BOTTOM-RIGHT',
+    quote:'"All I need is to check if (x1, y2) — the top-left — and (x2, y1) — the bottom-right — are in our hash table. If both exist, count a rectangle."',
+    hlPts:[[0,0],[1,1],[0,1],[1,0]],rects:[{x:0,y:0,w:1,h:1,cls:'candidate'}],checking:[[0,0],[1,1]],count:0,hashHl:['(0,1)','(1,0)']
+  },
+  {
+    tag:'Stage 7 / 10 — Both corners found!',
+    narrator:'(0,1) ✓ in set.<br>(1,0) ✓ in set.<br>→ Rectangle confirmed! Count = 1.',
+    concept:'KEY CONCEPT: BOTH EXIST → RECTANGLE',
+    quote:'"If they\'re both in the hash table, count a rectangle. We will never double count because we always treat the bottom-left as our anchor."',
+    hlPts:[[0,0],[1,1],[0,1],[1,0]],rects:[{x:0,y:0,w:1,h:1,cls:'found'}],checking:null,count:1,hashHl:['(0,1)','(1,0)']
+  },
+  {
+    tag:'Stage 8 / 10 — Continue: (0,0) + (2,1)',
+    narrator:'Next pair: (0,0) and (2,1).<br>Need (0,1) and (2,0) in set.<br>Both exist → count = 3.',
+    concept:'KEY CONCEPT: LOOP ALL PAIRS',
+    quote:'"Treat every coordinate as a potential bottom-left, then do a double for loop through all other coordinates. For every upper-right point, check the two missing corners."',
+    hlPts:[[0,0],[2,1],[0,1],[2,0]],rects:[{x:0,y:0,w:1,h:1,cls:'found'},{x:1,y:0,w:1,h:1,cls:'found'},{x:0,y:0,w:2,h:1,cls:'found'}],checking:[[0,0],[2,1]],count:3,hashHl:['(0,1)','(2,0)']
+  },
+  {
+    tag:'Stage 9 / 10 — No double counting',
+    narrator:'We always anchor on <span class="hl">bottom-left.</span><br>Each rectangle has exactly one.<br>No duplicates possible.',
+    concept:'KEY CONCEPT: UNIQUE ANCHOR = NO DUPLICATES',
+    quote:'"We don\'t even need to make sure we don\'t double count — because we\'re treating every point as a potential bottom-left corner, we will never double count a rectangle."',
+    hlPts:COORDS,rects:[{x:0,y:0,w:1,h:1,cls:'found'},{x:1,y:0,w:1,h:1,cls:'found'},{x:0,y:0,w:2,h:1,cls:'found'}],checking:null,count:3,hashHl:[]
+  },
+  {
+    tag:'Stage 10 / 10 — Complexity',
+    narrator:'Time: <span class="hl">O(N²)</span> — double loop over pairs.<br>Space: <span class="hl">O(N)</span> — hash set of coords.<br>Clean, elegant, no backtracking.',
+    concept:'KEY CONCEPT: O(N²) TIME · O(N) SPACE',
+    quote:'"This solution is O(N²) time and O(N) space because we need to store every point in a hash table. We do a double for loop over all coordinate pairs."',
+    hlPts:COORDS,rects:[{x:0,y:0,w:1,h:1,cls:'found'},{x:1,y:0,w:1,h:1,cls:'found'},{x:0,y:0,w:2,h:1,cls:'found'}],checking:null,count:3,hashHl:[]
+  },
+];
+
+let cur=0,autoTimer=null;
+
+function buildPlot(s){
+  const svg=document.getElementById('plotSvg');svg.innerHTML='';
+  // Grid lines
+  for(let x=0;x<=3;x++){const[px,py]=toSVG([x,0]);const line=document.createElementNS('http://www.w3.org/2000/svg','line');line.setAttribute('x1',px);line.setAttribute('y1',ORIGIN_Y-PY*1.5);line.setAttribute('x2',px);line.setAttribute('y2',ORIGIN_Y+10);line.setAttribute('class','grid-line');svg.appendChild(line);}
+  for(let y=0;y<=2;y++){const[px,py]=toSVG([0,y]);const line=document.createElementNS('http://www.w3.org/2000/svg','line');line.setAttribute('x1',ORIGIN_X-10);line.setAttribute('y1',py);line.setAttribute('x2',ORIGIN_X+PX*2.5);line.setAttribute('y2',py);line.setAttribute('class','grid-line');svg.appendChild(line);}
+  // Axes labels
+  for(let x=0;x<=2;x++){const[px,py]=toSVG([x,0]);const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',px);t.setAttribute('y',ORIGIN_Y+18);t.setAttribute('class','coord-label');t.textContent=x;svg.appendChild(t);}
+  for(let y=0;y<=1;y++){const[px,py]=toSVG([0,y]);const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',ORIGIN_X-14);t.setAttribute('y',py+4);t.setAttribute('class','coord-label');t.textContent=y;svg.appendChild(t);}
+  // Rectangles (drawn before dots)
+  if(s.rects){s.rects.forEach(r=>{
+    const[x1,y1]=toSVG([r.x,r.y+r.h]);const[x2,y2]=toSVG([r.x+r.w,r.y]);
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',x1);rect.setAttribute('y',y1);rect.setAttribute('width',x2-x1);rect.setAttribute('height',y2-y1);
+    rect.setAttribute('class',`rect-box ${r.cls}`);svg.appendChild(rect);
+  });}
+  // Check lines
+  if(s.checking){
+    const[bx,by]=s.checking[0];const[tx,ty]=s.checking[1];
+    const[p1x,p1y]=toSVG([bx,by]);const[p2x,p2y]=toSVG([tx,ty]);
+    // Diagonal dashed
+    const dl=document.createElementNS('http://www.w3.org/2000/svg','line');
+    dl.setAttribute('x1',p1x);dl.setAttribute('y1',p1y);dl.setAttribute('x2',p2x);dl.setAttribute('y2',p2y);
+    dl.setAttribute('class','check-line');dl.setAttribute('stroke','#b8a0f0');svg.appendChild(dl);
+  }
+  // Dots
+  COORDS.forEach(([x,y])=>{
+    const[px,py]=toSVG([x,y]);
+    const isHl=s.hlPts&&s.hlPts.some(([hx,hy])=>hx===x&&hy===y);
+    const isCheck=s.checking&&(s.checking[0][0]===x&&s.checking[0][1]===y||s.checking[1][0]===x&&s.checking[1][1]===y);
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',px);circle.setAttribute('cy',py);circle.setAttribute('r',7);
+    circle.setAttribute('class',`coord-dot ${isHl?'hl':'normal'}`);
+    svg.appendChild(circle);
+    // Label
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',px);t.setAttribute('y',py-12);t.setAttribute('class','coord-label');
+    t.setAttribute('fill',isHl?'var(--accent)':'var(--muted)');
+    t.textContent=`(${x},${y})`;svg.appendChild(t);
+  });
+}
+
+function buildHash(s){
+  const el=document.getElementById('hashDisplay');el.innerHTML='';
+  COORDS.forEach(([x,y])=>{
+    const k=`(${x},${y})`;const chip=document.createElement('div');
+    chip.className=`hash-chip${s.hashHl&&s.hashHl.includes(k)?' found':''}`;chip.textContent=k;el.appendChild(chip);
+  });
+}
+
+function applyStage(s){
+  document.getElementById('stageTag').textContent=s.tag;
+  document.getElementById('narrator').innerHTML=s.narrator;
+  document.getElementById('concept').textContent=s.concept;
+  document.getElementById('quote').innerHTML=`<span>${s.quote}</span>`;
+  buildPlot(s);buildHash(s);
+  const cd=document.getElementById('countDisplay');
+  if(s.count>0){cd.textContent=`${s.count} rectangle${s.count!==1?'s':''} found`;cd.className='count-display updated';}
+  else{cd.textContent='0 rectangles';cd.style.cssText='color:var(--muted);border-color:var(--border2);';}
+  const pct=((cur+1)/STAGES.length*100).toFixed(0);
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pLabel').textContent=`Step ${cur+1} / ${STAGES.length}`;
+}
+
+function next(){if(cur<STAGES.length-1){cur++;applyStage(STAGES[cur]);}}
+function prev(){if(cur>0){cur--;applyStage(STAGES[cur]);}}
+function reset(){cur=0;applyStage(STAGES[0]);if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+  else{const spd=parseInt(document.getElementById('spd').value);document.getElementById('autoBtn').textContent='Stop';
+    autoTimer=setInterval(()=>{if(cur<STAGES.length-1)next();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}},spd);}
+}
+applyStage(STAGES[0]);
+</script>
+</body>
+</html>

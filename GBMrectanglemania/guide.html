@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide — Rectangle Mania</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f4f2ed;--surface:#fffef9;--surface2:#ede9df;--border:#ccc8bc;--border2:#b0aa98;--ink:#1e1c16;--muted:#7a7668;--muted2:#56533f;--accent:#3d2fa0;--accent2:#5545cc;--pt:#3d2fa0;--pt-bg:rgba(61,47,160,.1);--pt-b:rgba(61,47,160,.45);--rect:#c47c00;--rect-bg:rgba(196,124,0,.1);--rect-b:rgba(196,124,0,.5);--found:#2a6e3a;--found-bg:rgba(42,110,58,.09);--found-b:rgba(42,110,58,.45);--grid-line:#ddd9cc;--right:#2a6e3a;--wrong:#aa2222;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 340px;overflow:hidden;}
+.center{padding:1.75rem 2.5rem;display:flex;flex-direction:column;gap:1.2rem;border-right:1px solid var(--border2);overflow-y:auto;}
+.inst-box{background:var(--surface);border:1px solid var(--border2);border-top:3px solid var(--accent);padding:.85rem 1.1rem;display:flex;gap:.9rem;}
+.inst-icon{width:28px;height:28px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;}
+.inst-text{font-size:.72rem;line-height:1.7;}.inst-text strong{color:var(--accent);}
+.teacher-flash{padding:.6rem .9rem;border-left:3px solid var(--accent);font-size:.68rem;color:var(--muted2);font-style:italic;line-height:1.5;min-height:2.5rem;transition:all .3s;}
+.teacher-flash.lit{color:var(--ink);border-color:var(--rect);}
+.phase-label{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--accent);}
+svg.plot{overflow:visible;background:var(--surface);border:1px solid var(--border2);border-radius:3px;}
+.grid-line{stroke:var(--grid-line);stroke-width:1;}
+.coord-dot{transition:all .2s;cursor:pointer;}
+.coord-dot.normal{fill:var(--pt-bg);stroke:var(--pt-b);stroke-width:2;}
+.coord-dot.selected-bl{fill:var(--pt-bg);stroke:var(--accent);stroke-width:3;filter:drop-shadow(0 0 6px rgba(61,47,160,.5));}
+.coord-dot.selected-tr{fill:var(--rect-bg);stroke:var(--rect-b);stroke-width:3;}
+.coord-dot.valid-tr{fill:var(--rect-bg);stroke:var(--rect-b);stroke-width:2;animation:pulse .9s ease infinite;}
+.coord-dot.found-corner{fill:var(--found-bg);stroke:var(--found-b);stroke-width:2.5;}
+.coord-dot.missing{fill:rgba(170,34,34,.1);stroke:rgba(170,34,34,.5);stroke-width:2;}
+@keyframes pulse{0%,100%{stroke-opacity:1;}50%{stroke-opacity:.3;}}
+.coord-label{font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:middle;}
+.rect-box{fill:none;stroke-width:2;stroke-dasharray:5,3;}
+.rect-box.candidate{stroke:var(--rect-b);}
+.rect-box.found{stroke:var(--found-b);stroke-dasharray:none;fill:var(--found-bg);}
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.state-block{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.state-title{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.state-row{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.state-row:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}.sv.a{color:var(--accent);}.sv.r{color:var(--rect);}.sv.f{color:var(--found);}
+.hash-display{display:flex;flex-wrap:wrap;gap:3px;}
+.hash-chip{padding:2px 7px;border:1px solid var(--pt-b);background:var(--pt-bg);color:var(--pt);font-size:.62rem;border-radius:2px;font-weight:600;}
+.hash-chip.checking{border-color:var(--rect-b);background:var(--rect-bg);color:var(--rect);}
+.hash-chip.found{border-color:var(--found-b);background:var(--found-bg);color:var(--found);}
+.found-list{display:flex;flex-direction:column;gap:3px;}
+.found-chip{padding:3px 10px;border:1px solid var(--found-b);background:var(--found-bg);color:var(--found);font-size:.67rem;border-radius:2px;font-weight:600;animation:fi .3s ease;}
+@keyframes fi{from{opacity:0;transform:scale(.8);}to{opacity:1;transform:scale(1);}}
+.hint-box{background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--rect);padding:.65rem .75rem;font-size:.68rem;color:var(--muted2);line-height:1.6;min-height:3rem;}
+.toast{position:fixed;top:66px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--surface);border:1px solid var(--border2);padding:8px 18px;font-size:.7rem;opacity:0;transition:all .25s;z-index:100;pointer-events:none;max-width:380px;text-align:center;border-radius:2px;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.good{border-color:var(--right);color:var(--right);}
+.toast.bad{border-color:var(--wrong);color:var(--wrong);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="rect_watch.html" class="nav-tab">01 Watch</a>
+    <a href="rect_guide.html" class="nav-tab active">02 Guide</a>
+    <a href="rect_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="rect_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="rect_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="rect_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Rectangle Mania · Guide</div>
+</header>
+<main>
+  <div class="center">
+    <div class="inst-box">
+      <div class="inst-icon">▶</div>
+      <div class="inst-text" id="instText"><strong>You drive the algorithm.</strong> Click a point as the <span style="color:var(--accent)">bottom-left</span> anchor, then click a point in its upper-right to be the <span style="color:var(--rect)">top-right</span>. The algorithm checks for the other two corners.</div>
+    </div>
+    <div class="teacher-flash" id="teacherFlash">"Treat every coordinate as a potential bottom-left corner, then do a double for loop through all other coordinates in the upper-right."</div>
+    <div class="phase-label" id="phaseLabel">Step 1: Click a bottom-left anchor</div>
+    <div style="display:flex;justify-content:center;">
+      <svg class="plot" id="plotSvg" width="340" height="230" viewBox="-20 -20 340 230"></svg>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">State</div>
+    <div class="state-block">
+      <div class="state-title">Algorithm</div>
+      <div class="state-row"><span class="sk">Bottom-left (p1)</span><span class="sv a" id="sP1">—</span></div>
+      <div class="state-row"><span class="sk">Top-right (p2)</span><span class="sv r" id="sP2">—</span></div>
+      <div class="state-row"><span class="sk">Need top-left</span><span class="sv" id="sTL">—</span></div>
+      <div class="state-row"><span class="sk">Need bot-right</span><span class="sv" id="sBR">—</span></div>
+      <div class="state-row"><span class="sk">Result</span><span class="sv f" id="sResult">—</span></div>
+      <div class="state-row"><span class="sk">Count</span><span class="sv f" id="sCount">0</span></div>
+    </div>
+    <div class="panel-label">Hash Set</div>
+    <div class="hash-display" id="hashDisplay"></div>
+    <div class="panel-label">Rectangles Found</div>
+    <div class="found-list" id="foundList"><span style="font-size:.62rem;color:var(--muted);">none yet</span></div>
+    <div class="panel-label">Hint</div>
+    <div class="hint-box" id="hintBox">Click any point on the plot to use it as the bottom-left corner of a potential rectangle.</div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);" id="footerStatus">Click a point to start</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="clearSelection()">Clear Selection</button>
+    <button class="btn" onclick="autoSolve()">Auto Solve</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="rect_cma.html" class="btn btn-accent">→ Mirror·A</a>
+  </div>
+</footer>
+<script>
+const COORDS=[[0,0],[0,1],[1,1],[1,0],[2,1],[2,0]];
+const COORD_SET=new Set(COORDS.map(([x,y])=>`${x},${y}`));
+const PX=90,PY=90,OX=40,OY=190;
+function toSVG([x,y]){return [OX+x*PX,OY-y*PY];}
+function key(x,y){return `${x},${y}`;}
+function inSet(x,y){return COORD_SET.has(key(x,y));}
+
+const QUOTES={
+  p1:'"Treat every coordinate as a potential bottom-left corner. This is your anchor — the bottom-left of a rectangle."',
+  p2:'"For every upper-right point, we check if (x1, y2) and (x2, y1) exist in our hash table."',
+  check:'"All I need is the X coordinate of the bottom-left and the Y coordinate of the top-right to figure out the missing corners."',
+  found:'"If they\'re both in the hash table, count a rectangle. We will never double count because we treat bottom-left as the unique anchor."',
+  notfound:'"One or both missing corners aren\'t in the set — no rectangle here. Move on to the next pair."',
+};
+
+let selectedP1=null,selectedP2=null;
+let foundRects=[];
+let autoIdx=0,autoJdx=0;
+
+function handleDotClick(x,y){
+  if(!selectedP1){
+    selectedP1=[x,y];
+    document.getElementById('sP1').textContent=`(${x},${y})`;
+    document.getElementById('sP2').textContent='—';
+    document.getElementById('sTL').textContent='—';
+    document.getElementById('sBR').textContent='—';
+    document.getElementById('sResult').textContent='—';
+    document.getElementById('phaseLabel').textContent='Step 2: Click upper-right point';
+    setHint(`(${x},${y}) selected as bottom-left. Now click any point that is above and to the right of it.`);
+    setQuote('p1');
+    render();
+    return;
+  }
+  if(!selectedP2){
+    const[bx,by]=selectedP1;
+    if(x<=bx||y<=by){showToast(`(${x},${y}) is not upper-right of (${bx},${by}). Need x>${bx} AND y>${by}.`,'bad');return;}
+    selectedP2=[x,y];
+    // Now check
+    const tlx=bx,tly=y;
+    const brx=x,bry=by;
+    const tlExists=inSet(tlx,tly);
+    const brExists=inSet(brx,bry);
+    document.getElementById('sP2').textContent=`(${x},${y})`;
+    document.getElementById('sTL').textContent=`(${tlx},${tly}) ${tlExists?'✓':'✗'}`;
+    document.getElementById('sBR').textContent=`(${brx},${bry}) ${brExists?'✓':'✗'}`;
+    setQuote('check');
+    render();
+    setTimeout(()=>{
+      if(tlExists&&brExists){
+        const rectKey=`${bx},${by}-${x},${y}`;
+        if(!foundRects.some(r=>r.key===rectKey)){
+          foundRects.push({key:rectKey,x:bx,y:by,w:x-bx,h:y-by});
+          document.getElementById('sCount').textContent=foundRects.length;
+        }
+        document.getElementById('sResult').textContent='✓ RECTANGLE!';
+        document.getElementById('sResult').style.color='var(--found)';
+        showToast(`✓ Rectangle found! (${bx},${by})↔(${x},${y})`,'good');
+        setQuote('found');
+        renderFoundList();
+      } else {
+        document.getElementById('sResult').textContent='✗ No rectangle';
+        document.getElementById('sResult').style.color='var(--wrong)';
+        setQuote('notfound');
+        showToast(`✗ Missing corner(s): ${!tlExists?`(${tlx},${tly}) `:''}${!brExists?`(${brx},${bry})`:''}. Not a rectangle.`,'bad');
+      }
+      setHint(`Checked (${bx},${by}) + (${x},${y}). Need (${tlx},${tly})${tlExists?'✓':'✗'} and (${brx},${bry})${brExists?'✓':'✗'}.`);
+      render();
+    },300);
+    document.getElementById('phaseLabel').textContent='Checking corners...';
+    return;
+  }
+  // Both selected — clear and restart
+  clearSelection();
+  handleDotClick(x,y);
+}
+
+function clearSelection(){selectedP1=null;selectedP2=null;document.getElementById('sP1').textContent='—';document.getElementById('sP2').textContent='—';document.getElementById('sTL').textContent='—';document.getElementById('sBR').textContent='—';document.getElementById('sResult').textContent='—';document.getElementById('phaseLabel').textContent='Step 1: Click a bottom-left anchor';setHint('Click any point on the plot to use it as the bottom-left corner of a potential rectangle.');render();}
+
+function autoSolve(){
+  clearSelection();foundRects=[];renderFoundList();
+  let delay=0;
+  COORDS.forEach(([bx,by])=>{
+    COORDS.forEach(([tx,ty])=>{
+      if(tx>bx&&ty>by){
+        delay+=600;
+        setTimeout(()=>{
+          selectedP1=[bx,by];selectedP2=[tx,ty];
+          const tlE=inSet(bx,ty),brE=inSet(tx,by);
+          document.getElementById('sP1').textContent=`(${bx},${by})`;
+          document.getElementById('sP2').textContent=`(${tx},${ty})`;
+          document.getElementById('sTL').textContent=`(${bx},${ty}) ${tlE?'✓':'✗'}`;
+          document.getElementById('sBR').textContent=`(${tx},${by}) ${brE?'✓':'✗'}`;
+          if(tlE&&brE){
+            const rk=`${bx},${by}-${tx},${ty}`;
+            if(!foundRects.some(r=>r.key===rk))foundRects.push({key:rk,x:bx,y:by,w:tx-bx,h:ty-by});
+            document.getElementById('sResult').textContent='✓ RECTANGLE!';document.getElementById('sResult').style.color='var(--found)';
+          } else {document.getElementById('sResult').textContent='✗ No rectangle';document.getElementById('sResult').style.color='var(--wrong)';}
+          document.getElementById('sCount').textContent=foundRects.length;
+          renderFoundList();render();
+        },delay);
+      }
+    });
+  });
+  setTimeout(()=>{clearSelection();document.getElementById('phaseLabel').textContent=`Done! Found ${foundRects.length} rectangles.`;},delay+300);
+}
+
+function render(){
+  const svg=document.getElementById('plotSvg');svg.innerHTML='';
+  // Grid
+  for(let x=0;x<=2;x++){const[px]=toSVG([x,0]);const ln=document.createElementNS('http://www.w3.org/2000/svg','line');ln.setAttribute('x1',px);ln.setAttribute('y1',OY-PY*1.3);ln.setAttribute('x2',px);ln.setAttribute('y2',OY+10);ln.setAttribute('class','grid-line');svg.appendChild(ln);}
+  for(let y=0;y<=1;y++){const[,py]=toSVG([0,y]);const ln=document.createElementNS('http://www.w3.org/2000/svg','line');ln.setAttribute('x1',OX-15);ln.setAttribute('y1',py);ln.setAttribute('x2',OX+PX*2.3);ln.setAttribute('y2',py);ln.setAttribute('class','grid-line');svg.appendChild(ln);}
+  // Axis labels
+  for(let x=0;x<=2;x++){const[px]=toSVG([x,0]);const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',px);t.setAttribute('y',OY+22);t.setAttribute('class','coord-label');t.setAttribute('fill','var(--muted)');t.textContent=x;svg.appendChild(t);}
+  for(let y=0;y<=1;y++){const[,py]=toSVG([0,y]);const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',OX-18);t.setAttribute('y',py+4);t.setAttribute('class','coord-label');t.setAttribute('fill','var(--muted)');t.textContent=y;svg.appendChild(t);}
+  // Found rects
+  foundRects.forEach(r=>{
+    const[x1,y1]=toSVG([r.x,r.y+r.h]);const[x2,y2]=toSVG([r.x+r.w,r.y]);
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',x1);rect.setAttribute('y',y1);rect.setAttribute('width',x2-x1);rect.setAttribute('height',y2-y1);
+    rect.setAttribute('class','rect-box found');svg.appendChild(rect);
+  });
+  // Candidate rect
+  if(selectedP1&&selectedP2){
+    const[bx,by]=selectedP1,[tx,ty]=selectedP2;
+    const[x1,y1]=toSVG([bx,ty]);const[x2,y2]=toSVG([tx,by]);
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',x1);rect.setAttribute('y',y1);rect.setAttribute('width',x2-x1);rect.setAttribute('height',y2-y1);
+    rect.setAttribute('class','rect-box candidate');svg.appendChild(rect);
+  }
+  // Dots
+  COORDS.forEach(([x,y])=>{
+    const[px,py]=toSVG([x,y]);
+    const isP1=selectedP1&&selectedP1[0]===x&&selectedP1[1]===y;
+    const isP2=selectedP2&&selectedP2[0]===x&&selectedP2[1]===y;
+    const isValidTR=selectedP1&&!selectedP2&&x>selectedP1[0]&&y>selectedP1[1];
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',px);circle.setAttribute('cy',py);circle.setAttribute('r',9);
+    let cls='coord-dot ';
+    if(isP1)cls+='selected-bl';else if(isP2)cls+='selected-tr';else if(isValidTR)cls+='valid-tr';else cls+='normal';
+    circle.setAttribute('class',cls);
+    circle.onclick=()=>handleDotClick(x,y);
+    svg.appendChild(circle);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',px);t.setAttribute('y',py-14);t.setAttribute('class','coord-label');
+    t.setAttribute('fill',isP1?'var(--accent)':isP2?'var(--rect)':'var(--muted)');
+    t.textContent=`(${x},${y})`;svg.appendChild(t);
+  });
+  // Hash display
+  buildHashDisplay();
+}
+
+function buildHashDisplay(){
+  const el=document.getElementById('hashDisplay');el.innerHTML='';
+  COORDS.forEach(([x,y])=>{
+    const k=`(${x},${y})`;const chip=document.createElement('div');
+    let cls='hash-chip';
+    if(selectedP1&&selectedP2){
+      const[bx,by]=selectedP1,[tx,ty]=selectedP2;
+      if((x===bx&&y===ty)||(x===tx&&y===by))cls+=' checking';
+    }
+    chip.className=cls;chip.textContent=k;el.appendChild(chip);
+  });
+}
+
+function renderFoundList(){
+  const el=document.getElementById('foundList');el.innerHTML='';
+  if(!foundRects.length){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">none yet</span>';return;}
+  foundRects.forEach(r=>{const d=document.createElement('div');d.className='found-chip';d.textContent=`(${r.x},${r.y})↔(${r.x+r.w},${r.y+r.h})`;el.appendChild(d);});
+}
+
+function setHint(t){document.getElementById('hintBox').textContent=t;}
+function setQuote(k){const el=document.getElementById('teacherFlash');el.textContent=QUOTES[k]||'';el.className='teacher-flash lit';setTimeout(()=>el.className='teacher-flash',4000);}
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;setTimeout(()=>t.className='toast',2800);}
+function resetAll(){selectedP1=null;selectedP2=null;foundRects=[];document.getElementById('sP1').textContent='—';document.getElementById('sP2').textContent='—';document.getElementById('sTL').textContent='—';document.getElementById('sBR').textContent='—';document.getElementById('sResult').textContent='—';document.getElementById('sCount').textContent='0';document.getElementById('phaseLabel').textContent='Step 1: Click a bottom-left anchor';setHint('Click any point on the plot to use it as the bottom-left corner of a potential rectangle.');renderFoundList();render();}
+render();renderFoundList();
+</script>
+</body>
+</html>
