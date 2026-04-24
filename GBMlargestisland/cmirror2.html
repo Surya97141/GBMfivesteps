@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror B — Largest Island</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f0f4f0;--surface:#fafcfa;--surface2:#e8ede8;--border:#c8d4c8;--border2:#a8baa8;--ink:#1a2218;--muted:#6a7a68;--muted2:#4a5a48;--accent:#2d6e3a;--land:#d4a84b;--land-bg:rgba(212,168,75,.15);--land-b:rgba(212,168,75,.6);--water:#2a5fa8;--water-bg:rgba(42,95,168,.1);--water-b:rgba(42,95,168,.4);--flip:#c0392b;--flip-bg:rgba(192,57,43,.12);--flip-b:rgba(192,57,43,.55);--island2:#5a3a8a;--island2bg:rgba(90,58,138,.1);--island2b:rgba(90,58,138,.4);--island3:#1a6e6e;--island3bg:rgba(26,110,110,.1);--island3b:rgba(26,110,110,.4);--island4:#8a4a1a;--island4bg:rgba(138,74,26,.1);--island4b:rgba(138,74,26,.4);--island5:#1a4a8a;--island5bg:rgba(26,74,138,.1);--island5b:rgba(26,74,138,.35);--right:#2d6e3a;--wrong:#c0392b;--code-bg:#f7faf7;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:210px 1fr 250px;overflow:hidden;}
+.grid-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.grid{display:grid;gap:3px;padding:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:2px;}
+.cell{width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.8rem;font-weight:700;border:1px solid var(--border2);border-radius:2px;transition:all .3s;}
+.cell.water{background:var(--water-bg);border-color:var(--water-b);color:var(--water);}
+.cell.land{background:var(--land-bg);border-color:var(--land-b);color:var(--land);}
+.cell.flip{background:var(--flip-bg);border-color:var(--flip-b);color:var(--flip);border-width:2px;}
+.cell.isl2{background:var(--island2bg);border-color:var(--island2b);color:var(--island2);}
+.cell.isl3{background:var(--island3bg);border-color:var(--island3b);color:var(--island3);}
+.cell.isl4{background:var(--island4bg);border-color:var(--island4b);color:var(--island4);}
+.cell.isl5{background:var(--island5bg);border-color:var(--island5b);color:var(--island5);}
+.cell.active{border-width:2px;box-shadow:0 0 6px rgba(45,110,58,.3);}
+.sb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.sbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.sbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.sbr:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}.sv.g{color:var(--right);}.sv.r{color:var(--wrong);}.sv.a{color:var(--accent);}
+.stk{height:3px;background:var(--border);margin-top:3px;overflow:hidden;border-radius:2px;}
+.stf{height:100%;background:var(--accent);transition:width .4s;}
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);}
+.code-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title2{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.code-q{font-size:.6rem;color:var(--accent);}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:var(--border2);flex-shrink:0;line-height:21px;user-select:none;}
+.cc{flex:1;padding:0 12px 0 4px;font-size:.67rem;line-height:21px;white-space:pre;color:var(--muted2);}
+.code-line.al{background:rgba(45,110,58,.07);border-left:3px solid var(--accent);}.code-line.al .ln{color:var(--accent);}.code-line.al .cc{color:var(--ink);}
+.code-line.dok{background:rgba(45,110,58,.06);border-left:3px solid rgba(45,110,58,.4);}
+.code-line.derr{background:rgba(192,57,43,.06);border-left:3px solid rgba(192,57,43,.4);}
+.kw{color:#882200;}.fn{color:var(--accent);}.nm{color:#0044aa;}.cm{color:var(--muted);font-style:italic;}.op{color:#005588;}
+.pz{flex-shrink:0;padding:.75rem 1rem;background:var(--surface2);border-top:1px solid var(--border);}
+.pq{font-size:.7rem;color:var(--ink);margin-bottom:.5rem;line-height:1.55;}.pq strong{color:var(--accent);}
+.popts{display:flex;flex-direction:column;gap:3px;}
+.popt{background:var(--surface);border:1px solid var(--border2);padding:5px 10px;font-size:.67rem;cursor:pointer;transition:all .2s;display:flex;gap:8px;align-items:center;color:var(--muted2);border-radius:2px;}
+.popt:hover{border-color:var(--accent);background:var(--bg);}
+.popt.sr{border-color:var(--right);background:rgba(45,110,58,.06);color:var(--right);}
+.popt.sw{border-color:var(--wrong);background:rgba(192,57,43,.06);color:var(--wrong);}
+.popt.rv{border-color:var(--right);}
+.popt.dis{cursor:default;opacity:.5;}
+.okey{width:16px;height:16px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.58rem;color:var(--muted);flex-shrink:0;border-radius:2px;}
+.pfb{margin-top:.4rem;font-size:.67rem;padding:.4rem .6rem;line-height:1.5;display:none;border-radius:2px;}
+.pfb.show{display:block;}
+.pfb.ok{background:rgba(45,110,58,.06);border:1px solid rgba(45,110,58,.3);color:var(--right);}
+.pfb.err{background:rgba(192,57,43,.06);border:1px solid rgba(192,57,43,.3);color:var(--wrong);}
+.tbar2{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.62rem;color:var(--muted);font-style:italic;flex-shrink:0;min-height:40px;transition:color .3s;}
+.tbar2.lit{color:var(--ink);}
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.vb2{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vk{color:var(--muted2);}.vv{font-weight:600;font-size:.62rem;}
+.vv.c{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(45,110,58,.15);}100%{background:transparent;}}
+.hist-log{display:flex;flex-direction:column;gap:2px;max-height:150px;overflow-y:auto;}
+.hi{font-size:.6rem;padding:2px 7px;display:flex;justify-content:space-between;}
+.hi.ok{color:var(--right);}.hi.err{color:var(--wrong);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="island_watch.html" class="nav-tab">01 Watch</a>
+    <a href="island_guide.html" class="nav-tab">02 Guide</a>
+    <a href="island_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="island_cmb.html" class="nav-tab active">04 Mirror·B</a>
+    <a href="island_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="island_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Largest Island · Predict</div>
+</header>
+<main>
+  <div class="grid-panel">
+    <div class="panel-label">Grid State</div>
+    <div class="grid" id="grid" style="grid-template-columns:repeat(4,38px);"></div>
+    <div class="panel-label">Island Sizes</div>
+    <div id="sizesDisp" style="display:flex;flex-direction:column;gap:3px;font-size:.65rem;color:var(--muted);">computing...</div>
+    <div class="panel-label">Score</div>
+    <div class="sb">
+      <div class="sbt">Accuracy</div>
+      <div class="sbr"><span class="sk">Correct</span><span class="sv g" id="scC">0</span></div>
+      <div class="sbr"><span class="sk">Wrong</span><span class="sv r" id="scW">0</span></div>
+      <div class="sbr"><span class="sk">Streak</span><span class="sv a" id="scS">0</span></div>
+      <div class="sbr"><span class="sk">Accuracy</span><span class="sv" id="scA">—</span></div>
+    </div>
+    <div class="stk"><div class="stf" id="sFill" style="width:0%"></div></div>
+  </div>
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title2">Predict what this line produces</div>
+      <div class="code-q">Q <span id="qN">1</span>/<span id="qT">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="pz">
+      <div class="pq" id="pQ">Loading...</div>
+      <div class="popts" id="pOpts"></div>
+      <div class="pfb" id="pFb"></div>
+    </div>
+    <div class="tbar2" id="tBar">Read the highlighted line. What does it produce right now?</div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Variables</div>
+    <div class="vb2">
+      <div class="vbt">Current</div>
+      <div class="vbr"><span class="vk">r, c</span><span class="vv" id="vRC">—</span></div>
+      <div class="vbr"><span class="vk">grid[r][c]</span><span class="vv" id="vVal">—</span></div>
+      <div class="vbr"><span class="vk">island_id</span><span class="vv" id="vId">—</span></div>
+      <div class="vbr"><span class="vk">adj_ids</span><span class="vv" id="vAdj">—</span></div>
+      <div class="vbr"><span class="vk">size_sum</span><span class="vv" id="vSum">—</span></div>
+      <div class="vbr"><span class="vk">max_size</span><span class="vv" id="vMax">—</span></div>
+    </div>
+    <div class="panel-label">History</div>
+    <div class="hist-log" id="histLog"></div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Best streak: <span id="bestS">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="skipQ()">Skip →</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="island_cmc.html" class="btn btn-accent">→ Write Mode</a>
+  </div>
+</footer>
+<script>
+const ROWS=4,COLS=4;
+const BASE=[[1,0,0,1],[0,0,1,1],[1,1,1,0],[0,0,1,0]];
+const ISL_CLS={2:'isl2',3:'isl3',4:'isl4',5:'isl5'};
+const CODE=[
+  {n:1,t:'<span class="kw">def</span> <span class="fn">largest_island</span>(grid):',id:'def'},
+  {n:2,t:'  island_sizes <span class="op">=</span> {}',id:'init_sizes'},
+  {n:3,t:'  island_id <span class="op">=</span> <span class="nm">2</span>',id:'init_id'},
+  {n:4,t:'  <span class="cm"># Phase 1: label all islands</span>',id:'comment1'},
+  {n:5,t:'  <span class="kw">for</span> r,c <span class="kw">in</span> grid:',id:'label_loop'},
+  {n:6,t:'    <span class="kw">if</span> grid[r][c] <span class="op">==</span> <span class="nm">0</span>:',id:'check_zero'},
+  {n:7,t:'      size <span class="op">=</span> <span class="fn">dfs_label</span>(r,c,island_id)',id:'call_dfs'},
+  {n:8,t:'      island_sizes[island_id] <span class="op">=</span> size',id:'store_size'},
+  {n:9,t:'      island_id <span class="op">+=</span> <span class="nm">1</span>',id:'inc_id'},
+  {n:10,t:'  <span class="cm"># Phase 2: scan 1s for best flip</span>',id:'comment2'},
+  {n:11,t:'  max_size <span class="op">=</span> <span class="nm">0</span>',id:'init_max'},
+  {n:12,t:'  <span class="kw">for</span> r,c <span class="kw">in</span> grid:',id:'scan_loop'},
+  {n:13,t:'    <span class="kw">if</span> grid[r][c] <span class="op">==</span> <span class="nm">1</span>:',id:'check_one'},
+  {n:14,t:'      adj <span class="op">=</span> <span class="fn">unique_adj_islands</span>(r,c)',id:'get_adj'},
+  {n:15,t:'      size <span class="op">=</span> <span class="nm">1</span> <span class="op">+</span> <span class="fn">sum</span>(island_sizes[i] <span class="kw">for</span> i <span class="kw">in</span> adj)',id:'calc_size'},
+  {n:16,t:'      max_size <span class="op">=</span> <span class="fn">max</span>(max_size, size)',id:'update_max'},
+  {n:17,t:'  <span class="kw">return</span> max_size',id:'ret'},
+];
+
+const QUESTIONS=[
+  {line:'check_zero',mkQ:(s)=>({
+    q:`Line 6: <strong>if grid[${s.r}][${s.c}] == 0</strong> — value is ${s.val}. Do we label this island?`,
+    opts:[
+      {t:`${s.val===0?'YES — it\'s 0 (land), run DFS to label':'NO — not 0, skip (already labelled or water)'}`,correct:true},
+      {t:`${s.val===0?'NO — 0 means water':'YES — label it'}`,correct:false},
+      {t:`Always label every cell`,correct:false},
+    ],
+    ex:s.val===0?`grid[${s.r}][${s.c}] = 0 = unlabelled land. Run DFS to label this island and all connected land cells.`:`grid[${s.r}][${s.c}] = ${s.val} = ${s.val===1?'water':'already labelled island '+s.val}. Skip — no DFS needed.`,
+    quote:'"As we do DFS, the important part about marking these as twos (or threes, etc.) is to say we know this is already part of an island."'
+  })},
+  {line:'store_size',mkQ:(s)=>({
+    q:`Line 8: <strong>island_sizes[${s.islandId}] = size</strong> — DFS returned ${s.sum}. What does this store?`,
+    opts:[
+      {t:`Maps island ID ${s.islandId} → size ${s.sum} for O(1) lookup later`,correct:true},
+      {t:`Marks cells as visited`,correct:false},
+      {t:`Updates the grid values`,correct:false},
+    ],
+    ex:`We store island_sizes[${s.islandId}] = ${s.sum}. Later when scanning 1s, any neighbor labelled ${s.islandId} instantly tells us: this island has size ${s.sum}.`,
+    quote:'"We just need to record what the size of that island was as we found it so we can simply create an island sizes array."'
+  })},
+  {line:'check_one',mkQ:(s)=>({
+    q:`Line 13: <strong>if grid[${s.r}][${s.c}] == 1</strong> — value is ${s.val}. Try flipping this cell?`,
+    opts:[
+      {t:`${s.val===1?'YES — it\'s 1 (water), try flipping it to land':'NO — not 1, already land or labelled'}`,correct:true},
+      {t:`${s.val===1?'NO — skip water cells':'YES — flip all cells'}`,correct:false},
+      {t:`Flip every cell regardless`,correct:false},
+    ],
+    ex:s.val===1?`grid[${s.r}][${s.c}] = 1 = water. This is a flip candidate. Check its 4 neighbors to find adjacent islands.`:`grid[${s.r}][${s.c}] = ${s.val} = land (already labelled). Not a flip candidate. Skip.`,
+    quote:'"Now what we can do is simply iterate through all of the different ones and for each one see which islands it would connect to if it turned into a zero."'
+  })},
+  {line:'calc_size',mkQ:(s)=>({
+    q:`Line 15: <strong>size = 1 + sum(island_sizes[i] for i in adj)</strong> — adj islands: ${JSON.stringify(s.adj)}, sizes: ${s.adj?.map(i=>({2:4,3:1,4:2,5:1}[i]||0)).join(',')||'none'}`,
+    opts:[
+      {t:`1 (flipped cell) + ${s.adj?.map(i=>({2:4,3:1,4:2,5:1}[i]||0)).join('+')||0} = ${s.sum}`,correct:true},
+      {t:`Just sum the island sizes (no +1)`,correct:false},
+      {t:`Run a new DFS to calculate size`,correct:false},
+    ],
+    ex:`The flipped cell itself = 1. Adjacent island sizes: ${s.adj?.map(i=>`island ${i}=${({2:4,3:1,4:2,5:1}[i]||0)}`).join(', ')||'none'}. Total = ${s.sum}. No DFS needed — all sizes pre-computed!`,
+    quote:'"Without doing DFS from here, we can simply know that both of these directions are part of these same island and just ask: what is the size of that island from island sizes?"'
+  })},
+  {line:'update_max',mkQ:(s)=>({
+    q:`Line 16: <strong>max_size = max(max_size, size)</strong> — current max=${s.maxSize}, this flip=${s.sum}. New max?`,
+    opts:[
+      {t:`${s.sum>s.maxSize?s.sum+' (this flip is larger!)':s.maxSize+' (previous max wins)'}`,correct:true},
+      {t:`${s.sum>s.maxSize?s.maxSize:s.sum}`,correct:false},
+      {t:`Always replace with current size`,correct:false},
+    ],
+    ex:s.sum>s.maxSize?`${s.sum} > ${s.maxSize} → update max_size to ${s.sum}.`:`${s.sum} ≤ ${s.maxSize} → max_size stays at ${s.maxSize}.`,
+    quote:'"Keep track of the maximum size found. At the end we\'ve tried every possibility. We return the max size."'
+  })},
+];
+
+function computePredSteps(){
+  const steps=[];
+  const grid=BASE.map(r=>[...r]);
+  const islandSizes={};let islandId=2,maxSize=0;
+  function getNeighbors(r,c){const nb=[];[[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS)nb.push([nr,nc]);});return nb;}
+  function dfsLabel(r,c,id){const stack=[[r,c]];let size=0;while(stack.length){const[cr,cc]=stack.pop();if(grid[cr][cc]!==0)continue;grid[cr][cc]=id;size++;getNeighbors(cr,cc).forEach(([nr,nc])=>{if(grid[nr][nc]===0)stack.push([nr,nc]);});}return size;}
+  function push(line,r,c,islandId,adj,sum,maxS){steps.push({line,grid:grid.map(row=>[...row]),r,c,val:grid[r]?.[c]??null,islandId,adj:adj?[...adj]:null,sum,maxSize:maxS,islandSizes:{...islandSizes}});}
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    push('check_zero',r,c,islandId,null,null,maxSize);
+    if(grid[r][c]===0){const size=dfsLabel(r,c,islandId);push('store_size',r,c,islandId,null,size,maxSize);islandSizes[islandId]=size;islandId++;}
+  }
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    push('check_one',r,c,islandId,null,null,maxSize);
+    if(grid[r][c]===1){
+      const adjIds=new Set();getNeighbors(r,c).forEach(([nr,nc])=>{if(grid[nr][nc]>=2)adjIds.add(grid[nr][nc]);});
+      let sum=1;adjIds.forEach(id=>{sum+=islandSizes[id]||0;});
+      push('calc_size',r,c,islandId,adjIds,sum,maxSize);
+      if(sum>maxSize)maxSize=sum;
+      push('update_max',r,c,islandId,adjIds,sum,maxSize);
+    }
+  }
+  return steps;
+}
+const QLINES=new Set(QUESTIONS.map(q=>q.line));
+const ALL_STEPS=computePredSteps();
+const PRED_STEPS=ALL_STEPS.filter(s=>QLINES.has(s.line));
+let cur=0,answered=false,correct=0,wrong=0,streak=0,bestStreak=0,history=[];
+const ISL_CLASSES={2:'isl2',3:'isl3',4:'isl4',5:'isl5'};
+
+function buildCode(){const cb=document.getElementById('codeBody');cb.innerHTML='';CODE.forEach(l=>{const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;d.innerHTML=`<span class="ln">${l.n||''}</span><span class="cc">${l.t}</span>`;cb.appendChild(d);});document.getElementById('qT').textContent=PRED_STEPS.length;}
+function buildGrid(s){const el=document.getElementById('grid');el.innerHTML='';s.grid.forEach((row,r)=>{row.forEach((val,c)=>{const div=document.createElement('div');let cls='cell ';if(val===1)cls+='water';else if(val===0)cls+='land';else cls+=(ISL_CLASSES[val]||'isl2');if(s.r===r&&s.c===c)cls+=' active';div.className=cls;div.textContent=val;el.appendChild(div);});});}
+function buildSizes(s){const el=document.getElementById('sizesDisp');el.innerHTML='';Object.entries(s.islandSizes).forEach(([id,size])=>{const d=document.createElement('div');d.style.cssText='padding:2px 7px;border:1px solid;border-radius:2px;font-size:.63rem;font-weight:600;margin-bottom:2px;';d.className=ISL_CLASSES[id]||'';d.textContent=`Island ${id}: ${size}`;el.appendChild(d);});}
+function setV(id,val){const el=document.getElementById(id);if(!el)return;const p=el.textContent;el.textContent=String(val);if(p!==String(val)){el.className='vv c';setTimeout(()=>el.className='vv',600);}}
+
+function renderQ(){
+  if(cur>=PRED_STEPS.length){showComplete();return;}
+  const s=PRED_STEPS[cur];answered=false;
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('al','dok','derr'));
+  const lel=document.getElementById(`line-${s.line}`);if(lel){lel.classList.add('al');lel.scrollIntoView({block:'center',behavior:'smooth'});}
+  buildGrid(s);buildSizes(s);
+  setV('vRC',s.r!==null?`[${s.r},${s.c}]`:'—');setV('vVal',s.val!==null?s.val:'—');setV('vId',s.islandId||'—');
+  setV('vAdj',s.adj?`[${s.adj.join(', ')}]`:'—');setV('vSum',s.sum!==null?s.sum:'—');setV('vMax',s.maxSize);
+  document.getElementById('qN').textContent=cur+1;
+  const qDef=QUESTIONS.find(q=>q.line===s.line);if(!qDef){skipQ();return;}
+  const qData=qDef.mkQ(s);
+  document.getElementById('pQ').innerHTML=qData.q;
+  const opts=[...qData.opts];for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
+  const oc=document.getElementById('pOpts');oc.innerHTML='';
+  ['A','B','C'].forEach((k,i)=>{const btn=document.createElement('div');btn.className='popt';btn.innerHTML=`<span class="okey">${k}</span>${opts[i].t}`;btn.onclick=()=>select(btn,opts[i].correct,qData,opts,oc);oc.appendChild(btn);});
+  document.getElementById('pFb').className='pfb';document.getElementById('tBar').textContent='Read the highlighted line. What does it produce right now?';document.getElementById('tBar').className='tbar2';
+}
+
+function select(btn,isOk,qData,opts,container){
+  if(answered)return;answered=true;
+  container.querySelectorAll('.popt').forEach(b=>b.classList.add('dis'));
+  const fb=document.getElementById('pFb');const lel=document.getElementById(`line-${PRED_STEPS[cur].line}`);
+  if(isOk){btn.classList.add('sr');correct++;streak++;if(streak>bestStreak)bestStreak=streak;fb.textContent='✓ '+qData.ex;fb.className='pfb show ok';if(lel)lel.classList.add('dok');history.push({ok:true,q:qData.q.replace(/<[^>]+>/g,'').slice(0,40)});}
+  else{btn.classList.add('sw');opts.forEach((o,i)=>{if(o.correct)container.querySelectorAll('.popt')[i].classList.add('rv');});wrong++;streak=0;fb.textContent='✗ '+qData.ex;fb.className='pfb show err';if(lel)lel.classList.add('derr');history.push({ok:false,q:qData.q.replace(/<[^>]+>/g,'').slice(0,40)});}
+  document.getElementById('tBar').textContent=qData.quote;document.getElementById('tBar').className='tbar2 lit';
+  const hl=document.getElementById('histLog');const item=document.createElement('div');item.className=`hi ${isOk?'ok':'err'}`;item.innerHTML=`<span>${isOk?'✓':'✗'}</span><span style="font-size:.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px;">${history[history.length-1].q}</span>`;hl.appendChild(item);hl.scrollTop=hl.scrollHeight;
+  document.getElementById('scC').textContent=correct;document.getElementById('scW').textContent=wrong;document.getElementById('scS').textContent=streak;document.getElementById('bestS').textContent=bestStreak;const tot=correct+wrong;document.getElementById('scA').textContent=tot?Math.round(correct/tot*100)+'%':'—';document.getElementById('sFill').style.width=Math.min(streak*15,100)+'%';
+  setTimeout(()=>{cur++;renderQ();},isOk?1000:2300);
+}
+function skipQ(){cur++;renderQ();}
+function showComplete(){document.getElementById('pQ').innerHTML=`<strong>All done!</strong> Accuracy: ${Math.round(correct/(correct+wrong||1)*100)}%`;document.getElementById('pOpts').innerHTML=`<a href="island_cmc.html" style="display:inline-block;margin-top:.5rem;padding:8px 20px;background:var(--accent);color:#fff;font-size:.7rem;text-decoration:none;font-weight:600;border-radius:2px;">→ Write Mode</a>`;}
+function resetAll(){cur=0;correct=0;wrong=0;streak=0;bestStreak=0;history=[];answered=false;document.getElementById('histLog').innerHTML='';document.getElementById('scC').textContent=0;document.getElementById('scW').textContent=0;document.getElementById('scS').textContent=0;document.getElementById('scA').textContent='—';document.getElementById('sFill').style.width='0%';buildCode();renderQ();}
+buildCode();renderQ();
+</script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide — Largest Island</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f0f4f0;--surface:#fafcfa;--surface2:#e8ede8;--border:#c8d4c8;--border2:#a8baa8;--ink:#1a2218;--muted:#6a7a68;--muted2:#4a5a48;--accent:#2d6e3a;--accent2:#3a8a4a;--land:#d4a84b;--land-bg:rgba(212,168,75,.15);--land-b:rgba(212,168,75,.6);--water:#2a5fa8;--water-bg:rgba(42,95,168,.1);--water-b:rgba(42,95,168,.4);--flip:#c0392b;--flip-bg:rgba(192,57,43,.12);--flip-b:rgba(192,57,43,.55);--island2:#5a3a8a;--island2bg:rgba(90,58,138,.1);--island2b:rgba(90,58,138,.4);--island3:#1a6e6e;--island3bg:rgba(26,110,110,.1);--island3b:rgba(26,110,110,.4);--island4:#8a4a1a;--island4bg:rgba(138,74,26,.1);--island4b:rgba(138,74,26,.4);--island5:#1a4a8a;--island5bg:rgba(26,74,138,.1);--island5b:rgba(26,74,138,.35);--right:#2d6e3a;--wrong:#c0392b;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 340px;overflow:hidden;}
+.center{padding:1.75rem 2.5rem;display:flex;flex-direction:column;gap:1.2rem;border-right:1px solid var(--border2);overflow-y:auto;}
+.inst-box{background:var(--surface);border:1px solid var(--border2);border-top:3px solid var(--accent);padding:.85rem 1.1rem;display:flex;gap:.9rem;}
+.inst-icon{width:28px;height:28px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;}
+.inst-text{font-size:.72rem;line-height:1.7;}.inst-text strong{color:var(--accent);}
+.teacher-flash{padding:.6rem .9rem;border-left:3px solid var(--accent);font-size:.68rem;color:var(--muted2);font-style:italic;line-height:1.5;min-height:2.5rem;transition:all .3s;}
+.teacher-flash.lit{color:var(--ink);border-color:var(--land);}
+.phase-label{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--accent);}
+.grid-wrap{display:flex;justify-content:center;}
+.grid{display:grid;gap:4px;padding:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;}
+.cell{width:54px;height:54px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.9rem;font-weight:700;border:1px solid var(--border2);border-radius:2px;transition:all .25s;cursor:default;position:relative;}
+.cell.water{background:var(--water-bg);border-color:var(--water-b);color:var(--water);}
+.cell.land{background:var(--land-bg);border-color:var(--land-b);color:var(--land);}
+.cell.flip{background:var(--flip-bg);border-color:var(--flip-b);color:var(--flip);border-width:2px;}
+.cell.isl2{background:var(--island2bg);border-color:var(--island2b);color:var(--island2);}
+.cell.isl3{background:var(--island3bg);border-color:var(--island3b);color:var(--island3);}
+.cell.isl4{background:var(--island4bg);border-color:var(--island4b);color:var(--island4);}
+.cell.isl5{background:var(--island5bg);border-color:var(--island5b);color:var(--island5);}
+.cell.clickable{cursor:pointer;border-width:2px;border-color:var(--accent);animation:cp .9s ease infinite;}
+.cell.clickable:hover{box-shadow:0 0 10px rgba(45,110,58,.3);transform:scale(1.05);}
+.cell.exploring{border-color:var(--land-b);border-width:2px;box-shadow:0 0 6px rgba(212,168,75,.3);}
+@keyframes cp{0%,100%{border-color:var(--accent);}50%{border-color:rgba(45,110,58,.3);}}
+.cell .step-n{position:absolute;top:2px;right:3px;font-size:.38rem;color:var(--muted);}
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.state-block{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.state-title{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.state-row{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.state-row:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}
+.sv.a{color:var(--accent);}.sv.f{color:var(--flip);}.sv.l{color:var(--land);}
+.sizes-mini{display:flex;flex-direction:column;gap:3px;}
+.size-chip-mini{padding:3px 8px;border:1px solid var(--border2);font-size:.65rem;border-radius:2px;}
+.size-chip-mini.isl2{border-color:var(--island2b);background:var(--island2bg);color:var(--island2);}
+.size-chip-mini.isl3{border-color:var(--island3b);background:var(--island3bg);color:var(--island3);}
+.size-chip-mini.isl4{border-color:var(--island4b);background:var(--island4bg);color:var(--island4);}
+.size-chip-mini.isl5{border-color:var(--island5b);background:var(--island5bg);color:var(--island5);}
+.hint-box{background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--land);padding:.65rem .75rem;font-size:.68rem;color:var(--muted2);line-height:1.6;min-height:3rem;}
+.toast{position:fixed;top:66px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--surface);border:1px solid var(--border2);padding:8px 18px;font-size:.7rem;opacity:0;transition:all .25s;z-index:100;pointer-events:none;max-width:380px;text-align:center;border-radius:2px;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.good{border-color:var(--right);color:var(--right);}
+.toast.bad{border-color:var(--wrong);color:var(--wrong);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="island_watch.html" class="nav-tab">01 Watch</a>
+    <a href="island_guide.html" class="nav-tab active">02 Guide</a>
+    <a href="island_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="island_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="island_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="island_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Largest Island · Guide</div>
+</header>
+<main>
+  <div class="center">
+    <div class="inst-box">
+      <div class="inst-icon">▶</div>
+      <div class="inst-text" id="instText"><strong>You drive the algorithm.</strong> Phase 1: click 0-cells to label islands. Phase 2: click 1-cells to find the best flip.</div>
+    </div>
+    <div class="teacher-flash" id="teacherFlash">"First we find all the islands. As we visit nodes we update them in the matrix to have a new number — so zeros become 2s, 3s, etc."</div>
+    <div class="phase-label" id="phaseLabel">Phase 1: Label islands (click 0-cells)</div>
+    <div class="grid-wrap">
+      <div class="grid" id="grid" style="grid-template-columns:repeat(4,54px);"></div>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">State</div>
+    <div class="state-block">
+      <div class="state-title">Algorithm</div>
+      <div class="state-row"><span class="sk">Phase</span><span class="sv a" id="sPhase">labelling</span></div>
+      <div class="state-row"><span class="sk">Next island ID</span><span class="sv" id="sNextId">2</span></div>
+      <div class="state-row"><span class="sk">Scanning cell</span><span class="sv" id="sCur">—</span></div>
+      <div class="state-row"><span class="sk">Adjacent islands</span><span class="sv" id="sAdj">—</span></div>
+      <div class="state-row"><span class="sk">Current sum</span><span class="sv f" id="sSum">—</span></div>
+      <div class="state-row"><span class="sk">Max size</span><span class="sv a" id="sMax">0</span></div>
+    </div>
+    <div class="panel-label">Island Sizes</div>
+    <div class="sizes-mini" id="sizesMini"><span style="font-size:.62rem;color:var(--muted);">none yet</span></div>
+    <div class="panel-label">Hint</div>
+    <div class="hint-box" id="hintBox">Click any highlighted 0-cell to begin labelling islands with DFS.</div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);" id="footerStatus">Phase 1: click 0-cells to label islands</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="showHint()">Hint</button>
+    <button class="btn" onclick="autoStep()">Auto Step</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="island_cma.html" class="btn btn-accent">→ Mirror·A</a>
+  </div>
+</footer>
+<script>
+const ROWS=4,COLS=4;
+// 1=water, 0=land
+const BASE=[[1,0,0,1],[0,0,1,1],[1,1,1,0],[0,0,1,0]];
+// Island color classes
+const ISL_CLASSES=['','','isl2','isl3','isl4','isl5','isl2','isl3'];
+
+const QUOTES={
+  phase1:'"First find all of the islands. As we visit nodes we update them in the actual matrix to have a new number — zeros become 2s, 3s, etc."',
+  label:'"As we visit these nodes we are going to update them in the actual matrix. And then we just need to record what the size of that island was."',
+  skip:'"Now we continue iterating and we get to these twos but these aren\'t zeros anymore — we don\'t need to do DFS because we already found this island."',
+  phase2:'"Now we simply iterate through all of the different ones and for each one see which islands it would connect to if it turned into a zero."',
+  scan:'"From this one, we can just say: what is the size of each adjacent island? Sum them up and add 1 for the flipped cell itself."',
+  done:'"At that point we\'ve tried every one. The largest size we found was eight. So we return 8."',
+};
+
+let grid=BASE.map(r=>[...r]);
+let islandSizes={};  // id -> size
+let nextId=2;
+let phase='labelling'; // labelling | scanning | done
+let maxSize=0;
+let visitedInDFS=new Set();
+
+function key(r,c){return `${r},${c}`;}
+function getNeighbors(r,c){const nb=[];[[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS)nb.push([nr,nc]);});return nb;}
+
+function dfsLabel(startR,startC,id){
+  const stack=[[startR,startC]];let size=0;
+  while(stack.length){
+    const[r,c]=stack.pop();
+    if(grid[r][c]!==0)continue;
+    grid[r][c]=id;size++;
+    getNeighbors(r,c).forEach(([nr,nc])=>{if(grid[nr][nc]===0)stack.push([nr,nc]);});
+  }
+  return size;
+}
+
+function handleCellClick(r,c){
+  if(phase==='labelling'){
+    if(grid[r][c]!==0){showToast('Click a 0-cell (land) to label it!','bad');return;}
+    const id=nextId++;
+    const size=dfsLabel(r,c,id);
+    islandSizes[id]=size;
+    setQuote('label');
+    showToast(`✓ Island ${id} labelled — size ${size}`,'good');
+    document.getElementById('sNextId').textContent=nextId;
+    renderSizes();
+    render();
+    // check if all 0s labelled
+    const hasZero=grid.some(row=>row.some(v=>v===0));
+    if(!hasZero){
+      phase='scanning';
+      document.getElementById('phaseLabel').textContent='Phase 2: Click 1-cells to find best flip';
+      document.getElementById('footerStatus').textContent='Phase 2: click 1-cells to score each flip';
+      document.getElementById('sPhase').textContent='scanning';
+      document.getElementById('instText').innerHTML='<strong>Phase 2.</strong> All islands labelled. Now click each <span style="color:var(--water)">1-cell</span> (water) to see what size island it would create if flipped.';
+      setQuote('phase2');
+      setHint('Now click any 1-cell (water) to see which islands it connects to and what size island it would create.');
+      render();
+    }
+  } else if(phase==='scanning'){
+    if(grid[r][c]<2){showToast('Click a 1-cell (water) to try flipping it!','bad');return;}
+    // Check adjacent unique islands
+    const adjIds=new Set();
+    getNeighbors(r,c).forEach(([nr,nc])=>{if(grid[nr][nc]>=2)adjIds.add(grid[nr][nc]);});
+    let sum=1;
+    adjIds.forEach(id=>{sum+=islandSizes[id]||0;});
+    if(sum>maxSize){maxSize=sum;}
+    document.getElementById('sAdj').textContent=adjIds.size?[...adjIds].map(id=>`#${id}(${islandSizes[id]})`).join(', '):'none';
+    document.getElementById('sSum').textContent=sum;
+    document.getElementById('sMax').textContent=maxSize;
+    document.getElementById('sCur').textContent=`[${r},${c}]`;
+    setQuote('scan');
+    showToast(`Flip [${r},${c}]: adjacent islands ${[...adjIds].join(',')||'none'} → size ${sum}`,'good');
+    setHint(`[${r},${c}] connects to islands: ${[...adjIds].join(', ')||'none'}. Sum = ${adjIds.size?[...adjIds].map(id=>islandSizes[id]).join('+')+'+1':1} = ${sum}. Max so far: ${maxSize}`);
+  }
+}
+
+function autoStep(){
+  if(phase==='labelling'){
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){if(grid[r][c]===0){handleCellClick(r,c);return;}}
+  } else if(phase==='scanning'){
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){if(grid[r][c]===1){handleCellClick(r,c);return;}}
+    // all done
+    phase='done';document.getElementById('phaseLabel').textContent=`Done! Max island size = ${maxSize}`;
+    document.getElementById('footerStatus').textContent=`Result: ${maxSize}`;
+    setQuote('done');render();
+  }
+}
+
+function render(){
+  const el=document.getElementById('grid');el.innerHTML='';
+  // Find first clickable
+  let firstClickable=null;
+  if(phase==='labelling'){for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){if(grid[r][c]===0){firstClickable=[r,c];break;}if(firstClickable)break;}}
+  if(phase==='scanning'){for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){if(grid[r][c]===1){firstClickable=[r,c];break;}if(firstClickable)break;}}
+  grid.forEach((row,r)=>{
+    row.forEach((val,c)=>{
+      const div=document.createElement('div');
+      let cls='cell ';
+      if(val===1)cls+='water';
+      else if(val===0)cls+='land';
+      else cls+=ISL_CLASSES[val]||'isl2';
+      const isClickable=phase==='labelling'&&val===0||phase==='scanning'&&val===1;
+      if(isClickable)cls+=' clickable';
+      div.className=cls;
+      div.textContent=val===1?'1':val===0?'0':val;
+      div.onclick=()=>handleCellClick(r,c);
+      el.appendChild(div);
+    });
+  });
+}
+
+function renderSizes(){
+  const el=document.getElementById('sizesMini');el.innerHTML='';
+  Object.entries(islandSizes).forEach(([id,size])=>{
+    const chip=document.createElement('div');chip.className=`size-chip-mini ${ISL_CLASSES[id]||'isl2'}`;chip.textContent=`Island ${id}: size ${size}`;el.appendChild(chip);
+  });
+}
+
+function setHint(t){document.getElementById('hintBox').textContent=t;}
+function setQuote(k){const el=document.getElementById('teacherFlash');el.textContent=QUOTES[k]||'';el.className='teacher-flash lit';setTimeout(()=>el.className='teacher-flash',4000);}
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;setTimeout(()=>t.className='toast',2800);}
+function showHint(){
+  if(phase==='labelling'){for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){if(grid[r][c]===0){showToast(`Click [${r},${c}] — it's an unlabelled 0 (land)`,'good');return;}}}
+  else if(phase==='scanning'){for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){if(grid[r][c]===1){showToast(`Click [${r},${c}] — it's a 1 (water) to try flipping`,'good');return;}}}
+}
+function resetAll(){grid=BASE.map(r=>[...r]);islandSizes={};nextId=2;phase='labelling';maxSize=0;document.getElementById('sPhase').textContent='labelling';document.getElementById('sNextId').textContent='2';document.getElementById('sCur').textContent='—';document.getElementById('sAdj').textContent='—';document.getElementById('sSum').textContent='—';document.getElementById('sMax').textContent='0';document.getElementById('phaseLabel').textContent='Phase 1: Label islands (click 0-cells)';document.getElementById('footerStatus').textContent='Phase 1: click 0-cells to label islands';document.getElementById('sizesMini').innerHTML='<span style="font-size:.62rem;color:var(--muted);">none yet</span>';document.getElementById('instText').innerHTML='<strong>You drive the algorithm.</strong> Phase 1: click 0-cells to label islands. Phase 2: click 1-cells to find the best flip.';setHint('Click any highlighted 0-cell to begin labelling islands with DFS.');setQuote('phase1');render();}
+setQuote('phase1');render();
+</script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo — Largest Island</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f0f4f0;--surface:#fafcfa;--surface2:#e8ede8;--border:#c8d4c8;--border2:#a8baa8;--ink:#1a2218;--muted:#6a7a68;--muted2:#4a5a48;--accent:#2d6e3a;--land:#d4a84b;--land-bg:rgba(212,168,75,.15);--land-b:rgba(212,168,75,.6);--water:#2a5fa8;--water-bg:rgba(42,95,168,.1);--water-b:rgba(42,95,168,.4);--flip:#c0392b;--flip-bg:rgba(192,57,43,.15);--flip-b:rgba(192,57,43,.6);--island2:#5a3a8a;--island2bg:rgba(90,58,138,.1);--island2b:rgba(90,58,138,.4);--island3:#1a6e6e;--island3bg:rgba(26,110,110,.1);--island3b:rgba(26,110,110,.4);--right:#2d6e3a;--wrong:#c0392b;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;}
+
+.center{padding:2rem 2.5rem;display:flex;flex-direction:column;align-items:center;gap:1.5rem;border-right:1px solid var(--border2);position:relative;overflow:hidden;}
+.solo-header{text-align:center;}
+.solo-header h2{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--ink);margin-bottom:.3rem;}
+.solo-header p{font-size:.72rem;color:var(--muted);line-height:1.65;}
+
+/* BIG GRID */
+.grid{display:grid;gap:5px;padding:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;user-select:none;}
+.cell{width:62px;height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;border:1px solid var(--border2);border-radius:2px;cursor:pointer;transition:all .2s;position:relative;}
+.cell.water{background:var(--water-bg);border-color:var(--water-b);color:var(--water);}
+.cell.water:hover{background:var(--flip-bg);border-color:var(--flip-b);transform:scale(1.06);}
+.cell.land{background:var(--land-bg);border-color:var(--land-b);color:var(--land);cursor:default;}
+.cell.flip-cell{background:var(--flip-bg);border-color:var(--flip-b);color:var(--flip);border-width:2px;box-shadow:0 0 12px rgba(192,57,43,.3);}
+.cell.highlight{background:var(--island2bg);border-color:var(--island2b);color:var(--island2);border-width:2px;}
+.cell .cell-sub{font-size:.42rem;color:var(--muted);font-family:'JetBrains Mono',monospace;font-weight:400;margin-top:1px;}
+
+/* info strip */
+.info-strip{display:flex;gap:1rem;align-items:center;justify-content:center;flex-wrap:wrap;}
+.info-chip{padding:5px 14px;border:1px solid var(--border2);background:var(--surface);border-radius:2px;font-size:.7rem;font-weight:600;}
+.info-chip.answer{border-color:var(--accent);color:var(--accent);background:rgba(45,110,58,.06);}
+.info-chip.flip{border-color:var(--flip-b);color:var(--flip);background:var(--flip-bg);}
+.info-chip.size{border-color:var(--land-b);color:var(--land);}
+
+/* overlay */
+.overlay{position:absolute;inset:0;background:rgba(240,244,240,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;opacity:0;pointer-events:none;transition:opacity .3s;z-index:10;text-align:center;padding:2rem;}
+.overlay.show{opacity:1;pointer-events:all;}
+.overlay-title{font-family:'Playfair Display',serif;font-size:3rem;font-weight:700;}
+.overlay-sub{font-size:.75rem;color:var(--muted2);line-height:1.7;max-width:380px;}
+.overlay-ex{font-size:.68rem;color:var(--muted2);line-height:1.6;max-width:400px;padding:.6rem .8rem;border-left:3px solid var(--accent);text-align:left;}
+.overlay-btns{display:flex;gap:.75rem;}
+.ob{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:8px 20px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);cursor:pointer;transition:all .2s;text-decoration:none;text-transform:uppercase;display:inline-block;border-radius:2px;}
+.ob:hover{background:var(--surface2);}
+.ob.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+
+/* RIGHT */
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.challenge-list{display:flex;flex-direction:column;gap:.4rem;}
+.ch{border:1px solid var(--border2);padding:.55rem .75rem;font-size:.68rem;cursor:pointer;transition:all .2s;border-radius:2px;}
+.ch:hover{border-color:var(--accent);background:var(--bg);}
+.ch.active{border-color:var(--accent);background:rgba(45,110,58,.05);}
+.ch.solved{border-color:var(--right);background:rgba(45,110,58,.06);color:var(--right);}
+.ch.failed{border-color:var(--wrong);background:rgba(192,57,43,.04);}
+.ch-name{font-weight:700;font-family:'Playfair Display',serif;}
+.ch-hint{font-size:.58rem;color:var(--muted);margin-top:2px;}
+.score-b{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.score-t{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.score-r{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.score-r:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}.sv.g{color:var(--right);}.sv.r{color:var(--wrong);}
+.clock-w{font-size:.65rem;color:var(--muted);}
+.clock-w span{color:var(--ink);font-weight:600;}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.mode-note{font-size:.65rem;color:var(--wrong);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="island_watch.html" class="nav-tab">01 Watch</a>
+    <a href="island_guide.html" class="nav-tab">02 Guide</a>
+    <a href="island_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="island_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="island_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="island_solo.html" class="nav-tab active">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Largest Island · Solo</div>
+</header>
+<main>
+  <div class="center" id="centerPanel">
+    <div class="overlay" id="overlay">
+      <div class="overlay-title" id="overlayTitle">—</div>
+      <div class="overlay-sub" id="overlaySub"></div>
+      <div class="overlay-ex" id="overlayEx"></div>
+      <div class="overlay-btns">
+        <button class="ob primary" onclick="nextChallenge()">Next →</button>
+        <button class="ob" onclick="resetCurrent()">Try Again</button>
+        <a href="island_watch.html" class="ob">Re-watch</a>
+      </div>
+    </div>
+
+    <div class="solo-header">
+      <h2>Find the best flip.</h2>
+      <p>Click a <strong style="color:var(--water)">water cell (1)</strong> to flip it to land.<br>Find the single flip that creates the <strong>largest island.</strong></p>
+    </div>
+
+    <div class="info-strip">
+      <div class="info-chip" id="flipChip">No flip selected</div>
+      <div class="info-chip size" id="sizeChip">Island size: —</div>
+      <div class="info-chip answer" id="bestChip">Your best: 0</div>
+    </div>
+
+    <div class="grid" id="grid" style="grid-template-columns:repeat(4,62px);"></div>
+
+    <div class="action-btns" style="display:flex;gap:.75rem;">
+      <button class="btn btn-accent" onclick="submitAnswer()">Submit Best Flip</button>
+      <button class="btn" onclick="resetCurrentFlip()">Reset Flip</button>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Challenges</div>
+    <div class="challenge-list" id="challengeList"></div>
+    <div class="panel-label">Score</div>
+    <div class="score-b">
+      <div class="score-t">Results</div>
+      <div class="score-r"><span class="sk">Correct</span><span class="sv g" id="scC">0</span></div>
+      <div class="score-r"><span class="sk">Wrong</span><span class="sv r" id="scW">0</span></div>
+      <div class="score-r"><span class="sk">Accuracy</span><span class="sv" id="scA">—</span></div>
+    </div>
+    <div class="panel-label">Timer</div>
+    <div class="clock-w">Elapsed: <span id="clock">00:00</span></div>
+    <div class="panel-label">Tip</div>
+    <div style="font-size:.63rem;color:var(--muted2);line-height:1.8;padding:.4rem .5rem;border-left:3px solid var(--land);background:var(--land-bg);">
+      Look for 1-cells that bridge two large islands. Largest island = sum of adjacent island sizes + 1.
+    </div>
+  </div>
+</main>
+<footer>
+  <div class="mode-note">Click water cells. Find the best flip.</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="skipChallenge()">Skip →</button>
+    <button class="btn" onclick="resetAll()">Reset All</button>
+  </div>
+</footer>
+<script>
+const ROWS=4,COLS=4;
+
+const CHALLENGES=[
+  {name:'Classic',hint:'answer=8: bridges two islands',grid:[[1,0,0,1],[0,0,1,1],[1,1,1,0],[0,0,1,0]],answer:8,ex:'Flipping [1][2] (row 1, col 2) connects island of size 4 (top-left) + island of size 3 (right) + 1 = 8.'},
+  {name:'Two islands',hint:'answer=5: connect center',grid:[[0,1,0],[1,1,1],[0,1,0]],answer:5,ex:'The 4 corner 0s are isolated. Any adjacent 1 gives size 2. The center 1 connects all 4 corners: 4×1 + 1 = 5.'},
+  {name:'Long bridge',hint:'answer=7: flip the middle 1',grid:[[0,0,0,1],[1,1,1,1],[0,0,0,1],[1,1,1,1]],answer:7,ex:'Top 3 land cells (left) + flip [0][3] = 4? Or: flip [1][0] connects top-left 3 to bottom-left 3 → 7.'},
+  {name:'Corner connector',hint:'answer=4: small grid trick',grid:[[0,1],[1,0]],answer:4,ex:'Flipping [0][1] or [1][0] connects the two 0s + itself = 3. Or flip [0][1]: connects [0][0] and [1][0] → 1+1+1=3. Best is 3. (All flips give 3 or less.)'},
+  {name:'No islands',hint:'All water — flip one',grid:[[1,1,1],[1,1,1],[1,1,1]],answer:1,ex:'No existing land islands. Any flip creates an island of size 1 (just the flipped cell itself).'},
+  {name:'Dense land',hint:'One water cell left',grid:[[0,0,0],[0,1,0],[0,0,0]],answer:9,ex:'Flipping the center 1 connects all 8 surrounding land cells into one island: 8 + 1 = 9.'},
+  {name:'Strip',hint:'answer=6: best row flip',grid:[[0,0,0,0],[1,1,1,1],[0,0,0,0]],answer:9,ex:'Flipping any middle-row 1 connects all top-row 4 cells + bottom-row 4 cells + 1 = 9. Any end 1 gives 4+1+1=6.'},
+  {name:'Diagonal islands',hint:'4 separate islands',grid:[[0,1,0,1],[1,1,1,1],[0,1,0,1],[1,1,1,1]],answer:3,ex:'Each 0 is an island of size 1. The best flip bridges two adjacent 0s giving 1+1+1=3.'},
+];
+
+// Compute actual answer for each challenge (verify)
+function computeAnswer(g){
+  const grid=g.map(r=>[...r]);const rows=grid.length,cols=grid[0].length;
+  const islandSizes={};let islandId=2;
+  function getN(r,c){const nb=[];[[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(nr>=0&&nr<rows&&nc>=0&&nc<cols)nb.push([nr,nc]);});return nb;}
+  function dfs(r,c,id){const stack=[[r,c]];let size=0;while(stack.length){const[cr,cc]=stack.pop();if(grid[cr][cc]!==0)continue;grid[cr][cc]=id;size++;getN(cr,cc).forEach(([nr,nc])=>{if(grid[nr][nc]===0)stack.push([nr,nc]);});}return size;}
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){if(grid[r][c]===0){islandSizes[islandId]=dfs(r,c,islandId);islandId++;}}
+  let max=0;
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){if(grid[r][c]===1){const adj=new Set();getN(r,c).forEach(([nr,nc])=>{if(grid[nr][nc]>=2)adj.add(grid[nr][nc]);});let sum=1;adj.forEach(id=>{sum+=islandSizes[id]||0;});max=Math.max(max,sum);}}
+  return max;
+}
+
+// Compute island size if we flip (r,c)
+function computeFlipSize(g,fr,fc){
+  const grid=g.map(r=>[...r]);const rows=grid.length,cols=grid[0].length;
+  const islandSizes={};let islandId=2;
+  function getN(r,c){const nb=[];[[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(nr>=0&&nr<rows&&nc>=0&&nc<cols)nb.push([nr,nc]);});return nb;}
+  function dfs(r,c,id){const stack=[[r,c]];let size=0;while(stack.length){const[cr,cc]=stack.pop();if(grid[cr][cc]!==0)continue;grid[cr][cc]=id;size++;getN(cr,cc).forEach(([nr,nc])=>{if(grid[nr][nc]===0)stack.push([nr,nc]);});}return size;}
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){if(grid[r][c]===0){islandSizes[islandId]=dfs(r,c,islandId);islandId++;}}
+  if(grid[fr][fc]!==1)return 0;
+  const adj=new Set();getN(fr,fc).forEach(([nr,nc])=>{if(grid[nr][nc]>=2)adj.add(grid[nr][nc]);});
+  let sum=1;adj.forEach(id=>{sum+=islandSizes[id]||0;});return sum;
+}
+
+let curChallenge=0,correct=0,wrong=0;
+let results=new Array(CHALLENGES.length).fill(null);
+let startTime=null,clockTimer=null;
+let selectedFlip=null; // [r,c]
+let bestFlipSize=0;
+let answered=false;
+
+function getCh(){return CHALLENGES[curChallenge];}
+
+function handleCellClick(r,c){
+  const ch=getCh();
+  if(ch.grid[r][c]!==1)return; // only water cells
+  if(!startTime){startTime=Date.now();clockTimer=setInterval(updateClock,1000);}
+  const size=computeFlipSize(ch.grid,r,c);
+  selectedFlip=[r,c];
+  if(size>bestFlipSize)bestFlipSize=size;
+  document.getElementById('flipChip').textContent=`Flip [${r}][${c}] selected`;
+  document.getElementById('flipChip').className='info-chip flip';
+  document.getElementById('sizeChip').textContent=`Island size: ${size}`;
+  document.getElementById('bestChip').textContent=`Your best: ${bestFlipSize}`;
+  buildGrid();
+}
+
+function buildGrid(){
+  const ch=getCh();
+  const rows=ch.grid.length,cols=ch.grid[0].length;
+  const el=document.getElementById('grid');
+  el.style.gridTemplateColumns=`repeat(${cols},62px)`;
+  el.innerHTML='';
+  ch.grid.forEach((row,r)=>{
+    row.forEach((val,c)=>{
+      const div=document.createElement('div');
+      let cls='cell ';
+      if(val===0)cls+='land';else cls+='water';
+      const isSelected=selectedFlip&&selectedFlip[0]===r&&selectedFlip[1]===c;
+      if(isSelected)cls='cell flip-cell';
+      div.className=cls;
+      div.textContent=val===1?'1':'0';
+      if(val===1){div.onclick=()=>handleCellClick(r,c);}
+      el.appendChild(div);
+    });
+  });
+}
+
+function submitAnswer(){
+  if(!selectedFlip){alert('Click a water cell first!');return;}
+  const ch=getCh();
+  const myFlipSize=computeFlipSize(ch.grid,...selectedFlip);
+  const optimalSize=computeAnswer(ch.grid.map(r=>[...r]));
+  const isCorrect=myFlipSize===optimalSize;
+  answered=true;
+  if(isCorrect){correct++;results[curChallenge]='solved';}
+  else{wrong++;results[curChallenge]='failed';}
+  updateScore();updateChallengeList();
+  const ot=document.getElementById('overlayTitle');
+  const os=document.getElementById('overlaySub');
+  const oe=document.getElementById('overlayEx');
+  if(isCorrect){
+    ot.textContent='Correct!';ot.style.color='var(--right)';
+    os.textContent=`Your flip [${selectedFlip[0]}][${selectedFlip[1]}] creates an island of size ${myFlipSize} — the maximum possible!`;
+  } else {
+    ot.textContent='Not optimal.';ot.style.color='var(--wrong)';
+    os.textContent=`Your flip creates size ${myFlipSize}, but the optimal is ${optimalSize}.`;
+  }
+  oe.textContent=ch.ex;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function resetCurrentFlip(){selectedFlip=null;bestFlipSize=0;answered=false;document.getElementById('flipChip').textContent='No flip selected';document.getElementById('flipChip').className='info-chip';document.getElementById('sizeChip').textContent='Island size: —';document.getElementById('bestChip').textContent='Your best: 0';buildGrid();}
+function resetCurrent(){document.getElementById('overlay').classList.remove('show');resetCurrentFlip();}
+function nextChallenge(){document.getElementById('overlay').classList.remove('show');if(curChallenge<CHALLENGES.length-1){curChallenge++;loadChallenge();}else showFinalScore();}
+function skipChallenge(){if(curChallenge<CHALLENGES.length-1){curChallenge++;loadChallenge();}}
+
+function loadChallenge(){
+  selectedFlip=null;bestFlipSize=0;answered=false;
+  document.getElementById('flipChip').textContent='No flip selected';document.getElementById('flipChip').className='info-chip';
+  document.getElementById('sizeChip').textContent='Island size: —';document.getElementById('bestChip').textContent='Your best: 0';
+  buildGrid();updateChallengeList();
+}
+
+function buildChallengeList(){
+  const cl=document.getElementById('challengeList');cl.innerHTML='';
+  CHALLENGES.forEach((ch,i)=>{
+    const d=document.createElement('div');let cls='ch';
+    if(i===curChallenge)cls+=' active';
+    if(results[i]==='solved')cls+=' solved';
+    if(results[i]==='failed')cls+=' failed';
+    d.className=cls;
+    d.innerHTML=`<div class="ch-name">${ch.name}</div><div class="ch-hint">${ch.hint}</div>`;
+    d.onclick=()=>{curChallenge=i;loadChallenge();};
+    cl.appendChild(d);
+  });
+}
+function updateChallengeList(){document.querySelectorAll('.ch').forEach((el,i)=>{let cls='ch';if(i===curChallenge)cls+=' active';if(results[i]==='solved')cls+=' solved';if(results[i]==='failed')cls+=' failed';el.className=cls;});}
+function updateScore(){document.getElementById('scC').textContent=correct;document.getElementById('scW').textContent=wrong;const tot=correct+wrong;document.getElementById('scA').textContent=tot?Math.round(correct/tot*100)+'%':'—';}
+function showFinalScore(){document.getElementById('overlayTitle').textContent=`${correct}/${CHALLENGES.length}`;document.getElementById('overlayTitle').style.color=correct>=CHALLENGES.length*0.75?'var(--right)':'var(--wrong)';document.getElementById('overlaySub').textContent=`You found the optimal flip in ${correct} of ${CHALLENGES.length} challenges.`;document.getElementById('overlayEx').textContent='The key insight: label islands first, then for each 1-cell, sum adjacent unique island sizes + 1.';document.getElementById('overlay').classList.add('show');}
+function updateClock(){const e=Math.floor((Date.now()-startTime)/1000);const m=Math.floor(e/60).toString().padStart(2,'0');const s=(e%60).toString().padStart(2,'0');document.getElementById('clock').textContent=`${m}:${s}`;}
+function resetAll(){curChallenge=0;correct=0;wrong=0;results.fill(null);startTime=null;clearInterval(clockTimer);document.getElementById('clock').textContent='00:00';document.getElementById('overlay').classList.remove('show');updateScore();buildChallengeList();loadChallenge();}
+buildChallengeList();loadChallenge();
+</script>
+</body>
+</html>

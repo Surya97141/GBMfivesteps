@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch — Largest Island</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f0f4f0;--surface:#fafcfa;--surface2:#e8ede8;--border:#c8d4c8;--border2:#a8baa8;
+  --ink:#1a2218;--muted:#6a7a68;--muted2:#4a5a48;
+  --accent:#2d6e3a;--accent2:#3a8a4a;
+  --land:#d4a84b;--land-bg:rgba(212,168,75,.15);--land-b:rgba(212,168,75,.6);
+  --water:#2a5fa8;--water-bg:rgba(42,95,168,.1);--water-b:rgba(42,95,168,.4);
+  --flip:#c0392b;--flip-bg:rgba(192,57,43,.12);--flip-b:rgba(192,57,43,.55);
+  --island2:#5a3a8a;--island2bg:rgba(90,58,138,.1);--island2b:rgba(90,58,138,.4);
+  --island3:#1a6e6e;--island3bg:rgba(26,110,110,.1);--island3b:rgba(26,110,110,.4);
+  --island4:#8a4a1a;--island4bg:rgba(138,74,26,.1);--island4b:rgba(138,74,26,.4);
+  --island5:#1a4a8a;--island5bg:rgba(26,74,138,.1);--island5b:rgba(26,74,138,.35);
+}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);letter-spacing:.04em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}
+.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+
+main{display:grid;grid-template-columns:1fr 460px;overflow:hidden;}
+
+.left-panel{padding:2.5rem 3rem;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--border2);overflow:hidden;}
+.stage-tag{font-size:.53rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-bottom:.7rem;}
+.narrator{font-family:'Playfair Display',serif;font-size:1.85rem;font-weight:400;line-height:1.45;color:var(--ink);min-height:9rem;}
+.narrator .hl{color:var(--accent);font-weight:700;}
+.narrator .land{color:var(--land);font-weight:700;}
+.narrator .water{color:var(--water);font-weight:700;}
+.narrator .flip{color:var(--flip);font-weight:700;}
+.narrator .isl{color:var(--island2);}
+.concept{display:inline-block;margin-top:1.2rem;font-size:.52rem;letter-spacing:.22em;text-transform:uppercase;background:var(--ink);color:var(--bg);padding:4px 12px;}
+.quote{margin-top:1.5rem;padding:.8rem 1rem;border-left:3px solid var(--accent);font-size:.7rem;color:var(--muted2);line-height:1.65;min-height:3.5rem;}
+.quote span{color:var(--ink);}
+.progress-wrap{margin-top:2rem;}
+.progress-bar{height:3px;background:var(--border);}
+.progress-fill{height:100%;background:var(--accent);transition:width .5s ease;}
+.progress-label{font-size:.53rem;color:var(--muted);margin-top:.4rem;}
+
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1.1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+
+/* GRID */
+.grid-wrap{display:flex;justify-content:center;}
+.grid{display:grid;gap:3px;padding:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;width:fit-content;}
+.cell{width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:700;border:1px solid var(--border2);border-radius:2px;transition:all .3s;position:relative;}
+/* water = 1 */
+.cell.water{background:var(--water-bg);border-color:var(--water-b);color:var(--water);}
+/* land = 0 */
+.cell.land{background:var(--land-bg);border-color:var(--land-b);color:var(--land);}
+/* flip = the 1 being changed */
+.cell.flip{background:var(--flip-bg);border-color:var(--flip-b);color:var(--flip);box-shadow:0 0 10px rgba(192,57,43,.3);animation:flipPulse 1s ease infinite;}
+@keyframes flipPulse{0%,100%{box-shadow:0 0 10px rgba(192,57,43,.3);}50%{box-shadow:0 0 20px rgba(192,57,43,.5);}}
+/* island labels */
+.cell.isl2{background:var(--island2bg);border-color:var(--island2b);color:var(--island2);}
+.cell.isl3{background:var(--island3bg);border-color:var(--island3b);color:var(--island3);}
+.cell.isl4{background:var(--island4bg);border-color:var(--island4b);color:var(--island4);}
+.cell.isl5{background:var(--island5bg);border-color:var(--island5b);color:var(--island5);}
+.cell.active{border-width:2px;box-shadow:0 0 8px rgba(45,110,58,.3);}
+.cell .sub{position:absolute;bottom:2px;right:4px;font-size:.38rem;color:var(--muted);font-weight:400;}
+
+/* Island sizes display */
+.sizes-row{display:flex;gap:6px;flex-wrap:wrap;}
+.size-chip{padding:4px 10px;border:1px solid var(--border2);background:var(--surface2);font-size:.68rem;border-radius:2px;transition:all .3s;}
+.size-chip.isl2{border-color:var(--island2b);background:var(--island2bg);color:var(--island2);}
+.size-chip.isl3{border-color:var(--island3b);background:var(--island3bg);color:var(--island3);}
+.size-chip.isl4{border-color:var(--island4b);background:var(--island4bg);color:var(--island4);}
+.size-chip.isl5{border-color:var(--island5b);background:var(--island5bg);color:var(--island5);}
+
+/* Max size */
+.max-display{padding:.65rem 1rem;border:1px solid var(--border2);font-size:.85rem;font-weight:700;border-radius:2px;transition:all .3s;}
+.max-display.updated{border-color:var(--accent);color:var(--accent);background:rgba(45,110,58,.06);}
+
+.legend{display:flex;flex-wrap:wrap;gap:.6rem;}
+.leg{display:flex;align-items:center;gap:5px;font-size:.57rem;color:var(--muted2);}
+.leg-box{width:16px;height:16px;border-radius:2px;border:1px solid;}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.btn-accent:hover{background:var(--accent2);border-color:var(--accent2);}
+.speed-wrap{display:flex;align-items:center;gap:.75rem;font-size:.57rem;color:var(--muted);}
+.speed-wrap input{accent-color:var(--accent);width:80px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="island_watch.html" class="nav-tab active">01 Watch</a>
+    <a href="island_guide.html" class="nav-tab">02 Guide</a>
+    <a href="island_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="island_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="island_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="island_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Largest Island · Watch</div>
+</header>
+
+<main>
+  <div class="left-panel">
+    <div>
+      <div class="stage-tag" id="stageTag">Stage 1 of 10 — Problem</div>
+      <div class="narrator" id="narrator">A grid of <span class="water">1s</span> (water) and <span class="land">0s</span> (land).<br>Flip exactly one <span class="water">1→0</span>.<br>Find the <span class="hl">largest island.</span></div>
+      <div class="concept" id="concept">KEY CONCEPT: LARGEST ISLAND</div>
+      <div class="quote" id="quote"><span>"The goal is to find the largest island. We get to change one 1 into a zero to make a larger island."</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+      <div class="progress-label" id="pLabel">Step 1 / 10</div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Grid (1=water, 0=land)</div>
+    <div class="grid-wrap">
+      <div class="grid" id="mainGrid" style="grid-template-columns:repeat(4,46px);"></div>
+    </div>
+
+    <div class="panel-label">Legend</div>
+    <div class="legend">
+      <div class="leg"><div class="leg-box" style="background:var(--water-bg);border-color:var(--water-b);"></div><span style="color:var(--water)">1 = water</span></div>
+      <div class="leg"><div class="leg-box" style="background:var(--land-bg);border-color:var(--land-b);"></div><span style="color:var(--land)">0 = land</span></div>
+      <div class="leg"><div class="leg-box" style="background:var(--flip-bg);border-color:var(--flip-b);"></div><span style="color:var(--flip)">flip candidate</span></div>
+      <div class="leg"><div class="leg-box" style="background:var(--island2bg);border-color:var(--island2b);"></div><span style="color:var(--island2)">island 2</span></div>
+      <div class="leg"><div class="leg-box" style="background:var(--island3bg);border-color:var(--island3b);"></div><span style="color:var(--island3)">island 3</span></div>
+    </div>
+
+    <div class="panel-label">Island Sizes (optimised approach)</div>
+    <div class="sizes-row" id="sizesRow"><span style="font-size:.62rem;color:var(--muted);">not yet computed</span></div>
+
+    <div class="panel-label">Max Island Size</div>
+    <div class="max-display" id="maxDisplay" style="color:var(--muted);border-color:var(--border2);">—</div>
+  </div>
+</main>
+
+<footer>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prev()">← Prev</button>
+    <button class="btn btn-accent" onclick="next()">Next →</button>
+    <button class="btn" onclick="reset()">Reset</button>
+  </div>
+  <div class="speed-wrap">
+    Speed:<input type="range" id="spd" min="600" max="3000" value="1800" step="100">
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">Auto Play</button>
+  </div>
+  <a href="island_guide.html" class="btn btn-accent">Guide →</a>
+</footer>
+
+<script>
+// 4x4 grid: 1=water, 0=land
+// [[1,0,0,1],[0,0,1,1],[1,1,1,0],[0,0,1,0]]
+const BASE_GRID=[
+  [1,0,0,1],
+  [0,0,1,1],
+  [1,1,1,0],
+  [0,0,1,0]
+];
+
+// Cell types for display
+// water, land, flip, isl2, isl3, isl4, isl5, active
+function makeGrid(rows){
+  // rows is array of arrays of {val, cls, sub}
+  return rows;
+}
+
+const STAGES=[
+  {
+    tag:'Stage 1 / 10 — Problem',
+    narrator:'A grid of <span class="water">1s</span> (water) and <span class="land">0s</span> (land).<br>Flip exactly one <span class="water">1→0</span>.<br>Find the <span class="hl">largest island.</span>',
+    concept:'KEY CONCEPT: LARGEST ISLAND',
+    quote:'"The goal is to find the largest island. We get to change one 1 into a zero to make a larger island."',
+    grid:[
+      [{v:'1',c:'water'},{v:'0',c:'land'},{v:'0',c:'land'},{v:'1',c:'water'}],
+      [{v:'0',c:'land'},{v:'0',c:'land'},{v:'1',c:'water'},{v:'1',c:'water'}],
+      [{v:'1',c:'water'},{v:'1',c:'water'},{v:'1',c:'water'},{v:'0',c:'land'}],
+      [{v:'0',c:'land'},{v:'0',c:'land'},{v:'1',c:'water'},{v:'0',c:'land'}]
+    ],
+    sizes:[],maxSize:null
+  },
+  {
+    tag:'Stage 2 / 10 — It\'s a Graph Problem',
+    narrator:'The 2D grid is a <span class="hl">graph.</span><br>Each cell = node.<br>Up to 4 neighbors (no diagonal).',
+    concept:'KEY CONCEPT: GRID AS GRAPH',
+    quote:'"While we might have a 2D array, in reality this 2D array represents a graph — each element represents a node and each node has up to four edges."',
+    grid:[
+      [{v:'1',c:'water'},{v:'0',c:'land active'},{v:'0',c:'land active'},{v:'1',c:'water'}],
+      [{v:'0',c:'land active'},{v:'0',c:'land active'},{v:'1',c:'water'},{v:'1',c:'water'}],
+      [{v:'1',c:'water'},{v:'1',c:'water'},{v:'1',c:'water'},{v:'0',c:'land active'}],
+      [{v:'0',c:'land active'},{v:'0',c:'land active'},{v:'1',c:'water'},{v:'0',c:'land active'}]
+    ],
+    sizes:[],maxSize:null
+  },
+  {
+    tag:'Stage 3 / 10 — Brute Force: Try every 1',
+    narrator:'Brute force: for each <span class="water">1</span>,<br>temporarily flip it → run <span class="hl">DFS.</span><br>Track largest island found.',
+    concept:'KEY CONCEPT: BRUTE FORCE O(w²h²)',
+    quote:'"What if we just tried every single one? For each one, we change it to a zero temporarily and run DFS to see how many zeros we can reach."',
+    grid:[
+      [{v:'→0',c:'flip'},{v:'0',c:'land'},{v:'0',c:'land'},{v:'1',c:'water'}],
+      [{v:'0',c:'land'},{v:'0',c:'land'},{v:'1',c:'water'},{v:'1',c:'water'}],
+      [{v:'1',c:'water'},{v:'1',c:'water'},{v:'1',c:'water'},{v:'0',c:'land'}],
+      [{v:'0',c:'land'},{v:'0',c:'land'},{v:'1',c:'water'},{v:'0',c:'land'}]
+    ],
+    sizes:[],maxSize:5
+  },
+  {
+    tag:'Stage 4 / 10 — Best flip gives size 8',
+    narrator:'Flip this <span class="water">1</span> → connects two islands.<br>Left island (4) + Right island (3) + 1<br>= <span class="flip">8</span> — the answer.',
+    concept:'KEY CONCEPT: OPTIMAL FLIP',
+    quote:'"The best answer is to change this one right here. These two islands we had before can now be connected into a single larger island giving us a total size of eight."',
+    grid:[
+      [{v:'1',c:'water'},{v:'0',c:'land'},{v:'0',c:'land'},{v:'1',c:'water'}],
+      [{v:'0',c:'land'},{v:'0',c:'land'},{v:'→0',c:'flip'},{v:'1',c:'water'}],
+      [{v:'1',c:'water'},{v:'1',c:'water'},{v:'1',c:'water'},{v:'0',c:'land'}],
+      [{v:'0',c:'land'},{v:'0',c:'land'},{v:'1',c:'water'},{v:'0',c:'land'}]
+    ],
+    sizes:[],maxSize:8
+  },
+  {
+    tag:'Stage 5 / 10 — Optimised: Label Islands First',
+    narrator:'Better approach: label all islands <span class="hl">first.</span><br>Assign each island a unique ID (2, 3, 4...).<br>Record each island\'s <span class="hl">size.</span>',
+    concept:'KEY CONCEPT: ISLAND LABELLING DFS',
+    quote:'"What we can do is first find all of the islands. As we visit nodes we update them in the actual matrix to have a new number — so instead of zeros, these become twos, threes, etc."',
+    grid:[
+      [{v:'1',c:'water'},{v:'2',c:'isl2'},{v:'2',c:'isl2'},{v:'1',c:'water'}],
+      [{v:'2',c:'isl2'},{v:'2',c:'isl2'},{v:'1',c:'water'},{v:'1',c:'water'}],
+      [{v:'1',c:'water'},{v:'1',c:'water'},{v:'1',c:'water'},{v:'3',c:'isl3'}],
+      [{v:'4',c:'isl4'},{v:'4',c:'isl4'},{v:'1',c:'water'},{v:'5',c:'isl5'}]
+    ],
+    sizes:[{id:'isl2',label:'Island 2',size:4},{id:'isl3',label:'Island 3',size:1},{id:'isl4',label:'Island 4',size:2},{id:'isl5',label:'Island 5',size:1}],
+    maxSize:null
+  },
+  {
+    tag:'Stage 6 / 10 — Island 2: size 4',
+    narrator:'DFS from first <span class="land">0.</span><br>Visit 4 cells → label them <span class="isl">2.</span><br>Record: island_sizes[2] = 4.',
+    concept:'KEY CONCEPT: DFS LABELS ISLAND',
+    quote:'"As we visit these nodes we update them in the actual matrix to have a new number. We just need to record what the size of that island was as we found it."',
+    grid:[
+      [{v:'1',c:'water'},{v:'2',c:'isl2 active'},{v:'2',c:'isl2 active'},{v:'1',c:'water'}],
+      [{v:'2',c:'isl2 active'},{v:'2',c:'isl2 active'},{v:'1',c:'water'},{v:'1',c:'water'}],
+      [{v:'1',c:'water'},{v:'1',c:'water'},{v:'1',c:'water'},{v:'0',c:'land'}],
+      [{v:'0',c:'land'},{v:'0',c:'land'},{v:'1',c:'water'},{v:'0',c:'land'}]
+    ],
+    sizes:[{id:'isl2',label:'Island 2',size:4}],maxSize:null
+  },
+  {
+    tag:'Stage 7 / 10 — All islands labelled',
+    narrator:'All islands found:<br><span class="isl">2</span>(size 4), <span class="isl">3</span>(1), <span class="isl">4</span>(2), <span class="isl">5</span>(1).<br>Skip already-labelled cells.',
+    concept:'KEY CONCEPT: SKIP ALREADY LABELLED',
+    quote:'"Now we continue iterating and now we get to these twos, but these aren\'t zeros anymore — so we don\'t need to do DFS from these elements because we already found this island."',
+    grid:[
+      [{v:'1',c:'water'},{v:'2',c:'isl2'},{v:'2',c:'isl2'},{v:'1',c:'water'}],
+      [{v:'2',c:'isl2'},{v:'2',c:'isl2'},{v:'1',c:'water'},{v:'1',c:'water'}],
+      [{v:'1',c:'water'},{v:'1',c:'water'},{v:'1',c:'water'},{v:'3',c:'isl3'}],
+      [{v:'4',c:'isl4'},{v:'4',c:'isl4'},{v:'1',c:'water'},{v:'5',c:'isl5'}]
+    ],
+    sizes:[{id:'isl2',label:'Island 2',size:4},{id:'isl3',label:'Island 3',size:1},{id:'isl4',label:'Island 4',size:2},{id:'isl5',label:'Island 5',size:1}],
+    maxSize:null
+  },
+  {
+    tag:'Stage 8 / 10 — Scan each 1: sum adjacent islands',
+    narrator:'Now scan every <span class="water">1.</span><br>Check 4 neighbors — sum unique<br>island sizes + 1 (for the flip).',
+    concept:'KEY CONCEPT: O(1) ISLAND SIZE LOOKUP',
+    quote:'"From this one, if we go left we see a 2 (island 2, size 4) and right we see a 3 (island 3, size 1). Total = 4 + 1 + 1 = 6."',
+    grid:[
+      [{v:'1',c:'water'},{v:'2',c:'isl2'},{v:'2',c:'isl2'},{v:'1',c:'water'}],
+      [{v:'2',c:'isl2'},{v:'2',c:'isl2'},{v:'1',c:'flip'},{v:'1',c:'water'}],
+      [{v:'1',c:'water'},{v:'1',c:'water'},{v:'1',c:'water'},{v:'3',c:'isl3'}],
+      [{v:'4',c:'isl4'},{v:'4',c:'isl4'},{v:'1',c:'water'},{v:'5',c:'isl5'}]
+    ],
+    sizes:[{id:'isl2',label:'Island 2',size:4},{id:'isl3',label:'Island 3',size:1},{id:'isl4',label:'Island 4',size:2},{id:'isl5',label:'Island 5',size:1}],
+    maxSize:8
+  },
+  {
+    tag:'Stage 9 / 10 — No double-counting!',
+    narrator:'If two neighbors share the <span class="hl">same island ID</span>,<br>count it <span class="flip">only once.</span><br>Use a set of adjacent island IDs.',
+    concept:'KEY CONCEPT: DEDUPLICATE ISLAND IDS',
+    quote:'"We use a set of adjacent island IDs so we don\'t double-count. Then sum the sizes of all unique islands adjacent to this one."',
+    grid:[
+      [{v:'1',c:'water'},{v:'2',c:'isl2'},{v:'2',c:'isl2'},{v:'1',c:'flip'}],
+      [{v:'2',c:'isl2'},{v:'2',c:'isl2'},{v:'1',c:'water'},{v:'1',c:'water'}],
+      [{v:'1',c:'water'},{v:'1',c:'water'},{v:'1',c:'water'},{v:'3',c:'isl3'}],
+      [{v:'4',c:'isl4'},{v:'4',c:'isl4'},{v:'1',c:'water'},{v:'5',c:'isl5'}]
+    ],
+    sizes:[{id:'isl2',label:'Island 2',size:4},{id:'isl3',label:'Island 3',size:1}],
+    maxSize:8
+  },
+  {
+    tag:'Stage 10 / 10 — Complexity',
+    narrator:'Time: <span class="hl">O(wh)</span> — label + scan once.<br>Space: <span class="hl">O(wh)</span> — island sizes dict.<br>Brute force was O(w²h²).',
+    concept:'KEY CONCEPT: O(WH) TIME · O(WH) SPACE',
+    quote:'"We visit every zero one time in the labelling phase and every one one time in the scanning phase. Total O(w·h). The first solution was O(w²·h²)."',
+    grid:[
+      [{v:'1',c:'water'},{v:'2',c:'isl2'},{v:'2',c:'isl2'},{v:'1',c:'water'}],
+      [{v:'2',c:'isl2'},{v:'2',c:'isl2'},{v:'1',c:'water'},{v:'1',c:'water'}],
+      [{v:'1',c:'water'},{v:'1',c:'water'},{v:'1',c:'water'},{v:'3',c:'isl3'}],
+      [{v:'4',c:'isl4'},{v:'4',c:'isl4'},{v:'1',c:'water'},{v:'5',c:'isl5'}]
+    ],
+    sizes:[{id:'isl2',label:'Island 2',size:4},{id:'isl3',label:'Island 3',size:1},{id:'isl4',label:'Island 4',size:2},{id:'isl5',label:'Island 5',size:1}],
+    maxSize:8
+  },
+];
+
+let cur=0,autoTimer=null;
+
+function buildGrid(grid){
+  const el=document.getElementById('mainGrid');el.innerHTML='';
+  grid.forEach(row=>{
+    row.forEach(cell=>{
+      const div=document.createElement('div');
+      div.className='cell '+cell.c;
+      div.textContent=cell.v;
+      if(cell.sub){const s=document.createElement('span');s.className='sub';s.textContent=cell.sub;div.appendChild(s);}
+      el.appendChild(div);
+    });
+  });
+}
+
+function buildSizes(sizes){
+  const el=document.getElementById('sizesRow');el.innerHTML='';
+  if(!sizes||!sizes.length){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">not yet computed</span>';return;}
+  sizes.forEach(s=>{
+    const chip=document.createElement('div');chip.className=`size-chip ${s.id}`;chip.textContent=`${s.label}: ${s.size}`;el.appendChild(chip);
+  });
+}
+
+function applyStage(s){
+  document.getElementById('stageTag').textContent=s.tag;
+  document.getElementById('narrator').innerHTML=s.narrator;
+  document.getElementById('concept').textContent=s.concept;
+  document.getElementById('quote').innerHTML=`<span>${s.quote}</span>`;
+  buildGrid(s.grid);buildSizes(s.sizes);
+  const md=document.getElementById('maxDisplay');
+  if(s.maxSize!==null){md.textContent=`Max size = ${s.maxSize}`;md.className='max-display updated';}
+  else{md.textContent='—';md.style.cssText='color:var(--muted);border-color:var(--border2);';}
+  const pct=((cur+1)/STAGES.length*100).toFixed(0);
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pLabel').textContent=`Step ${cur+1} / ${STAGES.length}`;
+}
+
+function next(){if(cur<STAGES.length-1){cur++;applyStage(STAGES[cur]);}}
+function prev(){if(cur>0){cur--;applyStage(STAGES[cur]);}}
+function reset(){cur=0;applyStage(STAGES[0]);if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+  else{const spd=parseInt(document.getElementById('spd').value);document.getElementById('autoBtn').textContent='Stop';
+    autoTimer=setInterval(()=>{if(cur<STAGES.length-1)next();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}},spd);}
+}
+applyStage(STAGES[0]);
+</script>
+</body>
+</html>

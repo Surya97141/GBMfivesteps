@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror C — Largest Island</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f0f4f0;--surface:#fafcfa;--surface2:#e8ede8;--border:#c8d4c8;--border2:#a8baa8;--ink:#1a2218;--muted:#6a7a68;--muted2:#4a5a48;--accent:#2d6e3a;--land:#d4a84b;--land-bg:rgba(212,168,75,.15);--land-b:rgba(212,168,75,.6);--water:#2a5fa8;--water-bg:rgba(42,95,168,.1);--water-b:rgba(42,95,168,.4);--island2:#5a3a8a;--island2bg:rgba(90,58,138,.1);--island2b:rgba(90,58,138,.4);--island3:#1a6e6e;--island3bg:rgba(26,110,110,.1);--island3b:rgba(26,110,110,.4);--island4:#8a4a1a;--island4bg:rgba(138,74,26,.1);--island4b:rgba(138,74,26,.4);--island5:#1a4a8a;--island5bg:rgba(26,74,138,.1);--island5b:rgba(26,74,138,.35);--right:#2d6e3a;--wrong:#c0392b;--code-bg:#f7faf7;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:220px 1fr 240px;overflow:hidden;}
+.left-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.grid{display:grid;gap:3px;padding:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:2px;}
+.cell{width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.8rem;font-weight:700;border:1px solid var(--border2);border-radius:2px;}
+.cell.water{background:var(--water-bg);border-color:var(--water-b);color:var(--water);}
+.cell.land{background:var(--land-bg);border-color:var(--land-b);color:var(--land);}
+.cell.isl2{background:var(--island2bg);border-color:var(--island2b);color:var(--island2);}
+.cell.isl3{background:var(--island3bg);border-color:var(--island3b);color:var(--island3);}
+.cell.isl4{background:var(--island4bg);border-color:var(--island4b);color:var(--island4);}
+.cell.isl5{background:var(--island5bg);border-color:var(--island5b);color:var(--island5);}
+.vb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vbk{color:var(--muted2);}.vbv{font-weight:600;}.vbv.ok{color:var(--right);}.vbv.err{color:var(--wrong);}.vbv.p{color:var(--muted);}
+.run-result{padding:.7rem .8rem;border:1px solid var(--border2);font-size:.68rem;line-height:1.6;min-height:56px;border-radius:2px;transition:all .3s;}
+.run-result.idle{color:var(--muted);}
+.run-result.pass{border-color:var(--right);background:rgba(45,110,58,.06);color:var(--right);}
+.run-result.fail{border-color:var(--wrong);background:rgba(192,57,43,.05);color:var(--wrong);}
+.tc-list{display:flex;flex-direction:column;gap:3px;}
+.tc{font-size:.63rem;padding:4px 8px;border:1px solid var(--border2);display:flex;justify-content:space-between;border-radius:2px;}
+.tc.pass{border-color:var(--right);color:var(--right);}
+.tc.fail{border-color:var(--wrong);color:var(--wrong);}
+.tc.idle{color:var(--muted);}
+.editor-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);}
+.editor-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.editor-title{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.editor-status{font-size:.6rem;color:var(--muted);transition:color .3s;}
+.editor-status.ok{color:var(--right);}.editor-status.err{color:var(--wrong);}
+.editor-wrap{flex:1;display:grid;grid-template-columns:36px 1fr;overflow:hidden;}
+.gutter{background:var(--surface2);border-right:1px solid var(--border);padding:.5rem 0;overflow:hidden;}
+.gl{height:21px;text-align:right;padding:0 7px;font-size:.58rem;color:var(--border2);line-height:21px;user-select:none;}
+.gl.ok{color:var(--right);}
+.editor-area{position:relative;overflow:hidden;}
+.editor-hl{position:absolute;top:0;left:0;right:0;padding:.5rem 0;pointer-events:none;z-index:1;}
+.hl-line{height:21px;}.hl-line.ok{background:rgba(45,110,58,.05);}
+textarea#codeEd{position:absolute;top:0;left:0;right:0;bottom:0;background:transparent;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:.68rem;line-height:21px;border:none;outline:none;resize:none;padding:.5rem .75rem;z-index:2;caret-color:var(--accent);white-space:pre;overflow-wrap:normal;overflow:auto;tab-size:4;}
+.hint-strip{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.63rem;color:var(--muted);font-style:italic;flex-shrink:0;min-height:40px;transition:color .3s;}
+.hint-strip.lit{color:var(--ink);}
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.scaffold-block{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.scaffold-title{padding:4px 8px;background:var(--surface2);font-size:.5rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.scaffold-content{padding:.5rem .7rem;font-size:.63rem;line-height:1.75;color:var(--muted2);}
+.scaffold-content code{color:var(--accent);background:rgba(45,110,58,.07);padding:1px 4px;border-radius:2px;}
+.scaffold-content strong{color:var(--ink);font-weight:600;}
+.ins-btn{font-family:'JetBrains Mono',monospace;font-size:.54rem;padding:2px 7px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;border-radius:2px;}
+.ins-btn:hover{border-color:var(--accent);color:var(--accent);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.btn-danger{border-color:rgba(192,57,43,.4);color:var(--wrong);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="island_watch.html" class="nav-tab">01 Watch</a>
+    <a href="island_guide.html" class="nav-tab">02 Guide</a>
+    <a href="island_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="island_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="island_cmc.html" class="nav-tab active">05 Mirror·C</a>
+    <a href="island_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Largest Island · Write</div>
+</header>
+<main>
+  <div class="left-panel">
+    <div class="panel-label">Grid (live)</div>
+    <div class="grid" id="grid" style="grid-template-columns:repeat(4,38px);"></div>
+    <div class="panel-label">Checks (10)</div>
+    <div class="vb">
+      <div class="vbt">Key Concepts</div>
+      <div class="vbr"><span class="vbk">def largest_island</span><span class="vbv p" id="c1">—</span></div>
+      <div class="vbr"><span class="vbk">island_sizes dict</span><span class="vbv p" id="c2">—</span></div>
+      <div class="vbr"><span class="vbk">island_id start 2</span><span class="vbv p" id="c3">—</span></div>
+      <div class="vbr"><span class="vbk">DFS label 0-cells</span><span class="vbv p" id="c4">—</span></div>
+      <div class="vbr"><span class="vbk">store size in dict</span><span class="vbv p" id="c5">—</span></div>
+      <div class="vbr"><span class="vbk">increment island_id</span><span class="vbv p" id="c6">—</span></div>
+      <div class="vbr"><span class="vbk">scan 1-cells</span><span class="vbv p" id="c7">—</span></div>
+      <div class="vbr"><span class="vbk">unique adj islands</span><span class="vbv p" id="c8">—</span></div>
+      <div class="vbr"><span class="vbk">size = 1 + sum(adj)</span><span class="vbv p" id="c9">—</span></div>
+      <div class="vbr"><span class="vbk">return max_size</span><span class="vbv p" id="c10">—</span></div>
+    </div>
+    <div class="panel-label">Run</div>
+    <div class="run-result idle" id="runResult">Write and click Run.</div>
+  </div>
+  <div class="editor-panel">
+    <div class="editor-header">
+      <div class="editor-title">solution.py — write from memory</div>
+      <div class="editor-status" id="edStatus">0 / 10 checks</div>
+    </div>
+    <div class="editor-wrap">
+      <div class="gutter" id="gutter"></div>
+      <div class="editor-area">
+        <div class="editor-hl" id="edHl"></div>
+        <textarea id="codeEd" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
+placeholder="# Write largest_island(grid) from memory.
+#
+# Key ideas (optimised O(wh) approach):
+#   Phase 1: label all islands with DFS
+#     - 0-cells become 2, 3, 4... (unique IDs)
+#     - store island_sizes[id] = size
+#   Phase 2: scan all 1-cells
+#     - for each 1, check 4 neighbors
+#     - collect UNIQUE adjacent island IDs
+#     - size = 1 + sum(island_sizes[id] for id in adj)
+#     - update max
+#
+# Brute force: O(w²h²). Optimised: O(wh).
+"></textarea>
+      </div>
+    </div>
+    <div class="hint-strip" id="hintStrip">Start typing. Checks light up as you write each concept.</div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Scaffold</div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>Phase 1: label islands</span><button class="ins-btn" onclick="ins('phase1')">Insert</button></div>
+      <div class="scaffold-content">
+        1. <code>island_sizes = {}</code><br>
+        2. <code>island_id = 2</code> (start at 2!)<br>
+        3. Loop all cells: <code>if grid[r][c] == 0:</code><br>
+        4. &nbsp;&nbsp;<code>size = dfs_label(r, c, island_id)</code><br>
+        5. &nbsp;&nbsp;<code>island_sizes[island_id] = size</code><br>
+        6. &nbsp;&nbsp;<code>island_id += 1</code>
+      </div>
+    </div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>Phase 2: scan 1-cells</span><button class="ins-btn" onclick="ins('phase2')">Insert</button></div>
+      <div class="scaffold-content">
+        1. <code>max_size = 0</code><br>
+        2. Loop all cells: <code>if grid[r][c] == 1:</code><br>
+        3. &nbsp;&nbsp;Get unique neighbor IDs (≥2)<br>
+        4. &nbsp;&nbsp;<code>size = 1 + sum(island_sizes[i] for i in adj)</code><br>
+        5. &nbsp;&nbsp;<code>max_size = max(max_size, size)</code><br>
+        <strong>Key:</strong> use a SET to avoid double-counting same island.
+      </div>
+    </div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>dfs_label()</span><button class="ins-btn" onclick="ins('dfs')">Insert</button></div>
+      <div class="scaffold-content">
+        Stack-based DFS:<br>
+        <code>while stack:</code><br>
+        &nbsp;&nbsp;<code>if grid[r][c] != 0: continue</code><br>
+        &nbsp;&nbsp;<code>grid[r][c] = island_id</code><br>
+        &nbsp;&nbsp;<code>size += 1</code><br>
+        &nbsp;&nbsp;push 4 neighbors
+      </div>
+    </div>
+    <div class="panel-label">Test Cases</div>
+    <div class="tc-list">
+      <div class="tc idle" id="tc0">TC1: main 4×4 grid → 8</div>
+      <div class="tc idle" id="tc1">TC2: all 1s 2×2 → 1</div>
+      <div class="tc idle" id="tc2">TC3: all 0s 2×2 → 4</div>
+      <div class="tc idle" id="tc3">TC4: 1×1 [[0]] → 1</div>
+    </div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Lines: <span id="lineCount">0</span> | Checks: <span id="checkCount">0</span>/10</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn btn-accent" onclick="runCode()">▶ Run</button>
+    <button class="btn" onclick="lintCode()">Lint</button>
+    <button class="btn" onclick="showSolution()">Reveal</button>
+    <button class="btn btn-danger" onclick="clearEd()">Clear</button>
+    <a href="island_solo.html" class="btn btn-accent">→ Solo</a>
+  </div>
+</footer>
+<script>
+const BASE_GRID=[[1,0,0,1],[0,0,1,1],[1,1,1,0],[0,0,1,0]];
+const ROWS=4,COLS=4;
+const ISL_CLASSES={2:'isl2',3:'isl3',4:'isl4',5:'isl5'};
+
+const SOLUTION=`def largest_island(grid):
+    island_sizes = {}
+    island_id = 2
+    rows, cols = len(grid), len(grid[0])
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 0:
+                size = dfs_label(r, c, island_id, grid, rows, cols)
+                island_sizes[island_id] = size
+                island_id += 1
+    max_size = 0
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 1:
+                adj = set()
+                for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+                    nr, nc = r+dr, c+dc
+                    if 0<=nr<rows and 0<=nc<cols and grid[nr][nc] >= 2:
+                        adj.add(grid[nr][nc])
+                size = 1 + sum(island_sizes[i] for i in adj)
+                max_size = max(max_size, size)
+    return max_size
+
+def dfs_label(r, c, island_id, grid, rows, cols):
+    stack = [(r, c)]
+    size = 0
+    while stack:
+        cr, cc = stack.pop()
+        if grid[cr][cc] != 0:
+            continue
+        grid[cr][cc] = island_id
+        size += 1
+        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+            nr, nc = cr+dr, cc+dc
+            if 0<=nr<rows and 0<=nc<cols and grid[nr][nc] == 0:
+                stack.append((nr, nc))
+    return size`;
+
+const SCAFFOLDS={
+  phase1:`def largest_island(grid):
+    island_sizes = {}
+    island_id = 2
+    rows, cols = len(grid), len(grid[0])
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 0:
+                size = dfs_label(r, c, island_id, grid, rows, cols)
+                island_sizes[island_id] = size
+                island_id += 1
+`,
+  phase2:`    max_size = 0
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 1:
+                adj = set()
+                for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+                    nr, nc = r+dr, c+dc
+                    if 0<=nr<rows and 0<=nc<cols and grid[nr][nc] >= 2:
+                        adj.add(grid[nr][nc])
+                size = 1 + sum(island_sizes[i] for i in adj)
+                max_size = max(max_size, size)
+    return max_size
+
+`,
+  dfs:`def dfs_label(r, c, island_id, grid, rows, cols):
+    stack = [(r, c)]
+    size = 0
+    while stack:
+        cr, cc = stack.pop()
+        if grid[cr][cc] != 0:
+            continue
+        grid[cr][cc] = island_id
+        size += 1
+        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+            nr, nc = cr+dr, cc+dc
+            if 0<=nr<rows and 0<=nc<cols and grid[nr][nc] == 0:
+                stack.append((nr, nc))
+    return size`
+};
+
+function runLargestIsland(grid){
+  const g=grid.map(r=>[...r]);
+  const rows=g.length,cols=g[0].length;
+  const islandSizes={};let islandId=2;
+  function dfs(r,c,id){const stack=[[r,c]];let size=0;while(stack.length){const[cr,cc]=stack.pop();if(g[cr][cc]!==0)continue;g[cr][cc]=id;size++;[[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{const nr=cr+dr,nc=cc+dc;if(nr>=0&&nr<rows&&nc>=0&&nc<cols&&g[nr][nc]===0)stack.push([nr,nc]);});}return size;}
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){if(g[r][c]===0){islandSizes[islandId]=dfs(r,c,islandId);islandId++;}}
+  let maxSize=0;
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){if(g[r][c]===1){const adj=new Set();[[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(nr>=0&&nr<rows&&nc>=0&&nc<cols&&g[nr][nc]>=2)adj.add(g[nr][nc]);});let sum=1;adj.forEach(id=>{sum+=islandSizes[id]||0;});maxSize=Math.max(maxSize,sum);}}
+  return maxSize;
+}
+
+const TC_CASES=[
+  {grid:BASE_GRID,expected:8,label:'TC1: main grid → 8'},
+  {grid:[[1,1],[1,1]],expected:1,label:'TC2: all water 2×2 → 1'},
+  {grid:[[0,0],[0,0]],expected:4,label:'TC3: all land 2×2 → 4'},
+  {grid:[[0]],expected:1,label:'TC4: 1×1 land → 1'},
+];
+
+function buildGridDisplay(g=null){
+  const el=document.getElementById('grid');el.innerHTML='';
+  const src=g||BASE_GRID;
+  src.forEach(row=>{row.forEach(val=>{const div=document.createElement('div');let cls='cell ';if(val===1)cls+='water';else if(val===0)cls+='land';else cls+=(ISL_CLASSES[val]||'isl2');div.className=cls;div.textContent=val;el.appendChild(div);});});
+}
+
+function lintCode(){
+  const code=document.getElementById('codeEd').value;let passed=0;
+  const checks=[
+    {id:'c1',test:()=>/def\s+largest_island/.test(code)},
+    {id:'c2',test:()=>/island_sizes\s*=\s*\{/.test(code)},
+    {id:'c3',test:()=>/island_id\s*=\s*2/.test(code)},
+    {id:'c4',test:()=>/dfs_label|dfs/.test(code)&&/grid\[.*\]\s*==\s*0/.test(code)},
+    {id:'c5',test:()=>/island_sizes\[island_id\]\s*=\s*size/.test(code)||/island_sizes\[.*\]\s*=/.test(code)},
+    {id:'c6',test:()=>/island_id\s*\+=\s*1/.test(code)},
+    {id:'c7',test:()=>/grid\[.*\]\s*==\s*1/.test(code)},
+    {id:'c8',test:()=>/adj\s*=\s*set\(\)/.test(code)||/adj\.add/.test(code)||/set\(/.test(code)},
+    {id:'c9',test:()=>/size\s*=\s*1\s*\+\s*sum/.test(code)||/1\s*\+\s*sum/.test(code)},
+    {id:'c10',test:()=>/return\s+max_size/.test(code)},
+  ];
+  checks.forEach(ch=>{const ok=ch.test();if(ok)passed++;const el=document.getElementById(ch.id);if(el){el.textContent=ok?'✓':'✗';el.className=`vbv ${ok?'ok':'err'}`;} });
+  document.getElementById('checkCount').textContent=passed;
+  const st=document.getElementById('edStatus');st.textContent=`${passed} / 10 checks`;st.className=passed===10?'editor-status ok':'editor-status err';
+  updateGutter();return passed;
+}
+
+function runCode(){
+  lintCode();
+  const rr=document.getElementById('runResult');rr.className='run-result idle';rr.textContent='Running...';
+  setTimeout(()=>{
+    let allPass=true;
+    TC_CASES.forEach((tc,i)=>{
+      try{const got=runLargestIsland(tc.grid.map(r=>[...r]));const pass=got===tc.expected;if(!pass)allPass=false;const el=document.getElementById(`tc${i}`);if(el){el.className=`tc ${pass?'pass':'fail'}`;el.textContent=tc.label+(pass?' ✓':` ✗ got ${got}`);}}
+      catch(e){allPass=false;const el=document.getElementById(`tc${i}`);if(el){el.className='tc fail';el.textContent=tc.label+' ✗ error';}}
+    });
+    if(allPass){rr.className='run-result pass';rr.textContent='✓ All 4 tests pass! Both phases working correctly. Go to Solo!';}
+    else{rr.className='run-result fail';rr.textContent='✗ Some tests failed. Check: island_id starts at 2, use a set for adj IDs, size = 1 + sum(adj sizes).';}
+  },300);
+}
+
+function liveAnalyze(){
+  const code=document.getElementById('codeEd').value;if(code.length<10)return;
+  const hints=[
+    [/def\s+largest_island/,'✓ Main function found. Initialize island_sizes = {}.'],
+    [/island_sizes\s*=\s*\{/,'✓ Dict found. Set island_id = 2 (start at 2 to avoid conflict with 0s and 1s).'],
+    [/island_id\s*=\s*2/,'✓ island_id=2 set. Write the DFS labelling loop for 0-cells.'],
+    [/dfs_label|def\s+dfs/,'✓ DFS function found. Store size in island_sizes.'],
+    [/island_sizes\[.*\]\s*=/,'✓ Size stored. Increment island_id after each island.'],
+    [/island_id\s*\+=\s*1/,'✓ Increment found. Now write Phase 2: scan 1-cells.'],
+    [/grid\[.*\]\s*==\s*1/,'✓ Scanning 1s. Collect UNIQUE adjacent island IDs using a set.'],
+    [/adj\s*=\s*set|adj\.add/,'✓ Set for dedup found. Compute size = 1 + sum(island_sizes[i] for i in adj).'],
+    [/1\s*\+\s*sum/,'✓ Size formula found. Update max and return it.'],
+    [/return\s+max_size/,'✓ All 10 checks! Run the tests.'],
+  ];
+  for(const[pat,hint]of hints){if(pat.test(code)){setHint(hint);break;}}
+  updateGutter();
+}
+function setHint(t){const h=document.getElementById('hintStrip');h.textContent=t;h.className='hint-strip lit';}
+function updateGutter(){const ta=document.getElementById('codeEd');const lines=ta.value.split('\n');const g=document.getElementById('gutter');const hl=document.getElementById('edHl');g.innerHTML='';hl.innerHTML='';document.getElementById('lineCount').textContent=lines.length;lines.forEach((_,i)=>{const gl=document.createElement('div');gl.className='gl';gl.textContent=i+1;g.appendChild(gl);const hline=document.createElement('div');hline.className='hl-line';hl.appendChild(hline);});}
+function ins(key){const ta=document.getElementById('codeEd');const ex=ta.value;const add=SCAFFOLDS[key];if(ex.includes(add.trim().slice(0,20)))return;ta.value=ex+'\n'+add;updateGutter();lintCode();}
+function showSolution(){if(!confirm('Reveal?'))return;document.getElementById('codeEd').value=SOLUTION;updateGutter();lintCode();}
+function clearEd(){document.getElementById('codeEd').value='';for(let i=1;i<=10;i++){const el=document.getElementById(`c${i}`);if(el){el.textContent='—';el.className='vbv p';}}document.getElementById('runResult').className='run-result idle';document.getElementById('runResult').textContent='Write and click Run.';TC_CASES.forEach((_,i)=>{const el=document.getElementById(`tc${i}`);if(el){el.className='tc idle';el.textContent=TC_CASES[i].label;}});document.getElementById('checkCount').textContent='0';document.getElementById('edStatus').textContent='0 / 10 checks';document.getElementById('edStatus').className='editor-status';buildGridDisplay();updateGutter();}
+document.getElementById('codeEd').addEventListener('input',liveAnalyze);
+document.getElementById('codeEd').addEventListener('keydown',(e)=>{if(e.key==='Tab'){e.preventDefault();const ta=e.target,s=ta.selectionStart;ta.value=ta.value.slice(0,s)+'    '+ta.value.slice(ta.selectionEnd);ta.selectionStart=ta.selectionEnd=s+4;}});
+buildGridDisplay();updateGutter();
+</script>
+</body>
+</html>

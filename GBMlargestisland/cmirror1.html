@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror A — Largest Island</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#f0f4f0;--surface:#fafcfa;--surface2:#e8ede8;--border:#c8d4c8;--border2:#a8baa8;--ink:#1a2218;--muted:#6a7a68;--muted2:#4a5a48;--accent:#2d6e3a;--land:#d4a84b;--land-bg:rgba(212,168,75,.15);--land-b:rgba(212,168,75,.6);--water:#2a5fa8;--water-bg:rgba(42,95,168,.1);--water-b:rgba(42,95,168,.4);--flip:#c0392b;--flip-bg:rgba(192,57,43,.12);--flip-b:rgba(192,57,43,.55);--island2:#5a3a8a;--island2bg:rgba(90,58,138,.1);--island2b:rgba(90,58,138,.4);--island3:#1a6e6e;--island3bg:rgba(26,110,110,.1);--island3b:rgba(26,110,110,.4);--island4:#8a4a1a;--island4bg:rgba(138,74,26,.1);--island4b:rgba(138,74,26,.4);--island5:#1a4a8a;--island5bg:rgba(26,74,138,.1);--island5b:rgba(26,74,138,.35);--code-bg:#f7faf7;--la:rgba(45,110,58,.07);}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:200px 1fr 220px;overflow:hidden;}
+.grid-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.grid{display:grid;gap:3px;padding:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:2px;}
+.cell{width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.8rem;font-weight:700;border:1px solid var(--border2);border-radius:2px;transition:all .3s;}
+.cell.water{background:var(--water-bg);border-color:var(--water-b);color:var(--water);}
+.cell.land{background:var(--land-bg);border-color:var(--land-b);color:var(--land);}
+.cell.flip{background:var(--flip-bg);border-color:var(--flip-b);color:var(--flip);border-width:2px;}
+.cell.isl2{background:var(--island2bg);border-color:var(--island2b);color:var(--island2);}
+.cell.isl3{background:var(--island3bg);border-color:var(--island3b);color:var(--island3);}
+.cell.isl4{background:var(--island4bg);border-color:var(--island4b);color:var(--island4);}
+.cell.isl5{background:var(--island5bg);border-color:var(--island5b);color:var(--island5);}
+.cell.active{border-width:2px;box-shadow:0 0 6px rgba(45,110,58,.3);}
+.vb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vk{color:var(--muted2);}.vv{font-weight:600;font-size:.62rem;}
+.vv.chg{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(45,110,58,.15);}100%{background:transparent;}}
+.vv.a{color:var(--accent);}.vv.f{color:var(--flip);}.vv.isl{color:var(--island2);}
+.log-b{display:flex;flex-direction:column;gap:2px;max-height:130px;overflow-y:auto;}
+.ll{font-size:.58rem;padding:2px 6px;border-left:3px solid var(--border2);color:var(--muted);}
+.ll.a{border-color:var(--accent);color:var(--accent);}.ll.f{border-color:var(--flip);color:var(--flip);}
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);}
+.code-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.code-step{font-size:.6rem;color:var(--accent);}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:var(--border2);flex-shrink:0;line-height:21px;user-select:none;}
+.cc{flex:1;padding:0 12px 0 4px;font-size:.67rem;line-height:21px;white-space:pre;color:var(--muted2);}
+.code-line.al{background:var(--la);border-left:3px solid var(--accent);}.code-line.al .ln{color:var(--accent);}.code-line.al .cc{color:var(--ink);}
+.code-line.jr{animation:jr .5s ease;}
+@keyframes jr{0%{background:rgba(45,110,58,.2);}100%{background:var(--la);}}
+.kw{color:#882200;}.fn{color:var(--accent);}.nm{color:#0044aa;}.cm{color:var(--muted);font-style:italic;}.op{color:#005588;}.st{color:var(--island2);}
+.teacher-bar{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.62rem;color:var(--muted);font-style:italic;line-height:1.4;flex-shrink:0;min-height:42px;transition:color .3s;}
+.teacher-bar.lit{color:var(--ink);}
+.vars-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="island_watch.html" class="nav-tab">01 Watch</a>
+    <a href="island_guide.html" class="nav-tab">02 Guide</a>
+    <a href="island_cma.html" class="nav-tab active">03 Mirror·A</a>
+    <a href="island_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="island_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="island_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Largest Island · Follow</div>
+</header>
+<main>
+  <div class="grid-panel">
+    <div class="panel-label">Grid</div>
+    <div class="grid" id="grid" style="grid-template-columns:repeat(4,38px);"></div>
+    <div class="panel-label">Variables</div>
+    <div class="vb">
+      <div class="vbt">State</div>
+      <div class="vbr"><span class="vk">r, c</span><span class="vv" id="vRC">—</span></div>
+      <div class="vbr"><span class="vk">val</span><span class="vv" id="vVal">—</span></div>
+      <div class="vbr"><span class="vk">island_id</span><span class="vv isl" id="vId">—</span></div>
+      <div class="vbr"><span class="vk">adj_islands</span><span class="vv" id="vAdj">—</span></div>
+      <div class="vbr"><span class="vk">size_sum</span><span class="vv f" id="vSum">—</span></div>
+      <div class="vbr"><span class="vk">max_size</span><span class="vv a" id="vMax">0</span></div>
+    </div>
+    <div class="panel-label">Log</div>
+    <div class="log-b" id="logB"></div>
+  </div>
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title">Python · largest_island.py</div>
+      <div class="code-step">step <span id="stepNum">0</span>/<span id="stepTotal">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="teacher-bar" id="teacherBar">"We do DFS starting from all zeros — updating them in the actual matrix to have a new number. Then we iterate through all ones and sum adjacent island sizes."</div>
+  </div>
+  <div class="vars-panel">
+    <div class="panel-label">Island Sizes</div>
+    <div id="islandSizesDisplay" style="display:flex;flex-direction:column;gap:3px;"></div>
+    <div class="panel-label">Phase</div>
+    <div id="phaseDisp" style="font-size:.68rem;color:var(--muted2);line-height:1.8;padding:.4rem .6rem;border:1px solid var(--border2);border-radius:2px;background:var(--surface2);">Labelling islands...</div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Step <span id="stepLabel">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="toggleAuto()" id="autoBtn">Auto</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="island_cmb.html" class="btn btn-accent">→ Mirror·B</a>
+  </div>
+</footer>
+<script>
+const ROWS=4,COLS=4;
+const BASE=[[1,0,0,1],[0,0,1,1],[1,1,1,0],[0,0,1,0]];
+const ISL_CLS={2:'isl2',3:'isl3',4:'isl4',5:'isl5'};
+const CODE=[
+  {n:1,t:'<span class="kw">def</span> <span class="fn">largest_island</span>(grid):',id:'def'},
+  {n:2,t:'  island_sizes <span class="op">=</span> {}',id:'init_sizes'},
+  {n:3,t:'  island_id <span class="op">=</span> <span class="nm">2</span>  <span class="cm"># start labels at 2</span>',id:'init_id'},
+  {n:4,t:'  <span class="kw">for</span> r <span class="kw">in</span> <span class="fn">range</span>(rows):',id:'label_r'},
+  {n:5,t:'    <span class="kw">for</span> c <span class="kw">in</span> <span class="fn">range</span>(cols):',id:'label_c'},
+  {n:6,t:'      <span class="kw">if</span> grid[r][c] <span class="op">==</span> <span class="nm">0</span>:  <span class="cm"># unlabelled land</span>',id:'check_zero'},
+  {n:7,t:'        size <span class="op">=</span> <span class="fn">dfs_label</span>(r, c, island_id)',id:'call_dfs'},
+  {n:8,t:'        island_sizes[island_id] <span class="op">=</span> size',id:'store_size'},
+  {n:9,t:'        island_id <span class="op">+=</span> <span class="nm">1</span>',id:'inc_id'},
+  {n:10,t:'  max_size <span class="op">=</span> <span class="nm">0</span>',id:'init_max'},
+  {n:11,t:'  <span class="kw">for</span> r <span class="kw">in</span> <span class="fn">range</span>(rows):',id:'scan_r'},
+  {n:12,t:'    <span class="kw">for</span> c <span class="kw">in</span> <span class="fn">range</span>(cols):',id:'scan_c'},
+  {n:13,t:'      <span class="kw">if</span> grid[r][c] <span class="op">==</span> <span class="nm">1</span>:  <span class="cm"># water cell</span>',id:'check_one'},
+  {n:14,t:'        adj <span class="op">=</span> <span class="fn">get_adj_islands</span>(r, c)',id:'get_adj'},
+  {n:15,t:'        size <span class="op">=</span> <span class="nm">1</span> <span class="op">+</span> <span class="fn">sum</span>(island_sizes[i] <span class="kw">for</span> i <span class="kw">in</span> adj)',id:'calc_size'},
+  {n:16,t:'        max_size <span class="op">=</span> <span class="fn">max</span>(max_size, size)',id:'update_max'},
+  {n:17,t:'  <span class="kw">return</span> max_size',id:'ret'},
+];
+const QUOTES={
+  init_sizes:'"We create an island_sizes dictionary to track the size of each island we find."',
+  check_zero:'"If this cell is 0 (unlabelled land), we do DFS from here to label the entire island."',
+  call_dfs:'"dfs_label changes all connected 0s to the island_id and returns how many cells it labelled."',
+  store_size:'"We store the size of this island in our dictionary."',
+  check_one:'"For each 1 (water cell), we check which islands it would connect to if flipped."',
+  get_adj:'"We look at the 4 neighbors and collect the unique island IDs we find."',
+  calc_size:'"1 (for the flipped cell) plus the sum of the sizes of all adjacent unique islands."',
+  update_max:'"Update the max if this potential island is larger."',
+  ret:'"Return the maximum island size found."',
+};
+
+function computeSteps(){
+  const steps=[];
+  const grid=BASE.map(r=>[...r]);
+  const islandSizes={};let islandId=2,maxSize=0;
+  function getNeighbors(r,c){const nb=[];[[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS)nb.push([nr,nc]);});return nb;}
+  function dfsLabel(r,c,id){const stack=[[r,c]];let size=0;while(stack.length){const[cr,cc]=stack.pop();if(grid[cr][cc]!==0)continue;grid[cr][cc]=id;size++;getNeighbors(cr,cc).forEach(([nr,nc])=>{if(grid[nr][nc]===0)stack.push([nr,nc]);});}return size;}
+  function log(line,r,c,val,id,adj,sum,maxS,logEntry){steps.push({line,grid:grid.map(row=>[...row]),r,c,val,islandId:id,adj,sum,maxSize:maxS,islandSizes:{...islandSizes},log:logEntry});}
+
+  log('def',null,null,null,islandId,null,null,maxSize,null);
+  log('init_sizes',null,null,null,islandId,null,null,maxSize,{t:'a',m:'island_sizes = {}'});
+  log('init_id',null,null,null,islandId,null,null,maxSize,{t:'a',m:'island_id = 2'});
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      log('label_r',r,c,grid[r][c],islandId,null,null,maxSize,null);
+      log('label_c',r,c,grid[r][c],islandId,null,null,maxSize,null);
+      log('check_zero',r,c,grid[r][c],islandId,null,null,maxSize,null);
+      if(grid[r][c]===0){
+        log('call_dfs',r,c,grid[r][c],islandId,null,null,maxSize,null);
+        const size=dfsLabel(r,c,islandId);
+        log('store_size',r,c,grid[r][c],islandId,null,size,maxSize,{t:'a',m:`island_sizes[${islandId}] = ${size}`});
+        islandSizes[islandId]=size;
+        log('inc_id',r,c,grid[r][c],islandId,null,size,maxSize,{t:'a',m:`island_id → ${islandId+1}`});
+        islandId++;
+      }
+    }
+  }
+  log('init_max',null,null,null,islandId,null,null,maxSize,{t:'a',m:'max_size = 0'});
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      log('scan_r',r,c,grid[r][c],islandId,null,null,maxSize,null);
+      log('scan_c',r,c,grid[r][c],islandId,null,null,maxSize,null);
+      log('check_one',r,c,grid[r][c],islandId,null,null,maxSize,null);
+      if(grid[r][c]===1){
+        const adjIds=new Set();
+        getNeighbors(r,c).forEach(([nr,nc])=>{if(grid[nr][nc]>=2)adjIds.add(grid[nr][nc]);});
+        const adj=[...adjIds];
+        let sum=1;adj.forEach(id=>{sum+=islandSizes[id]||0;});
+        log('get_adj',r,c,grid[r][c],islandId,adj,sum,maxSize,{t:'a',m:`adj islands: [${adj.join(', ')}]`});
+        log('calc_size',r,c,grid[r][c],islandId,adj,sum,maxSize,{t:'a',m:`size = 1 + ${adj.map(i=>islandSizes[i]).join('+')||0} = ${sum}`});
+        if(sum>maxSize)maxSize=sum;
+        log('update_max',r,c,grid[r][c],islandId,adj,sum,maxSize,{t:'f',m:`max_size = ${maxSize}`});
+      }
+    }
+  }
+  log('ret',null,null,null,islandId,null,null,maxSize,{t:'f',m:`return ${maxSize}`});
+  return steps;
+}
+
+const STEPS=computeSteps();
+let cur=0,autoTimer=null;
+const ISL_CLASSES={2:'isl2',3:'isl3',4:'isl4',5:'isl5'};
+
+function buildCode(){
+  const cb=document.getElementById('codeBody');cb.innerHTML='';
+  CODE.forEach(l=>{const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;d.innerHTML=`<span class="ln">${l.n||''}</span><span class="cc">${l.t}</span>`;cb.appendChild(d);});
+  document.getElementById('stepTotal').textContent=STEPS.length;
+}
+
+function buildGrid(s){
+  const el=document.getElementById('grid');el.innerHTML='';
+  s.grid.forEach((row,r)=>{row.forEach((val,c)=>{
+    const div=document.createElement('div');
+    let cls='cell ';
+    if(val===1)cls+='water';else if(val===0)cls+='land';else cls+=(ISL_CLASSES[val]||'isl2');
+    if(s.r===r&&s.c===c)cls+=' active';
+    div.className=cls;div.textContent=val;el.appendChild(div);
+  });});
+}
+
+function setV(id,val,extra=''){const el=document.getElementById(id);if(!el)return;const p=el.textContent;el.textContent=String(val);if(p!==String(val)){el.className=`vv${extra} chg`;setTimeout(()=>el.className=`vv${extra}`,600);}}
+
+function applyStep(s){
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('al','jr'));
+  const lel=document.getElementById(`line-${s.line}`);if(lel){lel.classList.add('al','jr');lel.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  buildGrid(s);
+  setV('vRC',s.r!==null?`[${s.r},${s.c}]`:'—');
+  setV('vVal',s.val!==null?s.val:'—');
+  setV('vId',s.islandId||'—',' isl');
+  setV('vAdj',s.adj?`[${s.adj.join(', ')}]`:'—');
+  setV('vSum',s.sum!==null?s.sum:'—',' f');
+  setV('vMax',s.maxSize,' a');
+  document.getElementById('stepNum').textContent=cur;document.getElementById('stepLabel').textContent=cur;
+  // Island sizes
+  const isd=document.getElementById('islandSizesDisplay');isd.innerHTML='';
+  Object.entries(s.islandSizes).forEach(([id,size])=>{const d=document.createElement('div');d.style.cssText=`padding:3px 8px;border:1px solid;border-radius:2px;font-size:.65rem;font-weight:600;`;d.className=ISL_CLASSES[id]||'';d.textContent=`Island ${id}: ${size}`;isd.appendChild(d);});
+  // Phase
+  const inLabel=['def','init_sizes','init_id','label_r','label_c','check_zero','call_dfs','store_size','inc_id'].includes(s.line);
+  document.getElementById('phaseDisp').textContent=inLabel?'Phase 1: Labelling islands':'Phase 2: Scanning for best flip';
+  const q=QUOTES[s.line];const tb=document.getElementById('teacherBar');
+  if(q){tb.textContent=q;tb.className='teacher-bar lit';}else{tb.className='teacher-bar';}
+  if(s.log){const lb=document.getElementById('logB');const li=document.createElement('div');li.className=`ll ${s.log.t}`;li.textContent=`${cur}: ${s.log.m}`;lb.appendChild(li);lb.scrollTop=lb.scrollHeight;}
+}
+
+function nextStep(){if(cur<STEPS.length-1){cur++;applyStep(STEPS[cur]);}}
+function prevStep(){if(cur>0){cur--;applyStep(STEPS[cur]);}}
+function toggleAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}else{document.getElementById('autoBtn').textContent='Stop';autoTimer=setInterval(()=>{if(cur<STEPS.length-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}},430);}}
+function resetAll(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}cur=0;document.getElementById('logB').innerHTML='';buildCode();applyStep(STEPS[0]);}
+buildCode();applyStep(STEPS[0]);
+</script>
+</body>
+</html>
