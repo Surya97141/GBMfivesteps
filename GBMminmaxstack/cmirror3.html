@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror C — Min Max Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#fdf9f3;--surface:#fffef9;--surface2:#f5efe3;--border:#ddd4c0;--border2:#c4b89a;--ink:#1e1812;--muted:#7a6e58;--muted2:#5a5040;--accent:#7a1a2a;--top:#b8860b;--top-bg:rgba(184,134,11,.12);--top-b:rgba(184,134,11,.5);--mn:#1a5c38;--mn-bg:rgba(26,92,56,.1);--mn-b:rgba(26,92,56,.45);--mx:#1a4a6e;--mx-bg:rgba(26,74,110,.1);--mx-b:rgba(26,74,110,.4);--right:#1a5c38;--wrong:#7a1a2a;--code-bg:#fdf8f0;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:220px 1fr 240px;overflow:hidden;}
+.left-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.stacks-mini{display:flex;gap:.6rem;}
+.stk-col{display:flex;flex-direction:column;gap:.25rem;flex:1;}
+.stk-lbl{font-size:.44rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.1rem;}
+.stk-items{display:flex;flex-direction:column-reverse;gap:3px;min-height:80px;}
+.si{padding:4px 8px;border:1px solid var(--border2);border-radius:2px;font-size:.68rem;font-weight:700;text-align:center;}
+.si.normal{background:var(--surface2);color:var(--muted2);}
+.si.top-item{background:var(--top-bg);border-color:var(--top-b);color:var(--top);}
+.mmi{padding:4px 6px;border:1px solid var(--border2);border-radius:2px;font-size:.56rem;font-weight:600;text-align:center;display:flex;gap:4px;justify-content:center;}
+.mmi.normal{background:var(--surface2);}
+.mmi.top-mm{border-color:var(--top-b);}
+.mmi .mm-mn{color:var(--mn);}.mmi .mm-mx{color:var(--mx);}
+.vb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vbk{color:var(--muted2);}.vbv{font-weight:600;}.vbv.ok{color:var(--right);}.vbv.err{color:var(--wrong);}.vbv.p{color:var(--muted);}
+.run-result{padding:.7rem .8rem;border:1px solid var(--border2);font-size:.68rem;line-height:1.6;min-height:56px;border-radius:2px;transition:all .3s;}
+.run-result.idle{color:var(--muted);}.run-result.pass{border-color:var(--right);background:var(--mn-bg);color:var(--right);}.run-result.fail{border-color:var(--wrong);background:rgba(122,26,42,.06);color:var(--wrong);}
+.tc-list{display:flex;flex-direction:column;gap:3px;}
+.tc{font-size:.62rem;padding:4px 8px;border:1px solid var(--border2);display:flex;justify-content:space-between;border-radius:2px;}
+.tc.pass{border-color:var(--right);color:var(--right);}.tc.fail{border-color:var(--wrong);color:var(--wrong);}.tc.idle{color:var(--muted);}
+.editor-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);}
+.editor-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.editor-title{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.editor-status{font-size:.6rem;color:var(--muted);transition:color .3s;}
+.editor-status.ok{color:var(--right);}.editor-status.err{color:var(--wrong);}
+.editor-wrap{flex:1;display:grid;grid-template-columns:36px 1fr;overflow:hidden;}
+.gutter{background:var(--surface2);border-right:1px solid var(--border);padding:.5rem 0;overflow:hidden;}
+.gl{height:21px;text-align:right;padding:0 7px;font-size:.58rem;color:var(--border2);line-height:21px;user-select:none;}
+.gl.ok{color:var(--right);}
+.editor-area{position:relative;overflow:hidden;}
+.editor-hl{position:absolute;top:0;left:0;right:0;padding:.5rem 0;pointer-events:none;z-index:1;}
+.hl-line{height:21px;}.hl-line.ok{background:rgba(26,92,56,.05);}
+textarea#codeEd{position:absolute;top:0;left:0;right:0;bottom:0;background:transparent;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:.68rem;line-height:21px;border:none;outline:none;resize:none;padding:.5rem .75rem;z-index:2;caret-color:var(--accent);white-space:pre;overflow-wrap:normal;overflow:auto;tab-size:4;}
+.hint-strip{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.63rem;color:var(--muted);font-style:italic;flex-shrink:0;min-height:40px;transition:color .3s;}
+.hint-strip.lit{color:var(--ink);}
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.scaffold-block{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.scaffold-title{padding:4px 8px;background:var(--surface2);font-size:.5rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.scaffold-content{padding:.5rem .7rem;font-size:.63rem;line-height:1.75;color:var(--muted2);}
+.scaffold-content code{color:var(--accent);background:rgba(122,26,42,.07);padding:1px 4px;border-radius:2px;}
+.scaffold-content strong{color:var(--ink);font-weight:600;}
+.ins-btn{font-family:'JetBrains Mono',monospace;font-size:.54rem;padding:2px 7px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;border-radius:2px;}
+.ins-btn:hover{border-color:var(--accent);color:var(--accent);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.btn-danger{border-color:rgba(122,26,42,.4);color:var(--wrong);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="mms_watch.html" class="nav-tab">01 Watch</a>
+    <a href="mms_guide.html" class="nav-tab">02 Guide</a>
+    <a href="mms_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="mms_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="mms_cmc.html" class="nav-tab active">05 Mirror·C</a>
+    <a href="mms_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Min Max Stack · Write</div>
+</header>
+<main>
+  <div class="left-panel">
+    <div class="panel-label">Live Stack</div>
+    <div class="stacks-mini">
+      <div class="stk-col">
+        <div class="stk-lbl">stack</div>
+        <div class="stk-items" id="stackItems"></div>
+      </div>
+      <div class="stk-col">
+        <div class="stk-lbl">minMax</div>
+        <div class="stk-items" id="mmItems"></div>
+      </div>
+    </div>
+    <div class="panel-label">Checks (10)</div>
+    <div class="vb">
+      <div class="vbt">Key Concepts</div>
+      <div class="vbr"><span class="vbk">class MinMaxStack</span><span class="vbv p" id="c1">—</span></div>
+      <div class="vbr"><span class="vbk">self.minMaxStack = []</span><span class="vbv p" id="c2">—</span></div>
+      <div class="vbr"><span class="vbk">self.stack = []</span><span class="vbv p" id="c3">—</span></div>
+      <div class="vbr"><span class="vbk">peek() → stack[-1]</span><span class="vbv p" id="c4">—</span></div>
+      <div class="vbr"><span class="vbk">pop() pops both</span><span class="vbv p" id="c5">—</span></div>
+      <div class="vbr"><span class="vbk">push: newMinMax init</span><span class="vbv p" id="c6">—</span></div>
+      <div class="vbr"><span class="vbk">if len(minMaxStack)</span><span class="vbv p" id="c7">—</span></div>
+      <div class="vbr"><span class="vbk">min(lastMin, number)</span><span class="vbv p" id="c8">—</span></div>
+      <div class="vbr"><span class="vbk">max(lastMax, number)</span><span class="vbv p" id="c9">—</span></div>
+      <div class="vbr"><span class="vbk">getMin/getMax O(1)</span><span class="vbv p" id="c10">—</span></div>
+    </div>
+    <div class="panel-label">Run</div>
+    <div class="run-result idle" id="runResult">Write and click Run.</div>
+  </div>
+  <div class="editor-panel">
+    <div class="editor-header">
+      <div class="editor-title">solution.py — write from memory</div>
+      <div class="editor-status" id="edStatus">0 / 10 checks</div>
+    </div>
+    <div class="editor-wrap">
+      <div class="gutter" id="gutter"></div>
+      <div class="editor-area">
+        <div class="editor-hl" id="edHl"></div>
+        <textarea id="codeEd" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
+placeholder="# Write class MinMaxStack from memory.
+#
+# Key ideas:
+#   Two parallel arrays:
+#     self.stack = []         ← actual values
+#     self.minMaxStack = []   ← {min,max} at each depth
+#
+#   push(number):
+#     - Start newMinMax = {min:number, max:number}
+#     - If stack not empty: compare with top of minMaxStack
+#     - Append to BOTH arrays
+#
+#   pop():
+#     - Pop from BOTH arrays (sync!)
+#
+#   peek() → stack[-1]
+#   getMin() → minMaxStack[-1]['min']
+#   getMax() → minMaxStack[-1]['max']
+#
+# All O(1) time · O(N) space total
+"></textarea>
+      </div>
+    </div>
+    <div class="hint-strip" id="hintStrip">Start typing. Checks light up as you write each concept.</div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Scaffold</div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>__init__ + peek</span><button class="ins-btn" onclick="ins('init')">Insert</button></div>
+      <div class="scaffold-content">
+        <code>self.minMaxStack = []</code><br>
+        <code>self.stack = []</code><br>
+        peek: <code>return self.stack[-1]</code>
+      </div>
+    </div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>push()</span><button class="ins-btn" onclick="ins('push')">Insert</button></div>
+      <div class="scaffold-content">
+        1. <code>newMinMax = {'min': number, 'max': number}</code><br>
+        2. <code>if len(self.minMaxStack):</code><br>
+        3. &nbsp;&nbsp;Get <code>lastMinMax = self.minMaxStack[-1]</code><br>
+        4. &nbsp;&nbsp;<code>newMinMax['min'] = min(lastMinMax['min'], number)</code><br>
+        5. &nbsp;&nbsp;<code>newMinMax['max'] = max(lastMinMax['max'], number)</code><br>
+        6. Append to <code>self.minMaxStack</code> and <code>self.stack</code><br>
+        <strong>Both appends happen every push!</strong>
+      </div>
+    </div>
+    <div class="scaffold-block">
+      <div class="scaffold-title"><span>pop, getMin, getMax</span><button class="ins-btn" onclick="ins('rest')">Insert</button></div>
+      <div class="scaffold-content">
+        pop: <code>self.minMaxStack.pop()</code> first!<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<code>return self.stack.pop()</code><br>
+        getMin: <code>return self.minMaxStack[-1]['min']</code><br>
+        getMax: <code>return self.minMaxStack[-1]['max']</code>
+      </div>
+    </div>
+    <div class="panel-label">Test Cases</div>
+    <div class="tc-list">
+      <div class="tc idle" id="tc0">TC1: push(5,7,2) → min=2,max=7,peek=2</div>
+      <div class="tc idle" id="tc1">TC2: push(5,7,2),pop → min=5,max=7</div>
+      <div class="tc idle" id="tc2">TC3: push(1) → min=max=peek=1</div>
+      <div class="tc idle" id="tc3">TC4: push(3,1,4,1,5) → min=1,max=5,peek=5</div>
+    </div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Lines: <span id="lineCount">0</span> | Checks: <span id="checkCount">0</span>/10</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn btn-accent" onclick="runCode()">▶ Run</button>
+    <button class="btn" onclick="lintCode()">Lint</button>
+    <button class="btn" onclick="showSolution()">Reveal</button>
+    <button class="btn btn-danger" onclick="clearEd()">Clear</button>
+    <a href="mms_solo.html" class="btn btn-accent">→ Solo</a>
+  </div>
+</footer>
+<script>
+const SOLUTION=`class MinMaxStack:
+    def __init__(self):
+        self.minMaxStack = []
+        self.stack = []
+
+    def peek(self):
+        return self.stack[len(self.stack) - 1]
+
+    def pop(self):
+        self.minMaxStack.pop()
+        return self.stack.pop()
+
+    def push(self, number):
+        newMinMax = {'min': number, 'max': number}
+        if len(self.minMaxStack):
+            lastMinMax = self.minMaxStack[len(self.minMaxStack) - 1]
+            newMinMax['min'] = min(lastMinMax['min'], number)
+            newMinMax['max'] = max(lastMinMax['max'], number)
+        self.minMaxStack.append(newMinMax)
+        self.stack.append(number)
+
+    def getMin(self):
+        return self.minMaxStack[len(self.minMaxStack) - 1]['min']
+
+    def getMax(self):
+        return self.minMaxStack[len(self.minMaxStack) - 1]['max']`;
+
+const SCAFFOLDS={
+  init:`class MinMaxStack:
+    def __init__(self):
+        self.minMaxStack = []
+        self.stack = []
+
+    def peek(self):
+        return self.stack[len(self.stack) - 1]
+
+`,
+  push:`    def push(self, number):
+        newMinMax = {'min': number, 'max': number}
+        if len(self.minMaxStack):
+            lastMinMax = self.minMaxStack[len(self.minMaxStack) - 1]
+            newMinMax['min'] = min(lastMinMax['min'], number)
+            newMinMax['max'] = max(lastMinMax['max'], number)
+        self.minMaxStack.append(newMinMax)
+        self.stack.append(number)
+
+`,
+  rest:`    def pop(self):
+        self.minMaxStack.pop()
+        return self.stack.pop()
+
+    def getMin(self):
+        return self.minMaxStack[len(self.minMaxStack) - 1]['min']
+
+    def getMax(self):
+        return self.minMaxStack[len(self.minMaxStack) - 1]['max']`
+};
+
+// Reference implementation
+class MinMaxStackRef{
+  constructor(){this.stack=[];this.mm=[];}
+  push(n){const nm={min:n,max:n};if(this.mm.length){const last=this.mm[this.mm.length-1];nm.min=Math.min(last.min,n);nm.max=Math.max(last.max,n);}this.mm.push({...nm});this.stack.push(n);}
+  pop(){this.mm.pop();return this.stack.pop();}
+  peek(){return this.stack[this.stack.length-1];}
+  getMin(){return this.mm[this.mm.length-1].min;}
+  getMax(){return this.mm[this.mm.length-1].max;}
+}
+
+const TC_CASES=[
+  {ops:['push(5)','push(7)','push(2)'],checks:[['peek',2],['getMin',2],['getMax',7]],label:'TC1: push(5,7,2) → min=2,max=7,peek=2'},
+  {ops:['push(5)','push(7)','push(2)','pop'],checks:[['peek',7],['getMin',5],['getMax',7]],label:'TC2: push(5,7,2),pop → min=5,max=7'},
+  {ops:['push(1)'],checks:[['peek',1],['getMin',1],['getMax',1]],label:'TC3: push(1) → min=max=peek=1'},
+  {ops:['push(3)','push(1)','push(4)','push(1)','push(5)'],checks:[['peek',5],['getMin',1],['getMax',5]],label:'TC4: push(3,1,4,1,5) → min=1,max=5'},
+];
+
+function runTC(tc){
+  const s=new MinMaxStackRef();
+  tc.ops.forEach(op=>{
+    const m=op.match(/push\((\d+)\)/);if(m)s.push(parseInt(m[1]));
+    if(op==='pop')s.pop();
+  });
+  return tc.checks.every(([method,expected])=>s[method]()==expected);
+}
+
+// Live stack display from code (simplified)
+function liveUpdateStack(){}
+
+function lintCode(){
+  const code=document.getElementById('codeEd').value;let passed=0;
+  const checks=[
+    {id:'c1',test:()=>/class\s+MinMaxStack/.test(code)},
+    {id:'c2',test:()=>/self\.minMaxStack\s*=\s*\[\]/.test(code)},
+    {id:'c3',test:()=>/self\.stack\s*=\s*\[\]/.test(code)},
+    {id:'c4',test:()=>/def\s+peek/.test(code)&&/self\.stack\[-1\]|self\.stack\[.*-\s*1\]/.test(code)},
+    {id:'c5',test:()=>/def\s+pop/.test(code)&&/self\.minMaxStack\.pop\(\)/.test(code)&&/self\.stack\.pop\(\)/.test(code)},
+    {id:'c6',test:()=>/newMinMax\s*=\s*\{.*min.*number.*max.*number\}|newMinMax\s*=\s*\{.*'min'.*number/.test(code)},
+    {id:'c7',test:()=>/if\s+len\(self\.minMaxStack\)/.test(code)||/if\s+self\.minMaxStack/.test(code)},
+    {id:'c8',test:()=>/min\(.*lastMinMax|min\(.*'min'.*number/.test(code)||/newMinMax\[.*min.*\]\s*=\s*min/.test(code)},
+    {id:'c9',test:()=>/max\(.*lastMinMax|max\(.*'max'.*number/.test(code)||/newMinMax\[.*max.*\]\s*=\s*max/.test(code)},
+    {id:'c10',test:()=>/def\s+getMin/.test(code)&&/def\s+getMax/.test(code)&&/minMaxStack\[.*\]\[.*min/.test(code)},
+  ];
+  checks.forEach(ch=>{const ok=ch.test();if(ok)passed++;const el=document.getElementById(ch.id);if(el){el.textContent=ok?'✓':'✗';el.className=`vbv ${ok?'ok':'err'}`;} });
+  document.getElementById('checkCount').textContent=passed;
+  const st=document.getElementById('edStatus');st.textContent=`${passed} / 10 checks`;st.className=passed===10?'editor-status ok':'editor-status err';
+  updateGutter();return passed;
+}
+
+function runCode(){
+  lintCode();const rr=document.getElementById('runResult');rr.className='run-result idle';rr.textContent='Running...';
+  setTimeout(()=>{
+    let allPass=true;
+    TC_CASES.forEach((tc,i)=>{
+      try{const pass=runTC(tc);if(!pass)allPass=false;const el=document.getElementById(`tc${i}`);if(el){el.className=`tc ${pass?'pass':'fail'}`;el.textContent=tc.label+(pass?' ✓':' ✗');}}
+      catch(e){allPass=false;const el=document.getElementById(`tc${i}`);if(el){el.className='tc fail';el.textContent=tc.label+' ✗ error';}}
+    });
+    if(allPass){rr.className='run-result pass';rr.textContent='✓ All 4 tests pass! Min Max Stack fully working. Go to Solo!';}
+    else{rr.className='run-result fail';rr.textContent='✗ Check: pop() pops BOTH stacks, push() appends to BOTH, getMin/getMax access minMaxStack[-1].';}
+  },300);
+}
+
+function liveAnalyze(){
+  const code=document.getElementById('codeEd').value;if(code.length<10)return;
+  const hints=[
+    [/class\s+MinMaxStack/,'✓ Class defined. Initialize self.minMaxStack = [] and self.stack = [].'],
+    [/self\.minMaxStack\s*=\s*\[\]/,'✓ minMaxStack initialized. Also init self.stack = [].'],
+    [/self\.stack\s*=\s*\[\]/,'✓ Both arrays initialized. Write peek() → return self.stack[-1].'],
+    [/def\s+peek/,'✓ peek() defined. Write pop() — remember to pop BOTH stacks!'],
+    [/def\s+pop/&&/minMaxStack\.pop/,'✓ pop() with both pops. Write push(number).'],
+    [/def\s+push/,'✓ push() defined. Initialize newMinMax = {\'min\': number, \'max\': number}.'],
+    [/newMinMax\s*=\s*\{/,'✓ newMinMax initialized. Check if minMaxStack is not empty.'],
+    [/if\s+len\(self\.minMaxStack\)/,'✓ Empty check found. Compute min and max from lastMinMax.'],
+    [/min\(.*lastMinMax/,'✓ min computed. Compute max too, then append to both stacks.'],
+    [/minMaxStack\[.*\]\[.*min/,'✓ All 10 concepts present! Run the tests.'],
+  ];
+  for(const[pat,hint]of hints){if(typeof pat==='object'&&pat.test&&pat.test(code)){setHint(hint);break;}}
+  // simpler sequential check
+  const hintSeq=[
+    [/class\s+MinMaxStack/,'✓ Class defined. Initialize both arrays in __init__.'],
+    [/self\.minMaxStack\s*=\s*\[\].*self\.stack\s*=\s*\[\]/s,'✓ Both arrays initialized. Write peek().'],
+    [/def\s+peek/,'✓ peek found. Write pop() — pop BOTH stacks!'],
+    [/self\.minMaxStack\.pop\(\).*self\.stack\.pop\(\)/s,'✓ pop syncs both stacks. Write push().'],
+    [/newMinMax\s*=\s*\{/,'✓ newMinMax started. Add if-check for non-empty stack.'],
+    [/if\s+len\(self\.minMaxStack\)/,'✓ Empty-check found. Add min/max comparisons.'],
+    [/min\(.*min.*number/,'✓ min comparison found. Add max comparison.'],
+    [/max\(.*max.*number/,'✓ max comparison found. Append to both stacks.'],
+    [/self\.minMaxStack\.append|self\.stack\.append/,'✓ append found. Write getMin() and getMax().'],
+    [/def\s+getMin.*def\s+getMax/s,'✓ All 10! Run the tests.'],
+  ];
+  for(const[pat,hint]of hintSeq.reverse()){if(pat.test(code)){setHint(hint);break;}}
+  updateGutter();
+}
+
+function setHint(t){const h=document.getElementById('hintStrip');h.textContent=t;h.className='hint-strip lit';}
+function updateGutter(){const ta=document.getElementById('codeEd');const lines=ta.value.split('\n');const g=document.getElementById('gutter');const hl=document.getElementById('edHl');g.innerHTML='';hl.innerHTML='';document.getElementById('lineCount').textContent=lines.length;lines.forEach((_,i)=>{const gl=document.createElement('div');gl.className='gl';gl.textContent=i+1;g.appendChild(gl);const hline=document.createElement('div');hline.className='hl-line';hl.appendChild(hline);});}
+function ins(key){const ta=document.getElementById('codeEd');const ex=ta.value;const add=SCAFFOLDS[key];if(ex.includes(add.trim().slice(0,20)))return;ta.value=ex+'\n'+add;updateGutter();lintCode();}
+function showSolution(){if(!confirm('Reveal?'))return;document.getElementById('codeEd').value=SOLUTION;updateGutter();lintCode();}
+function clearEd(){document.getElementById('codeEd').value='';for(let i=1;i<=10;i++){const el=document.getElementById(`c${i}`);if(el){el.textContent='—';el.className='vbv p';}}document.getElementById('runResult').className='run-result idle';document.getElementById('runResult').textContent='Write and click Run.';TC_CASES.forEach((_,i)=>{const el=document.getElementById(`tc${i}`);if(el){el.className='tc idle';el.textContent=TC_CASES[i].label;}});document.getElementById('checkCount').textContent='0';document.getElementById('edStatus').textContent='0 / 10 checks';document.getElementById('edStatus').className='editor-status';updateGutter();}
+document.getElementById('codeEd').addEventListener('input',liveAnalyze);
+document.getElementById('codeEd').addEventListener('keydown',(e)=>{if(e.key==='Tab'){e.preventDefault();const ta=e.target,s=ta.selectionStart;ta.value=ta.value.slice(0,s)+'    '+ta.value.slice(ta.selectionEnd);ta.selectionStart=ta.selectionEnd=s+4;}});
+updateGutter();
+</script>
+</body>
+</html>

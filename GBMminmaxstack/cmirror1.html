@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror A — Min Max Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#fdf9f3;--surface:#fffef9;--surface2:#f5efe3;--border:#ddd4c0;--border2:#c4b89a;--ink:#1e1812;--muted:#7a6e58;--muted2:#5a5040;--accent:#7a1a2a;--top:#b8860b;--top-bg:rgba(184,134,11,.12);--top-b:rgba(184,134,11,.5);--mn:#1a5c38;--mn-bg:rgba(26,92,56,.1);--mn-b:rgba(26,92,56,.45);--mx:#1a4a6e;--mx-bg:rgba(26,74,110,.1);--mx-b:rgba(26,74,110,.4);--code-bg:#fdf8f0;--la:rgba(122,26,42,.07);}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:200px 1fr 220px;overflow:hidden;}
+.stack-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.stacks-mini{display:flex;gap:.6rem;}
+.stk-col{display:flex;flex-direction:column;gap:.25rem;flex:1;}
+.stk-lbl{font-size:.44rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.1rem;}
+.stk-items{display:flex;flex-direction:column-reverse;gap:3px;min-height:90px;}
+.si{padding:4px 8px;border:1px solid var(--border2);border-radius:2px;font-size:.7rem;font-weight:700;text-align:center;transition:all .3s;}
+.si.normal{background:var(--surface2);color:var(--muted2);}
+.si.top-item{background:var(--top-bg);border-color:var(--top-b);color:var(--top);}
+.mmi{padding:4px 6px;border:1px solid var(--border2);border-radius:2px;font-size:.58rem;font-weight:600;text-align:center;transition:all .3s;display:flex;gap:4px;justify-content:center;}
+.mmi.normal{background:var(--surface2);}
+.mmi.top-mm{border-color:var(--top-b);}
+.mmi .mm-mn{color:var(--mn);}.mmi .mm-mx{color:var(--mx);}
+.vb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vk{color:var(--muted2);}.vv{font-weight:600;font-size:.62rem;}
+.vv.chg{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(122,26,42,.15);}100%{background:transparent;}}
+.vv.t{color:var(--top);}.vv.m{color:var(--mn);}.vv.x{color:var(--mx);}.vv.a{color:var(--accent);}
+.log-b{display:flex;flex-direction:column;gap:2px;max-height:120px;overflow-y:auto;}
+.ll{font-size:.58rem;padding:2px 6px;border-left:3px solid var(--border2);color:var(--muted);}
+.ll.push{border-color:var(--accent);color:var(--accent);}.ll.pop{border-color:var(--mx-b);color:var(--mx);}.ll.query{border-color:var(--mn-b);color:var(--mn);}
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);}
+.code-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.code-step{font-size:.6rem;color:var(--accent);}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:var(--border2);flex-shrink:0;line-height:21px;user-select:none;}
+.cc{flex:1;padding:0 12px 0 4px;font-size:.67rem;line-height:21px;white-space:pre;color:var(--muted2);}
+.code-line.al{background:var(--la);border-left:3px solid var(--accent);}.code-line.al .ln{color:var(--accent);}.code-line.al .cc{color:var(--ink);}
+.code-line.jr{animation:jr .5s ease;}
+@keyframes jr{0%{background:rgba(122,26,42,.2);}100%{background:var(--la);}}
+.kw{color:#882200;}.fn{color:var(--accent);}.nm{color:#0044aa;}.cm{color:var(--muted);font-style:italic;}.op{color:#005588;}.cls{color:#5a1a6e;}
+.teacher-bar{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.62rem;color:var(--muted);font-style:italic;line-height:1.4;flex-shrink:0;min-height:42px;transition:color .3s;}
+.teacher-bar.lit{color:var(--ink);}
+.vars-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="mms_watch.html" class="nav-tab">01 Watch</a>
+    <a href="mms_guide.html" class="nav-tab">02 Guide</a>
+    <a href="mms_cma.html" class="nav-tab active">03 Mirror·A</a>
+    <a href="mms_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="mms_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="mms_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Min Max Stack · Follow</div>
+</header>
+<main>
+  <div class="stack-panel">
+    <div class="panel-label">Stack State</div>
+    <div class="stacks-mini">
+      <div class="stk-col">
+        <div class="stk-lbl">stack</div>
+        <div class="stk-items" id="stackItems"></div>
+      </div>
+      <div class="stk-col">
+        <div class="stk-lbl">minMax</div>
+        <div class="stk-items" id="mmItems"></div>
+      </div>
+    </div>
+    <div class="panel-label">Variables</div>
+    <div class="vb">
+      <div class="vbt">Current</div>
+      <div class="vbr"><span class="vk">method</span><span class="vv a" id="vMethod">—</span></div>
+      <div class="vbr"><span class="vk">number</span><span class="vv" id="vNumber">—</span></div>
+      <div class="vbr"><span class="vk">newMinMax</span><span class="vv" id="vNewMM">—</span></div>
+      <div class="vbr"><span class="vk">lastMinMax</span><span class="vv" id="vLastMM">—</span></div>
+      <div class="vbr"><span class="vk">returned</span><span class="vv t" id="vRet">—</span></div>
+    </div>
+    <div class="panel-label">Log</div>
+    <div class="log-b" id="logB"></div>
+  </div>
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title">Python · min_max_stack.py</div>
+      <div class="code-step">step <span id="stepNum">0</span>/<span id="stepTotal">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="teacher-bar" id="teacherBar">"We're storing an extra list where each element is a dictionary that stores a minimum value and a maximum value. The list is still of length N so overall we're O(N) space."</div>
+  </div>
+  <div class="vars-panel">
+    <div class="panel-label">peek · min · max</div>
+    <div id="pmmDisplay" style="display:flex;flex-direction:column;gap:6px;"></div>
+    <div class="panel-label">Operation</div>
+    <div id="opDisp" style="font-size:.68rem;color:var(--muted2);padding:.4rem .6rem;border:1px solid var(--border2);border-radius:2px;background:var(--surface2);">init</div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Step <span id="stepLabel">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prevStep()">← Prev</button>
+    <button class="btn btn-accent" onclick="nextStep()">Next →</button>
+    <button class="btn" onclick="toggleAuto()" id="autoBtn">Auto</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="mms_cmb.html" class="btn btn-accent">→ Mirror·B</a>
+  </div>
+</footer>
+<script>
+// Pre-computed sequence: push(5), push(7), push(2), getMin, getMax, peek, pop, getMin, peek
+const CODE=[
+  {n:1,t:'<span class="kw">class</span> <span class="cls">MinMaxStack</span>:',id:'cls_def'},
+  {n:2,t:'  <span class="kw">def</span> <span class="fn">__init__</span>(self):',id:'init_def'},
+  {n:3,t:'    self.minMaxStack <span class="op">=</span> []',id:'init_mm'},
+  {n:4,t:'    self.stack <span class="op">=</span> []',id:'init_stk'},
+  {n:5,t:'',id:'b1'},
+  {n:6,t:'  <span class="kw">def</span> <span class="fn">peek</span>(self):',id:'peek_def'},
+  {n:7,t:'    <span class="kw">return</span> self.stack[<span class="fn">len</span>(self.stack) <span class="op">-</span> <span class="nm">1</span>]',id:'peek_ret'},
+  {n:8,t:'',id:'b2'},
+  {n:9,t:'  <span class="kw">def</span> <span class="fn">pop</span>(self):',id:'pop_def'},
+  {n:10,t:'    self.minMaxStack.<span class="fn">pop</span>()',id:'pop_mm'},
+  {n:11,t:'    <span class="kw">return</span> self.stack.<span class="fn">pop</span>()',id:'pop_ret'},
+  {n:12,t:'',id:'b3'},
+  {n:13,t:'  <span class="kw">def</span> <span class="fn">push</span>(self, number):',id:'push_def'},
+  {n:14,t:'    newMinMax <span class="op">=</span> {<span class="st">\'min\'</span>: number, <span class="st">\'max\'</span>: number}',id:'push_init'},
+  {n:15,t:'    <span class="kw">if</span> <span class="fn">len</span>(self.minMaxStack):',id:'push_check'},
+  {n:16,t:'      lastMinMax <span class="op">=</span> self.minMaxStack[<span class="fn">len</span>(...) <span class="op">-</span> <span class="nm">1</span>]',id:'push_last'},
+  {n:17,t:'      newMinMax[<span class="st">\'min\'</span>] <span class="op">=</span> <span class="fn">min</span>(lastMinMax[<span class="st">\'min\'</span>], number)',id:'push_min'},
+  {n:18,t:'      newMinMax[<span class="st">\'max\'</span>] <span class="op">=</span> <span class="fn">max</span>(lastMinMax[<span class="st">\'max\'</span>], number)',id:'push_max'},
+  {n:19,t:'    self.minMaxStack.<span class="fn">append</span>(newMinMax)',id:'push_app_mm'},
+  {n:20,t:'    self.stack.<span class="fn">append</span>(number)',id:'push_app_stk'},
+  {n:21,t:'',id:'b4'},
+  {n:22,t:'  <span class="kw">def</span> <span class="fn">getMin</span>(self):',id:'getmin_def'},
+  {n:23,t:'    <span class="kw">return</span> self.minMaxStack[-<span class="nm">1</span>][<span class="st">\'min\'</span>]',id:'getmin_ret'},
+  {n:24,t:'',id:'b5'},
+  {n:25,t:'  <span class="kw">def</span> <span class="fn">getMax</span>(self):',id:'getmax_def'},
+  {n:26,t:'    <span class="kw">return</span> self.minMaxStack[-<span class="nm">1</span>][<span class="st">\'max\'</span>]',id:'getmax_ret'},
+];
+
+const QUOTES={
+  init_mm:'"The minMaxStack variable is going to be the list that holds our minimum and maximum values at any given point in time in the stack."',
+  peek_ret:'"For our peek method, we simply return the value at the end of the list. O(1) time and O(1) space."',
+  pop_mm:'"The one thing that we forgot here — we forgot to pop the value off our min max stack as well. Because we always want our min max stack to be in sync with our stack."',
+  pop_ret:'"We can use the native pop method on our list or on our array. If we were dealing with a linked list we would probably just remove the head or the tail."',
+  push_init:'"We declare a variable which is going to be the new min max — I\'m going to represent this as a python dictionary with a min and a max property, both equal to number for now."',
+  push_check:'"If the len of our minMaxStack is truthy — meaning we have values in our minMaxStack and therefore we have values in our stack so it\'s not empty — we need to compute what the new min max really is."',
+  push_last:'"We\'re essentially peeking the final value of the last min max."',
+  push_min:'"newMinMax[\'min\'] is the minimum value between lastMinMax[\'min\'] and our number."',
+  push_max:'"newMinMax[\'max\'] is the maximum value of our lastMinMax[\'max\'] and our number."',
+  push_app_mm:'"Now minMaxStack should get a new value which is our newMinMax."',
+  push_app_stk:'"And our stack should also get a new value which is our number."',
+  getmin_ret:'"For getMin, we simply return the last value in our minMaxStack at the min property. O(1) time."',
+  getmax_ret:'"For getMax, same thing but the max property. Just accesses the final value in our list."',
+};
+
+// Simulate: push(5), push(7), push(2), getMin, getMax, peek, pop, getMin, peek
+function computeSteps(){
+  const steps=[];
+  const stack=[];const mm=[];
+  function log(line,method,number,newMM,lastMM,ret,logE){steps.push({line,stack:[...stack],mm:mm.map(m=>({...m})),method,number,newMM:newMM?{...newMM}:null,lastMM:lastMM?{...lastMM}:null,ret,log:logE});}
+  log('cls_def','init',null,null,null,null,null);
+  log('init_def','init',null,null,null,null,null);
+  log('init_mm','init',null,null,null,null,{t:'push',m:'minMaxStack = []'});
+  log('init_stk','init',null,null,null,null,{t:'push',m:'stack = []'});
+  // push(5)
+  function doPush(n){
+    log('push_def','push',n,null,null,null,null);
+    const newMM={min:n,max:n};
+    log('push_init','push',n,newMM,null,null,{t:'push',m:`push(${n}): newMinMax = {min:${n},max:${n}}`});
+    log('push_check','push',n,newMM,null,null,null);
+    if(mm.length){
+      const last={...mm[mm.length-1]};
+      log('push_last','push',n,newMM,last,null,{t:'push',m:`lastMinMax = {min:${last.min},max:${last.max}}`});
+      newMM.min=Math.min(last.min,n);
+      log('push_min','push',n,newMM,last,null,{t:'push',m:`min(${last.min},${n})=${newMM.min}`});
+      newMM.max=Math.max(last.max,n);
+      log('push_max','push',n,newMM,last,null,{t:'push',m:`max(${last.max},${n})=${newMM.max}`});
+    }
+    mm.push({...newMM});stack.push(n);
+    log('push_app_mm','push',n,newMM,null,null,{t:'push',m:`minMaxStack.append({min:${newMM.min},max:${newMM.max}})`});
+    log('push_app_stk','push',n,newMM,null,null,{t:'push',m:`stack.append(${n})`});
+  }
+  doPush(5);doPush(7);doPush(2);
+  // getMin
+  log('getmin_def','getMin',null,null,null,null,null);
+  log('getmin_ret','getMin',null,null,null,mm[mm.length-1].min,{t:'query',m:`getMin() = ${mm[mm.length-1].min}`});
+  // getMax
+  log('getmax_def','getMax',null,null,null,null,null);
+  log('getmax_ret','getMax',null,null,null,mm[mm.length-1].max,{t:'query',m:`getMax() = ${mm[mm.length-1].max}`});
+  // peek
+  log('peek_def','peek',null,null,null,null,null);
+  log('peek_ret','peek',null,null,null,stack[stack.length-1],{t:'query',m:`peek() = ${stack[stack.length-1]}`});
+  // pop
+  log('pop_def','pop',null,null,null,null,null);
+  mm.pop();log('pop_mm','pop',null,null,null,null,{t:'pop',m:'minMaxStack.pop() — sync both stacks'});
+  const popped=stack.pop();
+  log('pop_ret','pop',null,null,null,popped,{t:'pop',m:`stack.pop() = ${popped}`});
+  // getMin after pop
+  log('getmin_def','getMin',null,null,null,null,null);
+  log('getmin_ret','getMin',null,null,null,mm[mm.length-1].min,{t:'query',m:`getMin() = ${mm[mm.length-1].min} (correctly updated!)`});
+  // peek after pop
+  log('peek_def','peek',null,null,null,null,null);
+  log('peek_ret','peek',null,null,null,stack[stack.length-1],{t:'query',m:`peek() = ${stack[stack.length-1]}`});
+  return steps;
+}
+
+const STEPS=computeSteps();
+let cur=0,autoTimer=null;
+
+function buildCode(){
+  const cb=document.getElementById('codeBody');cb.innerHTML='';
+  CODE.forEach(l=>{const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;d.innerHTML=`<span class="ln">${l.n||''}</span><span class="cc">${l.t}</span>`;cb.appendChild(d);});
+  document.getElementById('stepTotal').textContent=STEPS.length;
+}
+
+function buildStackDisplay(s){
+  const si=document.getElementById('stackItems');si.innerHTML='';
+  s.stack.forEach((v,i)=>{const d=document.createElement('div');d.className=`si ${i===s.stack.length-1?'top-item':'normal'}`;d.textContent=v;si.appendChild(d);});
+  const mi=document.getElementById('mmItems');mi.innerHTML='';
+  s.mm.forEach((m,i)=>{const d=document.createElement('div');d.className=`mmi ${i===s.mm.length-1?'top-mm':'normal'}`;d.innerHTML=`<span class="mm-mn">↓${m.min}</span><span class="mm-mx">↑${m.max}</span>`;mi.appendChild(d);});
+}
+
+function buildPMM(s){
+  const el=document.getElementById('pmmDisplay');el.innerHTML='';
+  const len=s.stack.length;
+  const rows=[
+    {label:'peek()',val:len?s.stack[len-1]:null,cls:['top-b','top-bg','top']},
+    {label:'getMin()',val:len?s.mm[len-1].min:null,cls:['mn-b','mn-bg','mn']},
+    {label:'getMax()',val:len?s.mm[len-1].max:null,cls:['mx-b','mx-bg','mx']},
+  ];
+  rows.forEach(r=>{
+    const d=document.createElement('div');
+    d.style.cssText=`padding:5px 10px;border:1px solid;border-radius:2px;font-size:.7rem;font-weight:700;display:flex;justify-content:space-between;transition:all .3s;`;
+    d.style.borderColor=r.val!==null?`var(--${r.cls[0]})`:'var(--border2)';
+    d.style.background=r.val!==null?`var(--${r.cls[1]})`:'transparent';
+    d.style.color=r.val!==null?`var(--${r.cls[2]})`:'var(--muted)';
+    const k=document.createElement('span');k.style.color='var(--muted2)';k.textContent=r.label;
+    const v=document.createElement('span');v.textContent=r.val!==null?r.val:'—';
+    d.appendChild(k);d.appendChild(v);el.appendChild(d);
+  });
+}
+
+function setV(id,val,extra=''){const el=document.getElementById(id);if(!el)return;const p=el.textContent;el.textContent=String(val);if(p!==String(val)){el.className=`vv${extra} chg`;setTimeout(()=>el.className=`vv${extra}`,600);}}
+
+function applyStep(s){
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('al','jr'));
+  const lel=document.getElementById(`line-${s.line}`);if(lel){lel.classList.add('al','jr');lel.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  buildStackDisplay(s);buildPMM(s);
+  setV('vMethod',s.method||'—',' a');
+  setV('vNumber',s.number!==null?s.number:'—');
+  setV('vNewMM',s.newMM?`{min:${s.newMM.min},max:${s.newMM.max}}`:'—');
+  setV('vLastMM',s.lastMM?`{min:${s.lastMM.min},max:${s.lastMM.max}}`:'—');
+  setV('vRet',s.ret!==null&&s.ret!==undefined?s.ret:'—',' t');
+  document.getElementById('stepNum').textContent=cur;document.getElementById('stepLabel').textContent=cur;
+  document.getElementById('opDisp').textContent=s.method||'—';
+  const q=QUOTES[s.line];const tb=document.getElementById('teacherBar');
+  if(q){tb.textContent=q;tb.className='teacher-bar lit';}else{tb.className='teacher-bar';}
+  if(s.log){const lb=document.getElementById('logB');const li=document.createElement('div');li.className=`ll ${s.log.t}`;li.textContent=`${cur}: ${s.log.m}`;lb.appendChild(li);lb.scrollTop=lb.scrollHeight;}
+}
+
+function nextStep(){if(cur<STEPS.length-1){cur++;applyStep(STEPS[cur]);}}
+function prevStep(){if(cur>0){cur--;applyStep(STEPS[cur]);}}
+function toggleAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}else{document.getElementById('autoBtn').textContent='Stop';autoTimer=setInterval(()=>{if(cur<STEPS.length-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}},420);}}
+function resetAll(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto';}cur=0;document.getElementById('logB').innerHTML='';buildCode();applyStep(STEPS[0]);}
+buildCode();applyStep(STEPS[0]);
+</script>
+</body>
+</html>

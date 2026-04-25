@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch — Min Max Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#fdf9f3;--surface:#fffef9;--surface2:#f5efe3;--border:#ddd4c0;--border2:#c4b89a;
+  --ink:#1e1812;--muted:#7a6e58;--muted2:#5a5040;
+  --accent:#7a1a2a;--accent2:#9a2238;
+  --top:#b8860b;--top-bg:rgba(184,134,11,.12);--top-b:rgba(184,134,11,.5);
+  --mn:#1a5c38;--mn-bg:rgba(26,92,56,.1);--mn-b:rgba(26,92,56,.45);
+  --mx:#1a4a6e;--mx-bg:rgba(26,74,110,.1);--mx-b:rgba(26,74,110,.4);
+  --push:#7a1a2a;--push-bg:rgba(122,26,42,.08);
+  --pop:#5a3a00;--pop-bg:rgba(90,58,0,.08);
+}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);letter-spacing:.04em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}
+.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 460px;overflow:hidden;}
+.left-panel{padding:2.5rem 3rem;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--border2);overflow:hidden;}
+.stage-tag{font-size:.53rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-bottom:.7rem;}
+.narrator{font-family:'Playfair Display',serif;font-size:1.85rem;font-weight:400;line-height:1.45;color:var(--ink);min-height:9rem;}
+.narrator .hl{color:var(--accent);font-weight:700;}
+.narrator .mn{color:var(--mn);font-weight:700;}
+.narrator .mx{color:var(--mx);font-weight:700;}
+.narrator .top{color:var(--top);font-weight:700;}
+.concept{display:inline-block;margin-top:1.2rem;font-size:.52rem;letter-spacing:.22em;text-transform:uppercase;background:var(--ink);color:var(--bg);padding:4px 12px;}
+.quote{margin-top:1.5rem;padding:.8rem 1rem;border-left:3px solid var(--accent);font-size:.7rem;color:var(--muted2);line-height:1.65;min-height:3.5rem;}
+.quote span{color:var(--ink);}
+.progress-wrap{margin-top:2rem;}
+.progress-bar{height:3px;background:var(--border);}
+.progress-fill{height:100%;background:var(--accent);transition:width .5s ease;}
+.progress-label{font-size:.53rem;color:var(--muted);margin-top:.4rem;}
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1.1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+
+/* STACK VISUALISATION */
+.stacks-wrap{display:flex;gap:1.2rem;justify-content:center;}
+.stack-col{display:flex;flex-direction:column;align-items:center;gap:.35rem;flex:1;}
+.stack-col-label{font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:.1rem;}
+.stack-items{display:flex;flex-direction:column-reverse;gap:3px;min-height:120px;justify-content:flex-start;}
+.stack-item{padding:7px 12px;border:1px solid var(--border2);border-radius:2px;font-size:.78rem;font-weight:700;transition:all .3s;text-align:center;min-width:80px;}
+.stack-item.normal{background:var(--surface2);color:var(--muted2);}
+.stack-item.top-item{background:var(--top-bg);border-color:var(--top-b);color:var(--top);box-shadow:0 0 8px rgba(184,134,11,.2);}
+.stack-item.entering{animation:enter .35s ease;}
+@keyframes enter{from{opacity:0;transform:scale(.85);}to{opacity:1;transform:scale(1);}}
+.mm-item{padding:7px 10px;border:1px solid var(--border2);border-radius:2px;font-size:.65rem;font-weight:600;transition:all .3s;text-align:center;min-width:110px;display:flex;gap:6px;justify-content:center;}
+.mm-item.normal{background:var(--surface2);}
+.mm-item.top-mm{background:var(--surface2);border-color:var(--top-b);}
+.mm-item .mm-mn{color:var(--mn);}
+.mm-item .mm-mx{color:var(--mx);}
+
+/* Summary chips */
+.summary-row{display:flex;gap:6px;flex-wrap:wrap;}
+.summary-chip{padding:5px 12px;border:1px solid var(--border2);border-radius:2px;font-size:.68rem;font-weight:700;transition:all .3s;}
+.summary-chip.peek{border-color:var(--top-b);background:var(--top-bg);color:var(--top);}
+.summary-chip.min{border-color:var(--mn-b);background:var(--mn-bg);color:var(--mn);}
+.summary-chip.max{border-color:var(--mx-b);background:var(--mx-bg);color:var(--mx);}
+.summary-chip.empty{color:var(--muted);border-color:var(--border);}
+
+/* Operation log */
+.op-log{display:flex;flex-direction:column;gap:3px;max-height:100px;overflow-y:auto;}
+.op-entry{font-size:.6rem;padding:3px 8px;border-left:3px solid var(--border2);color:var(--muted);}
+.op-entry.push{border-color:var(--accent);color:var(--accent);}
+.op-entry.pop{border-color:var(--pop);color:var(--pop);}
+.op-entry.query{border-color:var(--mn-b);color:var(--muted2);}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.btn-accent:hover{background:var(--accent2);}
+.speed-wrap{display:flex;align-items:center;gap:.75rem;font-size:.57rem;color:var(--muted);}
+.speed-wrap input{accent-color:var(--accent);width:80px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="mms_watch.html" class="nav-tab active">01 Watch</a>
+    <a href="mms_guide.html" class="nav-tab">02 Guide</a>
+    <a href="mms_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="mms_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="mms_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="mms_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Min Max Stack · Watch</div>
+</header>
+<main>
+  <div class="left-panel">
+    <div>
+      <div class="stage-tag" id="stageTag">Stage 1 of 10 — The Stack</div>
+      <div class="narrator" id="narrator">A <span class="hl">stack</span> of books.<br>Last in, first out — <span class="hl">LIFO.</span><br>We can only touch the top.</div>
+      <div class="concept" id="concept">KEY CONCEPT: LIFO — LAST IN FIRST OUT</div>
+      <div class="quote" id="quote"><span>"The last book that we put on the table, the last in item, was the brown book, and it was the first one to be popped off the stack. Last in, first out."</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+      <div class="progress-label" id="pLabel">Step 1 / 10</div>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Stack  ·  MinMax Pairs</div>
+    <div class="stacks-wrap">
+      <div class="stack-col">
+        <div class="stack-col-label">stack[ ]</div>
+        <div class="stack-items" id="stackItems"></div>
+      </div>
+      <div class="stack-col">
+        <div class="stack-col-label">minMaxStack[ ]</div>
+        <div class="stack-items" id="mmItems"></div>
+      </div>
+    </div>
+    <div class="panel-label">peek() · getMin() · getMax()</div>
+    <div class="summary-row" id="summaryRow"></div>
+    <div class="panel-label">Operation Log</div>
+    <div class="op-log" id="opLog"></div>
+  </div>
+</main>
+<footer>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prev()">← Prev</button>
+    <button class="btn btn-accent" onclick="next()">Next →</button>
+    <button class="btn" onclick="reset()">Reset</button>
+  </div>
+  <div class="speed-wrap">
+    Speed:<input type="range" id="spd" min="600" max="3000" value="1800" step="100">
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">Auto Play</button>
+  </div>
+  <a href="mms_guide.html" class="btn btn-accent">Guide →</a>
+</footer>
+<script>
+// Each stage: stack values, minMax pairs, peek/min/max results, log entry
+const STAGES=[
+  {tag:'Stage 1 / 10 — The Stack',
+   narrator:'A <span class="hl">stack</span> of books.<br>Last in, first out — <span class="hl">LIFO.</span><br>We can only touch the top.',
+   concept:'KEY CONCEPT: LIFO — LAST IN FIRST OUT',
+   quote:'"The last book that we put on the table, the last in item, was the brown book, and it was the first one to be popped off the stack. Last in, first out."',
+   stack:[],mm:[],peek:null,min:null,max:null,log:null},
+  {tag:'Stage 2 / 10 — Push(5)',
+   narrator:'push(<span class="top">5</span>).<br>Stack only has 5.<br>Min = <span class="mn">5</span>, Max = <span class="mx">5</span>, Peek = <span class="top">5</span>.',
+   concept:'KEY CONCEPT: FIRST PUSH — MIN/MAX = VALUE',
+   quote:'"When our stack only has the number 5, the minimum value would be 5 because it\'s the only value, and the maximum would also be 5."',
+   stack:[5],mm:[{min:5,max:5}],peek:5,min:5,max:5,log:{t:'push',m:'push(5) → stack=[5], minMax=[{min:5,max:5}]'}},
+  {tag:'Stage 3 / 10 — Push(7)',
+   narrator:'push(<span class="top">7</span>).<br>New min = <span class="mn">5</span> (unchanged).<br>New max = <span class="mx">7</span>. Peek = <span class="top">7</span>.',
+   concept:'KEY CONCEPT: COMPARE WITH LAST MIN/MAX',
+   quote:'"We compare 7 to the current min which is 5. 5 is still our min. We compare 7 to our current maximum which is 5 and we say 7 is bigger so we make that a 7."',
+   stack:[5,7],mm:[{min:5,max:5},{min:5,max:7}],peek:7,min:5,max:7,log:{t:'push',m:'push(7) → compare with prev {min:5,max:5} → new {min:5,max:7}'}},
+  {tag:'Stage 4 / 10 — Push(2)',
+   narrator:'push(<span class="top">2</span>).<br>2 < 5, so new min = <span class="mn">2</span>.<br>Max = <span class="mx">7</span>. Peek = <span class="top">2</span>.',
+   concept:'KEY CONCEPT: NEW MIN WHEN SMALLER VALUE PUSHED',
+   quote:'"We see that 2 is smaller than our current min, so we\'ve got a min of 2, and then 2 is smaller than our current max so we don\'t update that."',
+   stack:[5,7,2],mm:[{min:5,max:5},{min:5,max:7},{min:2,max:7}],peek:2,min:2,max:7,log:{t:'push',m:'push(2) → min(5,2)=2, max(7,2)=7 → {min:2,max:7}'}},
+  {tag:'Stage 5 / 10 — Problem: simple tracking fails',
+   narrator:'Pop 2. Min should be <span class="mn">5</span>.<br>But a simple "running min" var<br>can\'t know this. <span class="hl">Problem!</span>',
+   concept:'KEY CONCEPT: WHY SINGLE VAR FAILS ON POP',
+   quote:'"We\'re gonna pop this 2 off the stack, and now the minimum value is no longer 2. But we don\'t know that, and we have no way of knowing that without iterating through the entire stack again."',
+   stack:[5,7,2],mm:[{min:5,max:5},{min:5,max:7},{min:2,max:7}],peek:2,min:2,max:7,log:{t:'query',m:'⚠ naive approach: pop 2 → what is new min? Unknown without O(N) scan!'}},
+  {tag:'Stage 6 / 10 — Solution: parallel minMaxStack',
+   narrator:'Store <span class="hl">{min, max}</span> at each level.<br>Each push appends to both stacks.<br>Each pop removes from both.',
+   concept:'KEY CONCEPT: PARALLEL MINMAX ARRAY',
+   quote:'"We\'re going to store the minimum value and the maximum value at any point, in the stack. At any value in our stack we say: what would our min/max values be right now?"',
+   stack:[5,7,2],mm:[{min:5,max:5},{min:5,max:7},{min:2,max:7}],peek:2,min:2,max:7,log:{t:'query',m:'minMaxStack[i] stores the min/max when stack[i] is on top'}},
+  {tag:'Stage 7 / 10 — Pop(2): both stacks sync',
+   narrator:'pop() removes from <span class="hl">both</span> stacks.<br>Stack: [5,7] · MinMax: [{5,5},{5,7}]<br>Peek=<span class="top">7</span>, Min=<span class="mn">5</span>, Max=<span class="mx">7</span>.',
+   concept:'KEY CONCEPT: POP SYNCS BOTH STACKS',
+   quote:'"When we do pop the 2 off, well then we\'re just gonna pop the min max values as well. And now if we want to get the new min max, we just look at the end of our list."',
+   stack:[5,7],mm:[{min:5,max:5},{min:5,max:7}],peek:7,min:5,max:7,log:{t:'pop',m:'pop() → stack=[5,7], minMaxStack=[{5,5},{5,7}] ✓'}},
+  {tag:'Stage 8 / 10 — Pop(7): restore state',
+   narrator:'pop() again.<br>Stack: [5] · MinMax: [{5,5}]<br>Peek=<span class="top">5</span>, Min=<span class="mn">5</span>, Max=<span class="mx">5</span>.',
+   concept:'KEY CONCEPT: PREVIOUS STATE PERFECTLY PRESERVED',
+   quote:'"If we ever want to pop the 7 off, move it off, we pop our min maxes that were at the top. And now we can still get the minimum and maximum values."',
+   stack:[5],mm:[{min:5,max:5}],peek:5,min:5,max:5,log:{t:'pop',m:'pop() → stack=[5], minMaxStack=[{5,5}] ✓'}},
+  {tag:'Stage 9 / 10 — All O(1) operations',
+   narrator:'peek, pop, push<br>getMin, getMax<br>— all <span class="hl">O(1)</span> time and space.',
+   concept:'KEY CONCEPT: ALL OPERATIONS O(1)',
+   quote:'"We\'ve got our getMin, getMax, push, pop, peek methods that all run in O(1) time and O(1) space independently."',
+   stack:[5],mm:[{min:5,max:5}],peek:5,min:5,max:5,log:{t:'query',m:'peek=O(1), pop=O(1), push=O(1), getMin=O(1), getMax=O(1)'}},
+  {tag:'Stage 10 / 10 — Space: O(N)',
+   narrator:'Space: <span class="hl">O(N)</span> total.<br>Two arrays of length N.<br>O(2N) = O(N) — constants drop.',
+   concept:'KEY CONCEPT: O(N) SPACE OVERALL',
+   quote:'"All we\'re doing now is storing an extra list of length N, so overall we are still storing O(N) space in total. It becomes O(2N) or O(3N) but we drop constants."',
+   stack:[5,7,2],mm:[{min:5,max:5},{min:5,max:7},{min:2,max:7}],peek:2,min:2,max:7,log:{t:'query',m:'Total space = stack(N) + minMaxStack(N) = O(2N) = O(N)'}},
+];
+
+let cur=0,autoTimer=null;
+
+function buildStacks(s){
+  const si=document.getElementById('stackItems');si.innerHTML='';
+  const mi=document.getElementById('mmItems');mi.innerHTML='';
+  s.stack.forEach((v,i)=>{
+    const d=document.createElement('div');
+    d.className=`stack-item ${i===s.stack.length-1?'top-item':'normal'}`;
+    d.textContent=v;si.appendChild(d);
+  });
+  s.mm.forEach((m,i)=>{
+    const d=document.createElement('div');
+    d.className=`mm-item ${i===s.mm.length-1?'top-mm':'normal'}`;
+    d.innerHTML=`<span class="mm-mn">↓${m.min}</span><span class="mm-mx">↑${m.max}</span>`;
+    mi.appendChild(d);
+  });
+}
+
+function buildSummary(s){
+  const el=document.getElementById('summaryRow');el.innerHTML='';
+  const chips=[
+    {label:'peek()',val:s.peek,cls:'peek'},
+    {label:'getMin()',val:s.min,cls:'min'},
+    {label:'getMax()',val:s.max,cls:'max'},
+  ];
+  chips.forEach(c=>{
+    const d=document.createElement('div');
+    d.className=`summary-chip ${c.val!==null?c.cls:'empty'}`;
+    d.textContent=`${c.label} = ${c.val!==null?c.val:'—'}`;
+    el.appendChild(d);
+  });
+}
+
+function addLog(entry){
+  if(!entry)return;
+  const el=document.getElementById('opLog');
+  const d=document.createElement('div');
+  d.className=`op-entry ${entry.t}`;
+  d.textContent=entry.m;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+
+function applyStage(s){
+  document.getElementById('stageTag').textContent=s.tag;
+  document.getElementById('narrator').innerHTML=s.narrator;
+  document.getElementById('concept').textContent=s.concept;
+  document.getElementById('quote').innerHTML=`<span>${s.quote}</span>`;
+  buildStacks(s);buildSummary(s);addLog(s.log);
+  const pct=((cur+1)/STAGES.length*100).toFixed(0);
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pLabel').textContent=`Step ${cur+1} / ${STAGES.length}`;
+}
+
+function next(){if(cur<STAGES.length-1){cur++;applyStage(STAGES[cur]);}}
+function prev(){if(cur>0){cur--;applyStage(STAGES[cur]);}}
+function reset(){cur=0;document.getElementById('opLog').innerHTML='';applyStage(STAGES[0]);if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+  else{const spd=parseInt(document.getElementById('spd').value);document.getElementById('autoBtn').textContent='Stop';
+    autoTimer=setInterval(()=>{if(cur<STAGES.length-1)next();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}},spd);}
+}
+applyStage(STAGES[0]);
+</script>
+</body>
+</html>

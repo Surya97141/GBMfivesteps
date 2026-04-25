@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide — Min Max Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#fdf9f3;--surface:#fffef9;--surface2:#f5efe3;--border:#ddd4c0;--border2:#c4b89a;--ink:#1e1812;--muted:#7a6e58;--muted2:#5a5040;--accent:#7a1a2a;--accent2:#9a2238;--top:#b8860b;--top-bg:rgba(184,134,11,.12);--top-b:rgba(184,134,11,.5);--mn:#1a5c38;--mn-bg:rgba(26,92,56,.1);--mn-b:rgba(26,92,56,.45);--mx:#1a4a6e;--mx-bg:rgba(26,74,110,.1);--mx-b:rgba(26,74,110,.4);--right:#1a5c38;--wrong:#7a1a2a;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 360px;overflow:hidden;}
+.center{padding:1.5rem 2.5rem;display:flex;flex-direction:column;gap:1.2rem;border-right:1px solid var(--border2);overflow-y:auto;}
+.inst-box{background:var(--surface);border:1px solid var(--border2);border-top:3px solid var(--accent);padding:.85rem 1.1rem;display:flex;gap:.9rem;}
+.inst-icon{width:28px;height:28px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;}
+.inst-text{font-size:.72rem;line-height:1.7;}.inst-text strong{color:var(--accent);}
+.teacher-flash{padding:.6rem .9rem;border-left:3px solid var(--accent);font-size:.68rem;color:var(--muted2);font-style:italic;line-height:1.5;min-height:2.5rem;transition:all .3s;}
+.teacher-flash.lit{color:var(--ink);border-color:var(--top);}
+.phase-label{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--accent);}
+
+/* Controls */
+.controls-row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;}
+.push-input{font-family:'JetBrains Mono',monospace;font-size:.85rem;width:70px;padding:7px 10px;border:1px solid var(--border2);border-radius:2px;background:var(--surface);color:var(--ink);text-align:center;outline:none;}
+.push-input:focus{border-color:var(--accent);}
+.ctrl-btn{font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:8px 18px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);cursor:pointer;transition:all .2s;border-radius:2px;font-weight:600;text-transform:uppercase;}
+.ctrl-btn.push-btn{border-color:var(--accent);color:var(--accent);}
+.ctrl-btn.push-btn:hover{background:var(--push-bg);}
+.ctrl-btn.pop-btn{border-color:var(--mx-b);color:var(--mx);}
+.ctrl-btn.pop-btn:hover{background:var(--mx-bg);}
+.ctrl-btn:disabled{opacity:.35;cursor:not-allowed;}
+
+/* Stack visualisation */
+.stacks-area{display:flex;gap:1.5rem;}
+.stack-col{display:flex;flex-direction:column;align-items:center;gap:.4rem;flex:1;}
+.stack-col-label{font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.stack-items{display:flex;flex-direction:column-reverse;gap:4px;min-height:160px;width:100%;}
+.stack-item{padding:8px 12px;border:1px solid var(--border2);border-radius:2px;font-size:.82rem;font-weight:700;transition:all .3s;text-align:center;}
+.stack-item.normal{background:var(--surface2);color:var(--muted2);}
+.stack-item.top-item{background:var(--top-bg);border-color:var(--top-b);color:var(--top);box-shadow:0 2px 8px rgba(184,134,11,.2);}
+.stack-item.enter{animation:enterAnim .3s ease;}
+@keyframes enterAnim{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+.mm-item{padding:8px 10px;border:1px solid var(--border2);border-radius:2px;font-size:.67rem;font-weight:600;transition:all .3s;text-align:center;display:flex;gap:8px;justify-content:center;}
+.mm-item.normal{background:var(--surface2);}
+.mm-item.top-mm{border-color:var(--top-b);background:var(--surface2);}
+.mm-item .mm-mn{color:var(--mn);}.mm-item .mm-mx{color:var(--mx);}
+
+/* Summary row */
+.summary-panel{display:flex;gap:8px;flex-wrap:wrap;}
+.s-chip{padding:7px 14px;border:1px solid var(--border2);border-radius:2px;font-size:.72rem;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.s-chip .s-label{font-size:.46rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);}
+.s-chip.peek{border-color:var(--top-b);background:var(--top-bg);}.s-chip.peek .s-val{color:var(--top);}
+.s-chip.mn-chip{border-color:var(--mn-b);background:var(--mn-bg);}.s-chip.mn-chip .s-val{color:var(--mn);}
+.s-chip.mx-chip{border-color:var(--mx-b);background:var(--mx-bg);}.s-chip.mx-chip .s-val{color:var(--mx);}
+.s-chip.empty-chip{color:var(--muted);}
+
+/* Right panel */
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.state-block{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.state-title{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.state-row{padding:5px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.state-row:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}
+.sv.t{color:var(--top);}.sv.m{color:var(--mn);}.sv.x{color:var(--mx);}.sv.a{color:var(--accent);}
+.op-log{display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto;}
+.op-e{font-size:.6rem;padding:3px 8px;border-left:3px solid var(--border2);color:var(--muted);}
+.op-e.push{border-color:var(--accent);color:var(--accent);}
+.op-e.pop{border-color:var(--mx-b);color:var(--mx);}
+.op-e.query{border-color:var(--mn-b);color:var(--mn);}
+.hint-box{background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--top);padding:.65rem .75rem;font-size:.68rem;color:var(--muted2);line-height:1.6;min-height:3rem;}
+.toast{position:fixed;top:66px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--surface);border:1px solid var(--border2);padding:8px 18px;font-size:.7rem;opacity:0;transition:all .25s;z-index:100;pointer-events:none;max-width:380px;text-align:center;border-radius:2px;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.good{border-color:var(--right);color:var(--right);}
+.toast.bad{border-color:var(--wrong);color:var(--wrong);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="mms_watch.html" class="nav-tab">01 Watch</a>
+    <a href="mms_guide.html" class="nav-tab active">02 Guide</a>
+    <a href="mms_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="mms_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="mms_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="mms_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Min Max Stack · Guide</div>
+</header>
+<main>
+  <div class="center">
+    <div class="inst-box">
+      <div class="inst-icon">▶</div>
+      <div class="inst-text" id="instText"><strong>You drive the stack.</strong> Type a number and push it, or pop the top value. Watch how the <span style="color:var(--accent)">minMaxStack</span> stays in perfect sync — updating min/max with every push and pop.</div>
+    </div>
+    <div class="teacher-flash" id="teacherFlash">"At any value in our stack we say: imagine this were the top of the stack — what would our min/max values be at this point?"</div>
+    <div class="phase-label" id="phaseLabel">Stack is empty — push a value to begin</div>
+    <div class="controls-row">
+      <input class="push-input" id="pushVal" type="number" placeholder="42" value="5">
+      <button class="ctrl-btn push-btn" onclick="doPush()">↑ Push</button>
+      <button class="ctrl-btn pop-btn" id="popBtn" onclick="doPop()" disabled>↓ Pop</button>
+      <button class="ctrl-btn" onclick="queryAll()">Query All</button>
+    </div>
+    <div class="summary-panel" id="summaryPanel"></div>
+    <div class="stacks-area">
+      <div class="stack-col">
+        <div class="stack-col-label">stack[ ]</div>
+        <div class="stack-items" id="stackItems"></div>
+      </div>
+      <div class="stack-col">
+        <div class="stack-col-label">minMaxStack[ ]</div>
+        <div class="stack-items" id="mmItems"></div>
+      </div>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Algorithm State</div>
+    <div class="state-block">
+      <div class="state-title">Current</div>
+      <div class="state-row"><span class="sk">stack.length</span><span class="sv a" id="sLen">0</span></div>
+      <div class="state-row"><span class="sk">peek()</span><span class="sv t" id="sPeek">—</span></div>
+      <div class="state-row"><span class="sk">getMin()</span><span class="sv m" id="sMin">—</span></div>
+      <div class="state-row"><span class="sk">getMax()</span><span class="sv x" id="sMax">—</span></div>
+      <div class="state-row"><span class="sk">last minMax</span><span class="sv" id="sLastMM">—</span></div>
+    </div>
+    <div class="panel-label">Log</div>
+    <div class="op-log" id="opLog"></div>
+    <div class="panel-label">Hint</div>
+    <div class="hint-box" id="hintBox">Push any number. The minMaxStack will record the running min and max at that depth.</div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">stack.length: <span id="footLen">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="mms_cma.html" class="btn btn-accent">→ Mirror·A</a>
+  </div>
+</footer>
+<script>
+const QUOTES={
+  push_first:'"When this is the first number that we push on our stack then the new min max values are indeed the number and the number."',
+  push_compare:'"We compare the new number to the previous min max, peek the final value of the last min max, and then compute: new min = min(lastMin, number), new max = max(lastMax, number)."',
+  pop:'"Before we can return this popped value off our normal stack, we have to pop a value off our min max stack. Because that value is only relevant to the point in the stack where we have the value we\'re just now popping off."',
+  query:'"And just like that, we\'ve implemented our min max stack. Every method runs in O(1) time and O(1) space."',
+};
+
+let stack=[];
+let minMaxStack=[];
+
+function doPush(){
+  const input=document.getElementById('pushVal');
+  const val=parseInt(input.value);
+  if(isNaN(val)){showToast('Enter a valid number!','bad');return;}
+  const newMM={min:val,max:val};
+  if(minMaxStack.length>0){
+    const last=minMaxStack[minMaxStack.length-1];
+    newMM.min=Math.min(last.min,val);
+    newMM.max=Math.max(last.max,val);
+  }
+  stack.push(val);
+  minMaxStack.push(newMM);
+  addLog('push',`push(${val}) → minMax={min:${newMM.min},max:${newMM.max}}`);
+  setQuote(stack.length===1?'push_first':'push_compare');
+  setHint(`Pushed ${val}. min(prev=${stack.length>1?minMaxStack[minMaxStack.length-2].min:'—'},${val})=${newMM.min}. max(prev=${stack.length>1?minMaxStack[minMaxStack.length-2].max:'—'},${val})=${newMM.max}.`);
+  document.getElementById('phaseLabel').textContent=`push(${val}) complete`;
+  render();input.value='';
+}
+
+function doPop(){
+  if(!stack.length){showToast('Stack is empty!','bad');return;}
+  minMaxStack.pop();
+  const val=stack.pop();
+  addLog('pop',`pop() → removed ${val}. minMaxStack also popped.`);
+  setQuote('pop');
+  setHint(stack.length?`Popped ${val}. Restored min/max to {min:${minMaxStack[minMaxStack.length-1].min}, max:${minMaxStack[minMaxStack.length-1].max}}.`:'Stack empty after pop.');
+  document.getElementById('phaseLabel').textContent=`pop() → returned ${val}`;
+  showToast(`pop() returned ${val}`,'good');
+  render();
+}
+
+function queryAll(){
+  if(!stack.length){showToast('Stack is empty!','bad');return;}
+  const p=stack[stack.length-1];
+  const mn=minMaxStack[minMaxStack.length-1].min;
+  const mx=minMaxStack[minMaxStack.length-1].max;
+  addLog('query',`peek=${p} | getMin=${mn} | getMax=${mx} — all O(1)!`);
+  setQuote('query');
+  showToast(`peek=${p}  getMin=${mn}  getMax=${mx}  — all O(1)!`,'good');
+}
+
+function render(){
+  // stack items
+  const si=document.getElementById('stackItems');si.innerHTML='';
+  stack.forEach((v,i)=>{
+    const d=document.createElement('div');
+    d.className=`stack-item ${i===stack.length-1?'top-item':'normal'}`;
+    d.textContent=v;si.appendChild(d);
+  });
+  // minmax items
+  const mi=document.getElementById('mmItems');mi.innerHTML='';
+  minMaxStack.forEach((m,i)=>{
+    const d=document.createElement('div');
+    d.className=`mm-item ${i===minMaxStack.length-1?'top-mm':'normal'}`;
+    d.innerHTML=`<span class="mm-mn">↓${m.min}</span><span class="mm-mx">↑${m.max}</span>`;
+    mi.appendChild(d);
+  });
+  // state panel
+  const len=stack.length;
+  document.getElementById('sLen').textContent=len;
+  document.getElementById('footLen').textContent=len;
+  document.getElementById('sPeek').textContent=len?stack[len-1]:'—';
+  document.getElementById('sMin').textContent=len?minMaxStack[len-1].min:'—';
+  document.getElementById('sMax').textContent=len?minMaxStack[len-1].max:'—';
+  document.getElementById('sLastMM').textContent=len?`{min:${minMaxStack[len-1].min}, max:${minMaxStack[len-1].max}}`:'—';
+  // summary
+  const sp=document.getElementById('summaryPanel');sp.innerHTML='';
+  const chips=[
+    {label:'peek()',val:len?stack[len-1]:null,cls:'peek'},
+    {label:'getMin()',val:len?minMaxStack[len-1].min:null,cls:'mn-chip'},
+    {label:'getMax()',val:len?minMaxStack[len-1].max:null,cls:'mx-chip'},
+  ];
+  chips.forEach(c=>{
+    const d=document.createElement('div');
+    d.className=`s-chip ${c.val!==null?c.cls:'empty-chip'}`;
+    d.innerHTML=`<span class="s-label">${c.label}</span><span class="s-val">${c.val!==null?c.val:'—'}</span>`;
+    sp.appendChild(d);
+  });
+  // pop button
+  document.getElementById('popBtn').disabled=!len;
+}
+
+function addLog(type,msg){
+  const el=document.getElementById('opLog');
+  const d=document.createElement('div');d.className=`op-e ${type}`;d.textContent=msg;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+function setHint(t){document.getElementById('hintBox').textContent=t;}
+function setQuote(k){const el=document.getElementById('teacherFlash');el.textContent=QUOTES[k]||'';el.className='teacher-flash lit';setTimeout(()=>el.className='teacher-flash',4500);}
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;setTimeout(()=>t.className='toast',2800);}
+function resetAll(){stack=[];minMaxStack=[];document.getElementById('opLog').innerHTML='';document.getElementById('phaseLabel').textContent='Stack is empty — push a value to begin';setHint('Push any number. The minMaxStack will record the running min and max at that depth.');render();}
+render();
+document.getElementById('pushVal').addEventListener('keydown',e=>{if(e.key==='Enter')doPush();});
+</script>
+</body>
+</html>

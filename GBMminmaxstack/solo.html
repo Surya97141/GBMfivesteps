@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo — Min Max Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#fdf9f3;--surface:#fffef9;--surface2:#f5efe3;--border:#ddd4c0;--border2:#c4b89a;--ink:#1e1812;--muted:#7a6e58;--muted2:#5a5040;--accent:#7a1a2a;--accent2:#9a2238;--top:#b8860b;--top-bg:rgba(184,134,11,.12);--top-b:rgba(184,134,11,.5);--mn:#1a5c38;--mn-bg:rgba(26,92,56,.1);--mn-b:rgba(26,92,56,.45);--mx:#1a4a6e;--mx-bg:rgba(26,74,110,.1);--mx-b:rgba(26,74,110,.4);--right:#1a5c38;--wrong:#7a1a2a;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;}
+.center{padding:2rem 2.5rem;display:flex;flex-direction:column;align-items:center;gap:1.5rem;border-right:1px solid var(--border2);position:relative;overflow:hidden;}
+.solo-header{text-align:center;}
+.solo-header h2{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--ink);margin-bottom:.3rem;}
+.solo-header p{font-size:.72rem;color:var(--muted);line-height:1.65;}
+
+/* Op sequence display */
+.op-sequence{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;padding:.6rem 1rem;border:1px solid var(--border2);border-radius:3px;background:var(--surface2);max-width:480px;width:100%;}
+.op-chip{padding:4px 12px;border:1px solid;border-radius:2px;font-size:.72rem;font-weight:700;}
+.op-chip.push-chip{border-color:var(--accent);color:var(--accent);background:rgba(122,26,42,.06);}
+.op-chip.pop-chip{border-color:var(--mx-b);color:var(--mx);background:var(--mx-bg);}
+
+/* Stack preview */
+.stack-preview{display:flex;gap:1rem;justify-content:center;}
+.sp-col{display:flex;flex-direction:column;align-items:center;gap:.3rem;}
+.sp-lbl{font-size:.46rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);}
+.sp-items{display:flex;flex-direction:column-reverse;gap:3px;min-height:80px;}
+.sp-item{padding:5px 10px;border:1px solid var(--border2);border-radius:2px;font-size:.75rem;font-weight:700;text-align:center;min-width:48px;}
+.sp-item.normal{background:var(--surface2);color:var(--muted2);}
+.sp-item.top-item{background:var(--top-bg);border-color:var(--top-b);color:var(--top);}
+.sp-mm{padding:5px 8px;border:1px solid var(--border2);border-radius:2px;font-size:.6rem;font-weight:600;text-align:center;display:flex;gap:5px;min-width:72px;}
+.sp-mm.normal{background:var(--surface2);}
+.sp-mm.top-mm{border-color:var(--top-b);}
+.sp-mm .mmn{color:var(--mn);}.sp-mm .mmx{color:var(--mx);}
+
+/* Question */
+.question-area{display:flex;flex-direction:column;gap:.6rem;align-items:center;width:100%;max-width:440px;}
+.q-label{font-size:.72rem;color:var(--ink);font-weight:600;text-align:center;}
+.q-method{font-size:1.1rem;font-family:'Playfair Display',serif;color:var(--accent);font-weight:700;}
+.answer-input{font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;width:100px;padding:8px 14px;border:2px solid var(--border2);border-radius:2px;background:var(--surface);color:var(--ink);text-align:center;outline:none;}
+.answer-input:focus{border-color:var(--accent);}
+.submit-btn{font-family:'JetBrains Mono',monospace;font-size:.7rem;padding:9px 28px;border:2px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;border-radius:2px;font-weight:700;transition:all .2s;text-transform:uppercase;}
+.submit-btn:hover{background:var(--accent2);}
+.feedback{font-size:.82rem;font-weight:700;padding:5px 16px;border-radius:2px;display:none;}
+.feedback.show{display:block;}
+.feedback.correct{color:var(--right);background:var(--mn-bg);border:1px solid var(--mn-b);}
+.feedback.wrong{color:var(--wrong);background:rgba(122,26,42,.07);border:1px solid rgba(122,26,42,.3);}
+
+/* Overlay */
+.overlay{position:absolute;inset:0;background:rgba(253,249,243,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;opacity:0;pointer-events:none;transition:opacity .3s;z-index:10;text-align:center;padding:2rem;}
+.overlay.show{opacity:1;pointer-events:all;}
+.overlay-title{font-family:'Playfair Display',serif;font-size:3rem;font-weight:700;}
+.overlay-sub{font-size:.75rem;color:var(--muted2);line-height:1.7;max-width:380px;}
+.overlay-ex{font-size:.68rem;color:var(--muted2);line-height:1.6;max-width:400px;padding:.6rem .8rem;border-left:3px solid var(--accent);text-align:left;background:var(--surface2);}
+.overlay-btns{display:flex;gap:.75rem;}
+.ob{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:8px 20px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);cursor:pointer;transition:all .2s;text-decoration:none;text-transform:uppercase;display:inline-block;border-radius:2px;}
+.ob:hover{background:var(--surface2);}
+.ob.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+
+/* Right panel */
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.challenge-list{display:flex;flex-direction:column;gap:.4rem;}
+.ch{border:1px solid var(--border2);padding:.55rem .75rem;font-size:.68rem;cursor:pointer;transition:all .2s;border-radius:2px;}
+.ch:hover{border-color:var(--accent);background:var(--bg);}
+.ch.active{border-color:var(--accent);background:var(--top-bg);}
+.ch.solved{border-color:var(--mn-b);background:var(--mn-bg);color:var(--right);}
+.ch.failed{border-color:rgba(122,26,42,.4);background:rgba(122,26,42,.05);}
+.ch-name{font-weight:700;font-family:'Playfair Display',serif;}
+.ch-hint{font-size:.58rem;color:var(--muted);margin-top:2px;}
+.score-b{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.score-t{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.score-r{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.score-r:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}.sv.g{color:var(--right);}.sv.r{color:var(--wrong);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.mode-note{font-size:.65rem;color:var(--wrong);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="mms_watch.html" class="nav-tab">01 Watch</a>
+    <a href="mms_guide.html" class="nav-tab">02 Guide</a>
+    <a href="mms_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="mms_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="mms_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="mms_solo.html" class="nav-tab active">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Min Max Stack · Solo</div>
+</header>
+<main>
+  <div class="center" id="centerPanel">
+    <div class="overlay" id="overlay">
+      <div class="overlay-title" id="overlayTitle">—</div>
+      <div class="overlay-sub" id="overlaySub"></div>
+      <div class="overlay-ex" id="overlayEx"></div>
+      <div class="overlay-btns">
+        <button class="ob primary" onclick="nextChallenge()">Next →</button>
+        <button class="ob" onclick="resetCurrent()">Try Again</button>
+        <a href="mms_guide.html" class="ob">← Guide</a>
+      </div>
+    </div>
+
+    <div class="solo-header">
+      <h2>No hints. Memory only.</h2>
+      <p>Execute these operations mentally.<br>What does the query return?</p>
+    </div>
+
+    <div class="op-sequence" id="opSequence"></div>
+
+    <div class="stack-preview">
+      <div class="sp-col">
+        <div class="sp-lbl">stack[ ]</div>
+        <div class="sp-items" id="spStack"></div>
+      </div>
+      <div class="sp-col">
+        <div class="sp-lbl">minMaxStack[ ]</div>
+        <div class="sp-items" id="spMM"></div>
+      </div>
+    </div>
+
+    <div class="question-area">
+      <div class="q-label">What does <span class="q-method" id="qMethod">getMin()</span> return?</div>
+      <input class="answer-input" id="answerInput" type="number" placeholder="?">
+      <button class="submit-btn" onclick="submitAnswer()">Submit</button>
+      <div class="feedback" id="feedback"></div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Challenges</div>
+    <div class="challenge-list" id="challengeList"></div>
+    <div class="panel-label">Score</div>
+    <div class="score-b">
+      <div class="score-t">Results</div>
+      <div class="score-r"><span class="sk">Correct</span><span class="sv g" id="scC">0</span></div>
+      <div class="score-r"><span class="sk">Wrong</span><span class="sv r" id="scW">0</span></div>
+      <div class="score-r"><span class="sk">Accuracy</span><span class="sv" id="scA">—</span></div>
+    </div>
+    <div class="panel-label">Key formulas</div>
+    <div style="font-size:.63rem;color:var(--muted2);line-height:1.9;padding:.4rem .5rem;border-left:3px solid var(--top);background:var(--top-bg);">
+      push(n): min(lastMin, n), max(lastMax, n)<br>
+      pop(): remove top from BOTH stacks<br>
+      peek → stack[-1]<br>
+      getMin → minMaxStack[-1].min<br>
+      getMax → minMaxStack[-1].max
+    </div>
+  </div>
+</main>
+<footer>
+  <div class="mode-note">Compute mentally — no hints!</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="skipChallenge()">Skip →</button>
+    <button class="btn" onclick="resetAll()">Reset All</button>
+  </div>
+</footer>
+<script>
+class MMS{
+  constructor(){this.stack=[];this.mm=[];}
+  push(n){const nm={min:n,max:n};if(this.mm.length){const l=this.mm[this.mm.length-1];nm.min=Math.min(l.min,n);nm.max=Math.max(l.max,n);}this.mm.push({...nm});this.stack.push(n);}
+  pop(){this.mm.pop();return this.stack.pop();}
+  peek(){return this.stack[this.stack.length-1];}
+  getMin(){return this.mm[this.mm.length-1].min;}
+  getMax(){return this.mm[this.mm.length-1].max;}
+}
+
+function runOps(ops){const s=new MMS();ops.forEach(op=>{if(op.startsWith('push'))s.push(parseInt(op.match(/\d+/)[0]));else if(op==='pop')s.pop();});return s;}
+
+const CHALLENGES=[
+  {name:'Simple push',hint:'Three pushes, query min',ops:['push(5)','push(7)','push(2)'],query:'getMin',label:'stack=[5,7,2]'},
+  {name:'Push then pop',hint:'Pop changes the state',ops:['push(5)','push(7)','push(2)','pop'],query:'getMin',label:'stack=[5,7]'},
+  {name:'Max tracking',hint:'Which is the maximum?',ops:['push(3)','push(1)','push(4)','push(1)','push(5)'],query:'getMax',label:'stack=[3,1,4,1,5]'},
+  {name:'Peek after pop',hint:'What is on top?',ops:['push(10)','push(20)','push(5)','pop','pop'],query:'peek',label:'stack=[10]'},
+  {name:'Min after larger',hint:'Min survives pops',ops:['push(2)','push(8)','push(6)','pop'],query:'getMin',label:'stack=[2,8]'},
+  {name:'Max after min push',hint:'Max persists even if min changes',ops:['push(9)','push(3)','push(7)'],query:'getMax',label:'stack=[9,3,7]'},
+  {name:'Deep pop restore',hint:'Pop restores old min',ops:['push(5)','push(1)','pop'],query:'getMin',label:'After pop stack=[5]'},
+  {name:'Ascending push',hint:'Max grows with each push',ops:['push(1)','push(2)','push(3)','push(4)'],query:'getMax',label:'stack=[1,2,3,4]'},
+  {name:'Mixed sequence',hint:'Track carefully',ops:['push(8)','push(3)','push(5)','pop','push(1)'],query:'getMin',label:'stack=[8,3,1]'},
+  {name:'Peek on top',hint:'Peek after all ops',ops:['push(7)','push(2)','push(9)','pop','push(4)'],query:'peek',label:'stack=[7,2,4]'},
+];
+
+// Compute answers
+CHALLENGES.forEach(ch=>{
+  const s=runOps(ch.ops);
+  ch.answer=s[ch.query]();
+  // Final stack state for display
+  const finalS=new MMS();
+  ch.ops.forEach(op=>{if(op.startsWith('push'))finalS.push(parseInt(op.match(/\d+/)[0]));else if(op==='pop')finalS.pop();});
+  ch.finalStack=[...finalS.stack];
+  ch.finalMM=finalS.mm.map(m=>({...m}));
+});
+
+let curChallenge=0,correct=0,wrong=0;
+let results=new Array(CHALLENGES.length).fill(null);
+let attempts=new Array(CHALLENGES.length).fill(0);
+
+function getCh(){return CHALLENGES[curChallenge];}
+
+function loadChallenge(){
+  const ch=getCh();
+  // Op sequence
+  const osEl=document.getElementById('opSequence');osEl.innerHTML='';
+  ch.ops.forEach(op=>{const d=document.createElement('div');d.className=`op-chip ${op.startsWith('push')?'push-chip':'pop-chip'}`;d.textContent=op;osEl.appendChild(d);});
+  // Question
+  document.getElementById('qMethod').textContent=ch.query+'()';
+  // Stack preview (blurred intentionally — show ops but not final state)
+  buildStackPreview(ch);
+  // Reset answer
+  document.getElementById('answerInput').value='';
+  document.getElementById('feedback').className='feedback';
+  document.getElementById('overlay').classList.remove('show');
+  updateChallengeList();
+}
+
+function buildStackPreview(ch){
+  const ss=document.getElementById('spStack');ss.innerHTML='';
+  ch.finalStack.forEach((v,i)=>{const d=document.createElement('div');d.className=`sp-item ${i===ch.finalStack.length-1?'top-item':'normal'}`;d.textContent=v;ss.appendChild(d);});
+  const ms=document.getElementById('spMM');ms.innerHTML='';
+  ch.finalMM.forEach((m,i)=>{const d=document.createElement('div');d.className=`sp-mm ${i===ch.finalMM.length-1?'top-mm':'normal'}`;d.innerHTML=`<span class="mmn">↓${m.min}</span><span class="mmx">↑${m.max}</span>`;ms.appendChild(d);});
+}
+
+function submitAnswer(){
+  const ch=getCh();
+  const userVal=parseInt(document.getElementById('answerInput').value);
+  if(isNaN(userVal)){return;}
+  attempts[curChallenge]++;
+  const isCorrect=userVal===ch.answer;
+  const fb=document.getElementById('feedback');
+  if(isCorrect){
+    correct++;results[curChallenge]='solved';
+    fb.textContent=`✓ Correct! ${ch.query}() = ${ch.answer}`;fb.className='feedback show correct';
+    updateScore();updateChallengeList();
+    setTimeout(()=>{showOverlay(true,ch);},800);
+  } else {
+    wrong++;results[curChallenge]='failed';
+    fb.textContent=`✗ Wrong — got ${userVal}. Correct answer: ${ch.answer}`;fb.className='feedback show wrong';
+    updateScore();updateChallengeList();
+    setTimeout(()=>{showOverlay(false,ch);},800);
+  }
+}
+
+function showOverlay(isCorrect,ch){
+  const ot=document.getElementById('overlayTitle');const os=document.getElementById('overlaySub');const oe=document.getElementById('overlayEx');
+  if(isCorrect){ot.textContent='Correct!';ot.style.color='var(--right)';}
+  else{ot.textContent='Not quite.';ot.style.color='var(--wrong)';}
+  const s=runOps(ch.ops);
+  os.textContent=`After [${ch.ops.join(', ')}]: peek=${s.peek()}, getMin=${s.getMin()}, getMax=${s.getMax()}`;
+  oe.textContent=`${ch.query}() looks at minMaxStack[-1]['${ch.query==='getMin'?'min':ch.query==='getMax'?'max':'top'}'] → ${ch.answer}. This is stored from when this level was pushed.`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function nextChallenge(){document.getElementById('overlay').classList.remove('show');if(curChallenge<CHALLENGES.length-1){curChallenge++;loadChallenge();}else showFinalScore();}
+function resetCurrent(){document.getElementById('overlay').classList.remove('show');document.getElementById('answerInput').value='';document.getElementById('feedback').className='feedback';}
+function skipChallenge(){if(curChallenge<CHALLENGES.length-1){curChallenge++;loadChallenge();}}
+
+function buildChallengeList(){
+  const cl=document.getElementById('challengeList');cl.innerHTML='';
+  CHALLENGES.forEach((ch,i)=>{
+    const d=document.createElement('div');let cls='ch';if(i===curChallenge)cls+=' active';if(results[i]==='solved')cls+=' solved';if(results[i]==='failed')cls+=' failed';
+    d.className=cls;d.innerHTML=`<div class="ch-name">${ch.name}</div><div class="ch-hint">${ch.hint} — ${ch.query}()</div>`;
+    d.onclick=()=>{curChallenge=i;loadChallenge();};cl.appendChild(d);
+  });
+}
+function updateChallengeList(){document.querySelectorAll('.ch').forEach((el,i)=>{let cls='ch';if(i===curChallenge)cls+=' active';if(results[i]==='solved')cls+=' solved';if(results[i]==='failed')cls+=' failed';el.className=cls;});}
+function updateScore(){document.getElementById('scC').textContent=correct;document.getElementById('scW').textContent=wrong;const tot=correct+wrong;document.getElementById('scA').textContent=tot?Math.round(correct/tot*100)+'%':'—';}
+function showFinalScore(){document.getElementById('overlayTitle').textContent=`${correct}/${CHALLENGES.length}`;document.getElementById('overlayTitle').style.color=correct>=CHALLENGES.length*0.75?'var(--right)':'var(--wrong)';document.getElementById('overlaySub').textContent=`You correctly predicted ${correct} of ${CHALLENGES.length} stack query results.`;document.getElementById('overlayEx').textContent='Key: the minMaxStack stores running {min,max} at each depth — push appends to both, pop removes from both. All lookups are O(1).';document.getElementById('overlay').classList.add('show');}
+function resetAll(){curChallenge=0;correct=0;wrong=0;results.fill(null);attempts.fill(0);updateScore();buildChallengeList();loadChallenge();}
+buildChallengeList();loadChallenge();
+document.getElementById('answerInput').addEventListener('keydown',e=>{if(e.key==='Enter')submitAnswer();});
+</script>
+</body>
+</html>
