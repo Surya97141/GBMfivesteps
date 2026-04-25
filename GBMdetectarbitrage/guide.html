@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide — Detect Arbitrage</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#faf8f3;--surface:#ffffff;--surface2:#f2efe6;--border:#ddd8ca;--border2:#bfb89f;--ink:#1a1912;--muted:#7a7660;--muted2:#5a5645;--accent:#0a4a2a;--accent2:#0d6338;--profit:#0a4a2a;--profit-bg:rgba(10,74,42,.09);--profit-b:rgba(10,74,42,.4);--loss:#b81c2a;--loss-bg:rgba(184,28,42,.09);--loss-b:rgba(184,28,42,.4);--gold:#b87a00;--gold-bg:rgba(184,122,0,.1);--gold-b:rgba(184,122,0,.45);--navy:#1a2a5a;--navy-bg:rgba(26,42,90,.08);--navy-b:rgba(26,42,90,.35);--right:#0a4a2a;--wrong:#b81c2a;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 360px;overflow:hidden;}
+.center{padding:1.5rem 2rem;display:flex;flex-direction:column;gap:1rem;border-right:1px solid var(--border2);overflow-y:auto;}
+.inst-box{background:var(--surface);border:1px solid var(--border2);border-top:3px solid var(--accent);padding:.85rem 1.1rem;display:flex;gap:.9rem;}
+.inst-icon{width:28px;height:28px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;}
+.inst-text{font-size:.72rem;line-height:1.7;}.inst-text strong{color:var(--accent);}
+.teacher-flash{padding:.6rem .9rem;border-left:3px solid var(--accent);font-size:.68rem;color:var(--muted2);font-style:italic;line-height:1.5;min-height:2.5rem;transition:all .3s;}
+.teacher-flash.lit{color:var(--ink);border-color:var(--gold);}
+.phase-label{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--accent);}
+
+/* Neg-log matrix (clickable) */
+.matrix-wrap{overflow-x:auto;}
+.matrix{border-collapse:collapse;font-size:.67rem;width:100%;}
+.matrix th{padding:5px 8px;background:var(--surface2);border:1px solid var(--border2);font-weight:600;color:var(--muted2);font-size:.55rem;letter-spacing:.08em;}
+.matrix td{padding:6px 8px;border:1px solid var(--border);text-align:center;font-weight:600;cursor:pointer;transition:all .25s;}
+.matrix td.normal{color:var(--muted2);}
+.matrix td.neg-w{color:var(--loss);background:var(--loss-bg);}
+.matrix td.pos-w{color:var(--navy);}
+.matrix td.clickable{border-color:var(--gold-b);animation:cellp .9s ease infinite;}
+.matrix td.used{background:var(--profit-bg);border-color:var(--profit-b);color:var(--profit);}
+.matrix td.active-edge{background:var(--gold-bg);border-color:var(--gold-b);color:var(--gold);}
+@keyframes cellp{0%,100%{border-color:var(--gold-b);}50%{border-color:rgba(184,122,0,.2);}}
+
+/* Graph */
+svg.graph{overflow:visible;}
+.g-edge{fill:none;stroke-width:1.5;}
+.g-edge.normal{stroke:var(--border2);}
+.g-edge.active{stroke:var(--gold);stroke-width:2.5;}
+.g-edge.used{stroke:var(--profit);stroke-width:2;}
+.g-node circle{stroke-width:2;transition:all .3s;}
+.g-node.normal circle{fill:var(--navy-bg);stroke:var(--navy-b);}
+.g-node.active circle{fill:var(--gold-bg);stroke:var(--gold-b);}
+.g-node.updated circle{fill:var(--profit-bg);stroke:var(--profit-b);}
+.g-node text{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-anchor:middle;dominant-baseline:middle;}
+.g-node.normal text{fill:var(--navy);}
+.g-node.active text{fill:var(--gold);}
+.g-node.updated text{fill:var(--profit);}
+.g-weight-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;fill:var(--muted);}
+
+/* Right panel */
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.state-block{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.state-title{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.state-row{padding:5px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.state-row:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}.sv.p{color:var(--profit);}.sv.g{color:var(--gold);}.sv.l{color:var(--loss);}.sv.n{color:var(--navy);}
+.dist-table{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.dist-row-g{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.dist-row-g:last-child{border-bottom:none;}
+.dk{color:var(--muted2);}.dv{font-weight:600;}
+.dv.inf{color:var(--muted);}.dv.updated{color:var(--gold);animation:dv .4s ease;}
+.dv.final{color:var(--profit);}.dv.neg{color:var(--loss);}
+@keyframes dv{0%{background:rgba(184,122,0,.2);}100%{background:transparent;}}
+.hint-box{background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--gold);padding:.65rem .75rem;font-size:.68rem;color:var(--muted2);line-height:1.6;min-height:3rem;}
+.toast{position:fixed;top:66px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--surface);border:1px solid var(--border2);padding:8px 18px;font-size:.7rem;opacity:0;transition:all .25s;z-index:100;pointer-events:none;max-width:380px;text-align:center;border-radius:2px;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.good{border-color:var(--right);color:var(--right);}
+.toast.bad{border-color:var(--wrong);color:var(--wrong);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="arb_watch.html" class="nav-tab">01 Watch</a>
+    <a href="arb_guide.html" class="nav-tab active">02 Guide</a>
+    <a href="arb_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="arb_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="arb_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="arb_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Detect Arbitrage · Guide</div>
+</header>
+<main>
+  <div class="center">
+    <div class="inst-box">
+      <div class="inst-icon">▶</div>
+      <div class="inst-text" id="instText"><strong>You drive Bellman-Ford.</strong> <span style="color:var(--accent)">Phase 1:</span> Click edges (cells) to relax them — update distances if shorter. Repeat N-1 times. <span style="color:var(--loss)">Phase 2:</span> One more pass reveals the negative cycle.</div>
+    </div>
+    <div class="teacher-flash" id="teacherFlash">"We perform the Bellman-Ford algorithm: relax edges and update distances N-1 times, then check once more. If distances still decrease, we found a negative weight cycle."</div>
+    <div class="phase-label" id="phaseLabel">Phase 1: Click an edge to relax it</div>
+    <div class="matrix-wrap">
+      <table class="matrix" id="matrix"></table>
+    </div>
+    <div style="display:flex;justify-content:center;margin-top:.5rem;">
+      <svg class="graph" id="graphSvg" width="270" height="180" viewBox="0 0 270 180"></svg>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Bellman-Ford State</div>
+    <div class="state-block">
+      <div class="state-title">Algorithm</div>
+      <div class="state-row"><span class="sk">Phase</span><span class="sv g" id="sPhase">relaxing</span></div>
+      <div class="state-row"><span class="sk">Iteration</span><span class="sv n" id="sIter">0 / 2</span></div>
+      <div class="state-row"><span class="sk">Edge</span><span class="sv" id="sEdge">—</span></div>
+      <div class="state-row"><span class="sk">New dist</span><span class="sv" id="sNewD">—</span></div>
+      <div class="state-row"><span class="sk">Updated?</span><span class="sv" id="sUpd">—</span></div>
+    </div>
+    <div class="panel-label">Distances (neg-log)</div>
+    <div class="dist-table" id="distTable"></div>
+    <div class="panel-label">Hint</div>
+    <div class="hint-box" id="hintBox">Click any highlighted cell to relax that edge. An edge from src→dst is highlighted if it could improve the distance to dst.</div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);" id="footerStatus">Phase 1: relax edges (N-1 = 2 iterations)</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="showHint()">Hint</button>
+    <button class="btn" onclick="autoStep()">Auto Step</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="arb_cma.html" class="btn btn-accent">→ Mirror·A</a>
+  </div>
+</footer>
+<script>
+const RATES=[[1,0.8631,0.5903],[1.1586,1,0.6849],[1.6939,1.46,1]];
+const CURR=['CAD','USD','GBP'];
+const N=3;
+// Convert to negative log (base 10)
+const NEG_LOG=RATES.map(row=>row.map(r=>-Math.log10(r)));
+const NP=[{id:0,x:135,y:25,label:'CAD'},{id:1,x:30,y:155,label:'USD'},{id:2,x:240,y:155,label:'GBP'}];
+const KEY_EDGES=[[0,1],[0,2],[1,0],[1,2],[2,0],[2,1]];
+
+const QUOTES={
+  relax:'"For every single edge we are seeing if by taking that edge from whatever the source vertex is, that leads us to a shorter distance to the destination than we had currently found."',
+  updated:'"If that is the case, we mark updated as true, and then we make this update. Distances are getting shorter!"',
+  noupdate:'"If the new distance is not less than what we already have, we don\'t update. This edge doesn\'t improve our path."',
+  final:'"Now this function here — we\'re just looping through and relaxing all of the edges. If we find a shorter distance after N-1 steps, there must be a negative weight cycle!"',
+  done:'"Arbitrage detected! The negative weight cycle means we can keep multiplying exchange rates and generate infinite profit."',
+};
+
+let dists=[0,Infinity,Infinity];  // dist from node 0
+let iteration=0;
+let relaxed=new Set();
+let phase='relaxing'; // relaxing | final | done
+let updatedThisIter=false;
+let usedEdges=[];
+
+function canRelax(src,dst){
+  if(dists[src]===Infinity)return false;
+  const newD=dists[src]+NEG_LOG[src][dst];
+  return newD<dists[dst];
+}
+
+function getClickableEdges(){
+  return KEY_EDGES.filter(([a,b])=>{
+    const edgeKey=`${a}-${b}-${iteration}`;
+    return !relaxed.has(edgeKey);
+  });
+}
+
+function handleEdgeClick(src,dst){
+  const edgeKey=`${src}-${dst}-${iteration}`;
+  if(relaxed.has(edgeKey)){showToast('Already relaxed this edge this iteration.','bad');return;}
+  relaxed.add(edgeKey);
+  const w=NEG_LOG[src][dst];
+  const newD=dists[src]+w;
+  const improved=newD<dists[dst];
+  document.getElementById('sEdge').textContent=`${CURR[src]}→${CURR[dst]}`;
+  document.getElementById('sNewD').textContent=`${dists[src].toFixed(4)} + ${w.toFixed(4)} = ${newD.toFixed(4)}`;
+  if(improved){
+    dists[dst]=newD;updatedThisIter=true;
+    document.getElementById('sUpd').textContent='YES — improved!';document.getElementById('sUpd').className='sv p';
+    usedEdges.push([src,dst]);
+    showToast(`✓ Relaxed ${CURR[src]}→${CURR[dst]}: dist[${CURR[dst]}] = ${newD.toFixed(4)}`,'good');
+    setQuote('updated');
+  } else {
+    document.getElementById('sUpd').textContent='NO — no improvement';document.getElementById('sUpd').className='sv l';
+    showToast(`${CURR[src]}→${CURR[dst]}: ${newD.toFixed(4)} ≥ current ${dists[dst].toFixed(4)} — no update`,'bad');
+    setQuote('noupdate');
+  }
+  setQuote('relax');
+  renderDistTable();
+  render();
+  // Check if all edges relaxed this iteration
+  const allRelaxed=KEY_EDGES.every(([a,b])=>relaxed.has(`${a}-${b}-${iteration}`));
+  if(allRelaxed){
+    iteration++;
+    updatedThisIter=false;
+    if(iteration>=N-1){
+      phase='final';
+      document.getElementById('phaseLabel').textContent='Phase 2: Final relaxation — detecting negative cycle';
+      document.getElementById('sPhase').textContent='final check';document.getElementById('sPhase').className='sv l';
+      document.getElementById('footerStatus').textContent='Phase 2: one more pass — does distance still decrease?';
+      setHint('Run the final relaxation pass. If any distance still decreases after N-1 iterations, there is a negative weight cycle!');
+      setQuote('final');
+    } else {
+      document.getElementById('sIter').textContent=`${iteration} / ${N-1}`;
+      setHint(`Iteration ${iteration} complete. Start iteration ${iteration+1} of ${N-1}.`);
+    }
+  }
+  render();
+}
+
+function autoStep(){
+  // Find first un-relaxed edge that can be clicked
+  for(const[a,b] of KEY_EDGES){
+    const edgeKey=`${a}-${b}-${iteration}`;
+    if(!relaxed.has(edgeKey)){handleEdgeClick(a,b);return;}
+  }
+  // If we're in final phase
+  if(phase==='final'){
+    const hasNeg=KEY_EDGES.some(([a,b])=>{
+      if(dists[a]===Infinity)return false;
+      return dists[a]+NEG_LOG[a][b]<dists[b];
+    });
+    if(hasNeg){
+      phase='done';document.getElementById('phaseLabel').textContent='Negative cycle detected → ARBITRAGE!';
+      document.getElementById('sPhase').textContent='ARBITRAGE';document.getElementById('sPhase').className='sv p';
+      document.getElementById('footerStatus').textContent='Result: TRUE — arbitrage found!';
+      setQuote('done');showToast('✓ Negative weight cycle detected — ARBITRAGE!','good');
+    } else {
+      phase='done';document.getElementById('phaseLabel').textContent='No negative cycle — no arbitrage';
+      document.getElementById('footerStatus').textContent='Result: FALSE';
+    }
+    render();
+  }
+}
+
+function render(){
+  // Build matrix
+  const tbl=document.getElementById('matrix');tbl.innerHTML='';
+  const hr=document.createElement('tr');const hth=document.createElement('th');hth.textContent='';hr.appendChild(hth);
+  CURR.forEach(c=>{const th=document.createElement('th');th.textContent=c;hr.appendChild(th);});
+  tbl.appendChild(hr);
+  NEG_LOG.forEach((row,i)=>{
+    const tr=document.createElement('tr');
+    const th=document.createElement('th');th.textContent=CURR[i];tr.appendChild(th);
+    row.forEach((w,j)=>{
+      const td=document.createElement('td');
+      const edgeKey=`${i}-${j}-${iteration}`;
+      const isRelaxed=relaxed.has(edgeKey);
+      const isKey=KEY_EDGES.some(([a,b])=>a===i&&b===j);
+      const couldImprove=isKey&&!isRelaxed&&canRelax(i,j)&&phase!=='done';
+      const isUsed=usedEdges.some(([a,b])=>a===i&&b===j);
+      td.textContent=w.toFixed(4);
+      if(isUsed)td.className='matrix td used';
+      else if(couldImprove)td.className='matrix td clickable';
+      else if(w<0)td.className='matrix td neg-w';
+      else if(i!==j)td.className='matrix td pos-w';
+      else td.className='matrix td normal';
+      if(isKey&&!isRelaxed&&phase!=='done')td.onclick=()=>handleEdgeClick(i,j);
+      tr.appendChild(td);
+    });
+    tbl.appendChild(tr);
+  });
+  // Graph
+  const svg=document.getElementById('graphSvg');svg.innerHTML='';
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  const mkr=(id,color)=>{const m=document.createElementNS('http://www.w3.org/2000/svg','marker');m.setAttribute('id',id);m.setAttribute('markerWidth','7');m.setAttribute('markerHeight','7');m.setAttribute('refX','6');m.setAttribute('refY','3.5');m.setAttribute('orient','auto');const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');p.setAttribute('points','0 0, 7 3.5, 0 7');p.setAttribute('fill',color);m.appendChild(p);defs.appendChild(m);};
+  mkr('aN','#bfb89f');mkr('aA','#b87a00');mkr('aU','#0a4a2a');
+  svg.appendChild(defs);
+  KEY_EDGES.forEach(([a,b])=>{
+    const na=NP[a],nb=NP[b];const dx=nb.x-na.x,dy=nb.y-na.y,len=Math.sqrt(dx*dx+dy*dy);const ux=dx/len,uy=dy/len,r=24;
+    const x1=na.x+ux*r,y1=na.y+uy*r,x2=nb.x-ux*(r+7),y2=nb.y-uy*(r+7);
+    const isUsed=usedEdges.some(([ea,eb])=>ea===a&&eb===b);
+    const el=document.createElementNS('http://www.w3.org/2000/svg','line');
+    el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);
+    el.setAttribute('class',`g-edge ${isUsed?'used':'normal'}`);
+    el.setAttribute('marker-end',`url(#${isUsed?'aU':'aN'})`);
+    svg.appendChild(el);
+  });
+  NP.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const isDist0=n.id===0;const isUpdated=dists[n.id]!==Infinity&&n.id!==0;
+    g.setAttribute('class',`g-node ${isUpdated?'updated':isDist0?'active':'normal'}`);
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',n.x);c.setAttribute('cy',n.y);c.setAttribute('r',24);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',n.x);t.setAttribute('y',n.y);t.textContent=n.label;
+    g.appendChild(c);g.appendChild(t);svg.appendChild(g);
+    // dist label
+    const dl=document.createElementNS('http://www.w3.org/2000/svg','text');dl.setAttribute('x',n.x);dl.setAttribute('y',n.y+36);dl.setAttribute('class','g-weight-lbl');dl.setAttribute('text-anchor','middle');dl.setAttribute('fill',dists[n.id]<0?'#b81c2a':'#7a7660');
+    dl.textContent=dists[n.id]===Infinity?'∞':dists[n.id].toFixed(3);svg.appendChild(dl);
+  });
+}
+
+function renderDistTable(){
+  const el=document.getElementById('distTable');el.innerHTML='';
+  dists.forEach((d,i)=>{
+    const row=document.createElement('div');row.className='dist-row-g';
+    const k=document.createElement('span');k.className='dk';k.textContent=CURR[i]+':';
+    const v=document.createElement('span');v.className=`dv ${d===Infinity?'inf':d<0?'neg':'final'}`;
+    v.textContent=d===Infinity?'∞':d.toFixed(6);
+    row.appendChild(k);row.appendChild(v);el.appendChild(row);
+  });
+}
+
+function setHint(t){document.getElementById('hintBox').textContent=t;}
+function setQuote(k){const el=document.getElementById('teacherFlash');el.textContent=QUOTES[k]||'';el.className='teacher-flash lit';setTimeout(()=>el.className='teacher-flash',4500);}
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;setTimeout(()=>t.className='toast',2800);}
+function showHint(){
+  for(const[a,b] of KEY_EDGES){const k=`${a}-${b}-${iteration}`;if(!relaxed.has(k)){showToast(`Try edge ${CURR[a]}→${CURR[b]} (neg-log weight: ${NEG_LOG[a][b].toFixed(4)})`,'good');return;}}
+  if(phase==='final')showToast('Final pass! Click Auto Step to check for negative cycle.','good');
+}
+function resetAll(){dists=[0,Infinity,Infinity];iteration=0;relaxed=new Set();phase='relaxing';updatedThisIter=false;usedEdges=[];document.getElementById('sPhase').textContent='relaxing';document.getElementById('sPhase').className='sv g';document.getElementById('sIter').textContent='0 / 2';document.getElementById('sEdge').textContent='—';document.getElementById('sNewD').textContent='—';document.getElementById('sUpd').textContent='—';document.getElementById('phaseLabel').textContent='Phase 1: Click an edge to relax it';document.getElementById('footerStatus').textContent='Phase 1: relax edges (N-1 = 2 iterations)';setHint('Click any highlighted cell to relax that edge. An edge from src→dst is highlighted if it could improve the distance to dst.');render();renderDistTable();}
+render();renderDistTable();
+</script>
+</body>
+</html>

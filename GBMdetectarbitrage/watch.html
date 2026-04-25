@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch — Detect Arbitrage</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#faf8f3;--surface:#ffffff;--surface2:#f2efe6;--border:#ddd8ca;--border2:#bfb89f;
+  --ink:#1a1912;--muted:#7a7660;--muted2:#5a5645;
+  --accent:#0a4a2a;--accent2:#0d6338;
+  --profit:#0a4a2a;--profit-bg:rgba(10,74,42,.09);--profit-b:rgba(10,74,42,.4);
+  --loss:#b81c2a;--loss-bg:rgba(184,28,42,.09);--loss-b:rgba(184,28,42,.4);
+  --gold:#b87a00;--gold-bg:rgba(184,122,0,.1);--gold-b:rgba(184,122,0,.45);
+  --navy:#1a2a5a;--navy-bg:rgba(26,42,90,.08);--navy-b:rgba(26,42,90,.35);
+  --neg:#b81c2a;
+}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);letter-spacing:.04em;}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}
+.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 460px;overflow:hidden;}
+.left-panel{padding:2.5rem 3rem;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--border2);overflow:hidden;}
+.stage-tag{font-size:.53rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-bottom:.7rem;}
+.narrator{font-family:'Playfair Display',serif;font-size:1.85rem;font-weight:400;line-height:1.45;color:var(--ink);min-height:9rem;}
+.narrator .hl{color:var(--accent);font-weight:700;}
+.narrator .profit{color:var(--profit);}
+.narrator .loss{color:var(--loss);}
+.narrator .gold{color:var(--gold);}
+.narrator .navy{color:var(--navy);}
+.concept{display:inline-block;margin-top:1.2rem;font-size:.52rem;letter-spacing:.22em;text-transform:uppercase;background:var(--ink);color:var(--bg);padding:4px 12px;}
+.quote{margin-top:1.5rem;padding:.8rem 1rem;border-left:3px solid var(--accent);font-size:.7rem;color:var(--muted2);line-height:1.65;min-height:3.5rem;}
+.quote span{color:var(--ink);}
+.progress-wrap{margin-top:2rem;}
+.progress-bar{height:3px;background:var(--border);}
+.progress-fill{height:100%;background:var(--accent);transition:width .5s ease;}
+.progress-label{font-size:.53rem;color:var(--muted);margin-top:.4rem;}
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1.1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+
+/* EXCHANGE RATE MATRIX */
+.matrix-wrap{overflow-x:auto;}
+.matrix{border-collapse:collapse;font-size:.68rem;width:100%;}
+.matrix th{padding:5px 8px;background:var(--surface2);border:1px solid var(--border2);font-weight:600;color:var(--muted2);font-size:.58rem;letter-spacing:.08em;}
+.matrix td{padding:5px 8px;border:1px solid var(--border);text-align:center;font-weight:600;transition:all .3s;}
+.matrix td.normal{color:var(--muted2);}
+.matrix td.hl{background:var(--gold-bg);border-color:var(--gold-b);color:var(--gold);}
+.matrix td.profit{background:var(--profit-bg);border-color:var(--profit-b);color:var(--profit);}
+.matrix td.neg{background:var(--loss-bg);border-color:var(--loss-b);color:var(--loss);}
+
+/* GRAPH SVG */
+svg.graph{overflow:visible;}
+.g-edge{fill:none;stroke-width:1.5;marker-end:url(#arrowN);}
+.g-edge.normal{stroke:var(--border2);}
+.g-edge.active{stroke:var(--gold);stroke-width:2.5;animation:ep .8s ease infinite;}
+.g-edge.cycle{stroke:var(--profit);stroke-width:2.5;}
+.g-edge.neg-cycle{stroke:var(--loss);stroke-width:2.5;animation:ep .8s ease infinite;}
+@keyframes ep{0%,100%{opacity:1;}50%{opacity:.25;}}
+.g-node circle{stroke-width:2;transition:all .3s;}
+.g-node.normal circle{fill:var(--navy-bg);stroke:var(--navy-b);}
+.g-node.active circle{fill:var(--gold-bg);stroke:var(--gold-b);filter:drop-shadow(0 0 6px rgba(184,122,0,.4));}
+.g-node.profit circle{fill:var(--profit-bg);stroke:var(--profit-b);filter:drop-shadow(0 0 6px rgba(10,74,42,.4));}
+.g-node text{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:middle;}
+.g-node.normal text{fill:var(--navy);}
+.g-node.active text{fill:var(--gold);}
+.g-node.profit text{fill:var(--profit);}
+.g-weight{font-family:'JetBrains Mono',monospace;font-size:9px;fill:var(--muted);}
+.g-weight.neg-w{fill:var(--loss);font-weight:600;}
+
+/* Distances table */
+.dist-row{display:flex;gap:4px;flex-wrap:wrap;}
+.dist-chip{padding:3px 8px;border:1px solid var(--border2);border-radius:2px;font-size:.65rem;font-weight:600;transition:all .3s;}
+.dist-chip.inf{color:var(--muted);}
+.dist-chip.updated{border-color:var(--gold-b);background:var(--gold-bg);color:var(--gold);}
+.dist-chip.final{border-color:var(--profit-b);background:var(--profit-bg);color:var(--profit);}
+.dist-chip.neg{border-color:var(--loss-b);background:var(--loss-bg);color:var(--loss);}
+
+.result-box{padding:.65rem 1rem;border:1px solid var(--border2);font-size:.8rem;font-weight:700;border-radius:2px;transition:all .3s;font-family:'Playfair Display',serif;}
+.result-box.true{border-color:var(--profit-b);color:var(--profit);background:var(--profit-bg);}
+.result-box.false{border-color:var(--loss-b);color:var(--loss);background:var(--loss-bg);}
+
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.btn-accent:hover{background:var(--accent2);border-color:var(--accent2);}
+.speed-wrap{display:flex;align-items:center;gap:.75rem;font-size:.57rem;color:var(--muted);}
+.speed-wrap input{accent-color:var(--accent);width:80px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="arb_watch.html" class="nav-tab active">01 Watch</a>
+    <a href="arb_guide.html" class="nav-tab">02 Guide</a>
+    <a href="arb_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="arb_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="arb_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="arb_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Detect Arbitrage · Watch</div>
+</header>
+<main>
+  <div class="left-panel">
+    <div>
+      <div class="stage-tag" id="stageTag">Stage 1 of 10 — Problem</div>
+      <div class="narrator" id="narrator">Currency exchange rates.<br>Does a <span class="profit">profitable cycle</span> exist?<br>Return <span class="hl">true</span> or <span class="loss">false.</span></div>
+      <div class="concept" id="concept">KEY CONCEPT: DETECT ARBITRAGE</div>
+      <div class="quote" id="quote"><span>"An arbitrage exists if we start with C units of some currency, perform exchanges, and end up with more than C units of the same currency."</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+      <div class="progress-label" id="pLabel">Step 1 / 10</div>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Exchange Rate Matrix (3 currencies: CAD, USD, GBP)</div>
+    <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
+    <div class="panel-label">Graph (currencies = vertices, rates = edge weights)</div>
+    <svg class="graph" id="graphSvg" width="270" height="180" viewBox="0 0 270 180"></svg>
+    <div class="panel-label">Distances from start (Bellman-Ford)</div>
+    <div class="dist-row" id="distRow"></div>
+    <div class="panel-label">Result</div>
+    <div class="result-box" id="resultBox" style="color:var(--muted);border-color:var(--border2);">—</div>
+  </div>
+</main>
+<footer>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="prev()">← Prev</button>
+    <button class="btn btn-accent" onclick="next()">Next →</button>
+    <button class="btn" onclick="reset()">Reset</button>
+  </div>
+  <div class="speed-wrap">
+    Speed:<input type="range" id="spd" min="600" max="3000" value="1800" step="100">
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">Auto Play</button>
+  </div>
+  <a href="arb_guide.html" class="btn btn-accent">Guide →</a>
+</footer>
+<script>
+const RATES=[[1,0.8631,0.5903],[1.1586,1,0.6849],[1.6939,1.46,1]];
+const CURR=['CAD','USD','GBP'];
+const N=3;
+// Node positions in SVG
+const NP=[{id:0,x:135,y:25,label:'CAD'},{id:1,x:30,y:155,label:'USD'},{id:2,x:240,y:155,label:'GBP'}];
+
+// Stage definitions
+const STAGES=[
+  {tag:'Stage 1 / 10 — Problem',
+   narrator:'Currency exchange rates.<br>Does a <span class="profit">profitable cycle</span> exist?<br>Return <span class="hl">true</span> or <span class="loss">false.</span>',
+   concept:'KEY CONCEPT: DETECT ARBITRAGE',
+   quote:'"An arbitrage exists if we start with C units of some currency, perform exchanges, and end up with more than C units of the same currency."',
+   matHl:[],graphActive:[],graphCycle:[],dists:null,result:null},
+  {tag:'Stage 2 / 10 — Currency Cycle',
+   narrator:'Start: 1 CAD<br>→ 0.8631 USD → 0.5911 GBP<br>→ <span class="profit">1.0013 CAD</span> ← arbitrage!',
+   concept:'KEY CONCEPT: PRODUCT > 1.0 = ARBITRAGE',
+   quote:'"If we start with one unit of Canadian dollars and end up with 1.0013 Canadian dollars after exchanges, we have detected an arbitrage."',
+   matHl:[[0,1],[1,2],[2,0]],graphActive:[[0,1],[1,2],[2,0]],graphCycle:[],dists:null,result:null},
+  {tag:'Stage 3 / 10 — Graph Model',
+   narrator:'Model as a <span class="navy">directed graph.</span><br>Currencies = vertices.<br>Exchange rates = edge weights.',
+   concept:'KEY CONCEPT: GRAPH MODEL',
+   quote:'"You can treat all of your currencies as vertices and all of these exchange rates as edges. If there is a positive weight cycle, there is an arbitrage."',
+   matHl:[],graphActive:[],graphCycle:[],dists:null,result:null},
+  {tag:'Stage 4 / 10 — Positive Cycle = Arbitrage',
+   narrator:'If cycle product > 1.0<br>→ arbitrage exists.<br>CAD→USD→GBP→CAD multiplies to 1.0013.',
+   concept:'KEY CONCEPT: POSITIVE WEIGHT CYCLE',
+   quote:'"If we find a cycle that multiplies out to more than 1.0, assuming we started with one unit of some currency, that means we have found an arbitrage."',
+   matHl:[[0,1],[1,2],[2,0]],graphActive:[],graphCycle:[[0,1],[1,2],[2,0]],dists:null,result:null},
+  {tag:'Stage 5 / 10 — Log Transform Trick',
+   narrator:'Multiply → hard for algorithms.<br>Use: <span class="gold">-log(rate)</span><br>Now product > 1 ↔ sum < 0.',
+   concept:'KEY CONCEPT: -log(x) TRANSFORMS PRODUCT TO SUM',
+   quote:'"Using log(a·b) = log(a) + log(b), multiplying exchange rates becomes adding their logs. Negating turns product > 1 into sum < 0."',
+   matHl:[],graphActive:[],graphCycle:[],dists:null,result:null},
+  {tag:'Stage 6 / 10 — Negative Log Matrix',
+   narrator:'New weights: <span class="loss">-log₁₀(rate).</span><br>Rates < 1 → positive (loss).<br>Rates > 1 → <span class="loss">negative</span> (gain).',
+   concept:'KEY CONCEPT: -log(0.8631) ≈ +0.0639',
+   quote:'"We convert all of the exchange rates into their negative logarithm using base 10. Now a negative weight cycle means we have found an arbitrage."',
+   matHl:[],graphActive:[],graphCycle:[],dists:null,result:null,showNegLog:true},
+  {tag:'Stage 7 / 10 — Bellman-Ford Algorithm',
+   narrator:'Bellman-Ford detects<br><span class="loss">negative weight cycles.</span><br>Relax all edges N−1 times.',
+   concept:'KEY CONCEPT: BELLMAN-FORD NEGATIVE CYCLE',
+   quote:'"The Bellman Ford algorithm can determine what\'s known as a negative weight cycle. If the distance keeps decreasing after N-1 iterations, a cycle exists."',
+   matHl:[],graphActive:[],graphCycle:[],dists:[0,Infinity,Infinity],result:null},
+  {tag:'Stage 8 / 10 — Relax Edges',
+   narrator:'Initialize: dist[CAD]=0, rest=∞.<br>Iteration 1: relax all edges.<br>Update if shorter path found.',
+   concept:'KEY CONCEPT: EDGE RELAXATION',
+   quote:'"If the new distance to the destination is less than the distance we currently have, we update it. We relax all edges N-1 times."',
+   matHl:[],graphActive:[[0,1],[0,2]],graphCycle:[],dists:[0,-0.064,-0.229],result:null},
+  {tag:'Stage 9 / 10 — Final Check (Nth iteration)',
+   narrator:'After N−1 iterations, run once more.<br>If any distance still decreases →<br><span class="loss">negative cycle detected!</span>',
+   concept:'KEY CONCEPT: Nth ITERATION DETECTS CYCLE',
+   quote:'"If we find a shorter distance after we\'ve already performed the N-1 steps, there must be a negative weight cycle — and therefore an arbitrage."',
+   matHl:[],graphActive:[],graphCycle:[[0,1],[1,2],[2,0]],dists:[0,-0.064,-0.229],result:null},
+  {tag:'Stage 10 / 10 — Complexity',
+   narrator:'Time: <span class="hl">O(N³)</span><br>Space: <span class="hl">O(N²)</span> (or O(N) in-place)<br>Return <span class="profit">true</span> — arbitrage found!',
+   concept:'KEY CONCEPT: O(N³) TIME · O(N²) SPACE',
+   quote:'"This algorithm runs in O(N³) time and O(N²) space. We can reduce space to O(N) by modifying the input matrix in place."',
+   matHl:[],graphActive:[],graphCycle:[[0,1],[1,2],[2,0]],dists:[0,-0.064,-0.229],result:'true'},
+];
+
+let cur=0,autoTimer=null;
+
+function buildMatrix(hl,showNegLog=false){
+  const tbl=document.getElementById('matrix');tbl.innerHTML='';
+  const hr=document.createElement('tr');
+  const hth=document.createElement('th');hth.textContent='';hr.appendChild(hth);
+  CURR.forEach(c=>{const th=document.createElement('th');th.textContent=c;hr.appendChild(th);});
+  tbl.appendChild(hr);
+  RATES.forEach((row,i)=>{
+    const tr=document.createElement('tr');
+    const th=document.createElement('th');th.textContent=CURR[i];tr.appendChild(th);
+    row.forEach((rate,j)=>{
+      const td=document.createElement('td');
+      const isHl=hl.some(([r,c])=>r===i&&c===j);
+      if(showNegLog){
+        const v=-Math.log10(rate);
+        td.textContent=v.toFixed(4);
+        td.className=v<0?'neg':'normal';
+      } else {
+        td.textContent=rate.toFixed(4);
+        td.className=isHl?'hl':'normal';
+      }
+      tr.appendChild(td);
+    });
+    tbl.appendChild(tr);
+  });
+}
+
+function buildGraph(s){
+  const svg=document.getElementById('graphSvg');svg.innerHTML='';
+  // Arrow markers
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  const mkr=(id,color)=>{const m=document.createElementNS('http://www.w3.org/2000/svg','marker');m.setAttribute('id',id);m.setAttribute('markerWidth','7');m.setAttribute('markerHeight','7');m.setAttribute('refX','6');m.setAttribute('refY','3.5');m.setAttribute('orient','auto');const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');p.setAttribute('points','0 0, 7 3.5, 0 7');p.setAttribute('fill',color);m.appendChild(p);defs.appendChild(m);};
+  mkr('arrowN','#bfb89f');mkr('arrowA','#b87a00');mkr('arrowC','#0a4a2a');mkr('arrowL','#b81c2a');
+  svg.appendChild(defs);
+  // Draw edges (selected ones)
+  const KEY_EDGES=[[0,1,0.8631],[1,2,0.6849],[2,0,1.6939],[1,0,1.1586],[0,2,0.5903],[2,1,1.46]];
+  KEY_EDGES.forEach(([a,b,rate])=>{
+    const na=NP[a],nb=NP[b];
+    const dx=nb.x-na.x,dy=nb.y-na.y,len=Math.sqrt(dx*dx+dy*dy);
+    const ux=dx/len,uy=dy/len,r=24;
+    const x1=na.x+ux*r,y1=na.y+uy*r,x2=nb.x-ux*(r+7),y2=nb.y-uy*(r+7);
+    const isActive=s.graphActive&&s.graphActive.some(([ea,eb])=>ea===a&&eb===b);
+    const isCycle=s.graphCycle&&s.graphCycle.some(([ea,eb])=>ea===a&&eb===b);
+    const el=document.createElementNS('http://www.w3.org/2000/svg','line');
+    el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);
+    const cls=isActive?'g-edge active':isCycle?'g-edge cycle':'g-edge normal';
+    el.setAttribute('class',cls);
+    el.setAttribute('marker-end',`url(#${isActive?'arrowA':isCycle?'arrowC':'arrowN'})`);
+    svg.appendChild(el);
+    // Weight label
+    const mx=(na.x+nb.x)/2+uy*14,my=(na.y+nb.y)/2-ux*14;
+    const wt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    wt.setAttribute('x',mx);wt.setAttribute('y',my);wt.setAttribute('class',isCycle?'g-weight neg-w':'g-weight');wt.setAttribute('text-anchor','middle');
+    wt.textContent=rate.toFixed(3);svg.appendChild(wt);
+  });
+  // Nodes
+  NP.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('class','g-node normal');
+    const isActive=s.graphActive&&(s.graphActive.some(([a])=>a===n.id)||s.graphActive.some(([,b])=>b===n.id));
+    const isCycle=s.graphCycle&&(s.graphCycle.some(([a])=>a===n.id)||s.graphCycle.some(([,b])=>b===n.id));
+    g.setAttribute('class',`g-node ${isCycle?'profit':isActive?'active':'normal'}`);
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',n.x);c.setAttribute('cy',n.y);c.setAttribute('r',24);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',n.x);t.setAttribute('y',n.y);t.textContent=n.label;
+    g.appendChild(c);g.appendChild(t);svg.appendChild(g);
+  });
+}
+
+function buildDists(dists){
+  const el=document.getElementById('distRow');el.innerHTML='';
+  if(!dists){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);">not yet computed</span>';return;}
+  dists.forEach((d,i)=>{
+    const chip=document.createElement('div');
+    const isInf=d===Infinity,isNeg=d<0,isZero=d===0;
+    chip.className=`dist-chip ${isInf?'inf':isNeg?'neg':'final'}`;
+    chip.textContent=`${CURR[i]}: ${isInf?'∞':d.toFixed(4)}`;
+    el.appendChild(chip);
+  });
+}
+
+function applyStage(s){
+  document.getElementById('stageTag').textContent=s.tag;
+  document.getElementById('narrator').innerHTML=s.narrator;
+  document.getElementById('concept').textContent=s.concept;
+  document.getElementById('quote').innerHTML=`<span>${s.quote}</span>`;
+  buildMatrix(s.matHl||[],s.showNegLog||false);
+  buildGraph(s);
+  buildDists(s.dists);
+  const rb=document.getElementById('resultBox');
+  if(s.result==='true'){rb.textContent='→ return TRUE — arbitrage detected!';rb.className='result-box true';}
+  else if(s.result==='false'){rb.textContent='→ return FALSE — no arbitrage';rb.className='result-box false';}
+  else{rb.textContent='—';rb.style.cssText='color:var(--muted);border-color:var(--border2);';}
+  const pct=((cur+1)/STAGES.length*100).toFixed(0);
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pLabel').textContent=`Step ${cur+1} / ${STAGES.length}`;
+}
+
+function next(){if(cur<STAGES.length-1){cur++;applyStage(STAGES[cur]);}}
+function prev(){if(cur>0){cur--;applyStage(STAGES[cur]);}}
+function reset(){cur=0;applyStage(STAGES[0]);if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}
+  else{const spd=parseInt(document.getElementById('spd').value);document.getElementById('autoBtn').textContent='Stop';
+    autoTimer=setInterval(()=>{if(cur<STAGES.length-1)next();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto Play';}},spd);}
+}
+applyStage(STAGES[0]);
+</script>
+</body>
+</html>

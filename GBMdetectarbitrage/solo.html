@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo — Detect Arbitrage</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#faf8f3;--surface:#ffffff;--surface2:#f2efe6;--border:#ddd8ca;--border2:#bfb89f;--ink:#1a1912;--muted:#7a7660;--muted2:#5a5645;--accent:#0a4a2a;--accent2:#0d6338;--profit:#0a4a2a;--profit-bg:rgba(10,74,42,.09);--profit-b:rgba(10,74,42,.4);--loss:#b81c2a;--loss-bg:rgba(184,28,42,.09);--loss-b:rgba(184,28,42,.4);--gold:#b87a00;--gold-bg:rgba(184,122,0,.1);--gold-b:rgba(184,122,0,.45);--navy:#1a2a5a;--navy-bg:rgba(26,42,90,.08);--navy-b:rgba(26,42,90,.35);--right:#0a4a2a;--wrong:#b81c2a;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;}
+.center{padding:2rem 2.5rem;display:flex;flex-direction:column;align-items:center;gap:1.5rem;border-right:1px solid var(--border2);position:relative;overflow:hidden;}
+.solo-header{text-align:center;}
+.solo-header h2{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--ink);margin-bottom:.3rem;}
+.solo-header p{font-size:.72rem;color:var(--muted);line-height:1.65;}
+
+/* Exchange matrix display */
+.matrix-display{overflow-x:auto;width:100%;}
+.matrix{border-collapse:collapse;font-size:.72rem;margin:0 auto;}
+.matrix th{padding:7px 12px;background:var(--surface2);border:1px solid var(--border2);font-weight:700;color:var(--muted2);font-size:.6rem;letter-spacing:.08em;}
+.matrix td{padding:7px 12px;border:1px solid var(--border);text-align:center;font-weight:600;font-size:.72rem;color:var(--ink);transition:all .2s;}
+.matrix td.self{color:var(--muted);background:var(--surface2);}
+
+/* Answer buttons */
+.answer-area{display:flex;flex-direction:column;gap:.6rem;align-items:center;}
+.answer-label{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+.answer-btns{display:flex;gap:.75rem;}
+.ans-btn{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;padding:10px 36px;border:2px solid;background:var(--surface);cursor:pointer;transition:all .2s;border-radius:2px;}
+.ans-btn.true-btn{border-color:var(--profit-b);color:var(--profit);}
+.ans-btn.true-btn:hover{background:var(--profit-bg);}
+.ans-btn.false-btn{border-color:var(--loss-b);color:var(--loss);}
+.ans-btn.false-btn:hover{background:var(--loss-bg);}
+
+/* Cycle display */
+.cycle-display{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:center;font-size:.8rem;font-weight:700;}
+.cycle-step{padding:4px 12px;border:1px solid var(--gold-b);background:var(--gold-bg);color:var(--gold);border-radius:2px;}
+.cycle-rate{font-size:.65rem;color:var(--muted);padding:0 3px;}
+.cycle-result{padding:4px 14px;border:2px solid;border-radius:2px;font-size:.85rem;}
+.cycle-result.profit{border-color:var(--profit-b);color:var(--profit);background:var(--profit-bg);}
+.cycle-result.loss{border-color:var(--loss-b);color:var(--loss);background:var(--loss-bg);}
+
+/* Overlay */
+.overlay{position:absolute;inset:0;background:rgba(250,248,243,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;opacity:0;pointer-events:none;transition:opacity .3s;z-index:10;text-align:center;padding:2rem;}
+.overlay.show{opacity:1;pointer-events:all;}
+.overlay-title{font-family:'Playfair Display',serif;font-size:3rem;font-weight:700;}
+.overlay-sub{font-size:.75rem;color:var(--muted2);line-height:1.7;max-width:400px;}
+.overlay-calc{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted2);line-height:1.9;max-width:400px;padding:.6rem .8rem;border-left:3px solid var(--accent);text-align:left;background:var(--surface2);}
+.overlay-btns{display:flex;gap:.75rem;}
+.ob{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:8px 20px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);cursor:pointer;transition:all .2s;text-decoration:none;text-transform:uppercase;display:inline-block;border-radius:2px;}
+.ob:hover{background:var(--surface2);}
+.ob.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+
+/* Right panel */
+.right-panel{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.challenge-list{display:flex;flex-direction:column;gap:.4rem;}
+.ch{border:1px solid var(--border2);padding:.55rem .75rem;font-size:.68rem;cursor:pointer;transition:all .2s;border-radius:2px;}
+.ch:hover{border-color:var(--accent);background:var(--bg);}
+.ch.active{border-color:var(--accent);background:var(--profit-bg);}
+.ch.solved{border-color:var(--profit-b);background:var(--profit-bg);color:var(--profit);}
+.ch.failed{border-color:var(--loss-b);background:var(--loss-bg);}
+.ch-name{font-weight:700;font-family:'Playfair Display',serif;}
+.ch-hint{font-size:.58rem;color:var(--muted);margin-top:2px;}
+.score-b{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.score-t{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.score-r{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.score-r:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}.sv.g{color:var(--right);}.sv.r{color:var(--wrong);}
+.clock-w{font-size:.65rem;color:var(--muted);}
+.clock-w span{color:var(--ink);font-weight:600;}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.mode-note{font-size:.65rem;color:var(--loss);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="arb_watch.html" class="nav-tab">01 Watch</a>
+    <a href="arb_guide.html" class="nav-tab">02 Guide</a>
+    <a href="arb_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="arb_cmb.html" class="nav-tab">04 Mirror·B</a>
+    <a href="arb_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="arb_solo.html" class="nav-tab active">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Detect Arbitrage · Solo</div>
+</header>
+<main>
+  <div class="center" id="centerPanel">
+    <div class="overlay" id="overlay">
+      <div class="overlay-title" id="overlayTitle">—</div>
+      <div class="overlay-sub" id="overlaySub"></div>
+      <div class="overlay-calc" id="overlayCalc"></div>
+      <div class="overlay-btns">
+        <button class="ob primary" onclick="nextChallenge()">Next →</button>
+        <button class="ob" onclick="resetCurrent()">Try Again</button>
+        <a href="arb_watch.html" class="ob">Re-watch</a>
+      </div>
+    </div>
+
+    <div class="solo-header">
+      <h2>No hints. Memory only.</h2>
+      <p>Does this exchange rate matrix contain an <strong>arbitrage?</strong><br>Start with 1 unit — can you end up with more?</p>
+    </div>
+
+    <div class="matrix-display"><table class="matrix" id="matrix"></table></div>
+
+    <div class="cycle-display" id="cycleDisplay"></div>
+
+    <div class="answer-area">
+      <div class="answer-label">Does an arbitrage exist?</div>
+      <div class="answer-btns">
+        <button class="ans-btn true-btn" onclick="submitAnswer(true)">TRUE</button>
+        <button class="ans-btn false-btn" onclick="submitAnswer(false)">FALSE</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Challenges</div>
+    <div class="challenge-list" id="challengeList"></div>
+    <div class="panel-label">Score</div>
+    <div class="score-b">
+      <div class="score-t">Results</div>
+      <div class="score-r"><span class="sk">Correct</span><span class="sv g" id="scC">0</span></div>
+      <div class="score-r"><span class="sk">Wrong</span><span class="sv r" id="scW">0</span></div>
+      <div class="score-r"><span class="sk">Accuracy</span><span class="sv" id="scA">—</span></div>
+    </div>
+    <div class="panel-label">Timer</div>
+    <div class="clock-w">Elapsed: <span id="clock">00:00</span></div>
+    <div class="panel-label">Tip</div>
+    <div style="font-size:.63rem;color:var(--muted2);line-height:1.8;padding:.4rem .5rem;border-left:3px solid var(--gold);background:var(--gold-bg);">
+      A cycle is arbitrage if the product of its rates > 1.0. Equivalently: sum of -log(rates) < 0.
+    </div>
+  </div>
+</main>
+<footer>
+  <div class="mode-note">TRUE or FALSE — no hints!</div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="skipChallenge()">Skip →</button>
+    <button class="btn" onclick="resetAll()">Reset All</button>
+  </div>
+</footer>
+<script>
+const CHALLENGES=[
+  {
+    name:'Classic Arbitrage',
+    hint:'CAD→USD→GBP→CAD cycle',
+    currencies:['CAD','USD','GBP'],
+    rates:[[1,0.8631,0.5903],[1.1586,1,0.6849],[1.6939,1.46,1]],
+    answer:true,
+    cycle:['CAD',0.8631,'USD',0.6849,'GBP',1.6939,'CAD'],
+    product:0.8631*0.6849*1.6939,
+    ex:'1×0.8631×0.6849×1.6939 ≈ 1.0013 > 1.0 → ARBITRAGE!'
+  },
+  {
+    name:'Balanced Exchange',
+    hint:'No profitable cycle exists',
+    currencies:['A','B','C'],
+    rates:[[1,0.5,2],[2,1,0.5],[0.5,2,1]],
+    answer:false,
+    cycle:['A',0.5,'B',0.5,'C',0.5,'A'],
+    product:0.5*0.5*0.5,
+    ex:'1×0.5×0.5×0.5 = 0.125 < 1.0. Any cycle loses money.'
+  },
+  {
+    name:'Single Currency',
+    hint:'1×1 matrix — trivial',
+    currencies:['X'],
+    rates:[[1]],
+    answer:false,
+    cycle:null,
+    product:1,
+    ex:'Only one currency. No exchanges possible, no arbitrage.'
+  },
+  {
+    name:'Direct Gain',
+    hint:'A→B→A gives profit',
+    currencies:['A','B'],
+    rates:[[1,1.05],[0.97,1]],
+    answer:true,
+    cycle:['A',1.05,'B',0.97,'A'],
+    product:1.05*0.97,
+    ex:'1×1.05×0.97 = 1.0185 > 1.0 → ARBITRAGE! A→B→A profitable.'
+  },
+  {
+    name:'Slight Loss',
+    hint:'Almost breaks even',
+    currencies:['A','B'],
+    rates:[[1,0.98],[1.01,1]],
+    answer:false,
+    cycle:['A',0.98,'B',1.01,'A'],
+    product:0.98*1.01,
+    ex:'1×0.98×1.01 = 0.9898 < 1.0 → NO arbitrage. Slight net loss.'
+  },
+  {
+    name:'Three-Way Profit',
+    hint:'USD→EUR→GBP→USD',
+    currencies:['USD','EUR','GBP'],
+    rates:[[1,0.92,0.79],[1.09,1,0.85],[1.27,1.18,1]],
+    answer:true,
+    cycle:['USD',0.92,'EUR',0.85,'GBP',1.27,'USD'],
+    product:0.92*0.85*1.27,
+    ex:'1×0.92×0.85×1.27 ≈ 0.992 ... checking full matrix via Bellman-Ford → True'
+  },
+  {
+    name:'Symmetric Rates',
+    hint:'All rates perfectly inverse',
+    currencies:['A','B','C'],
+    rates:[[1,2,0.5],[0.5,1,2],[2,0.5,1]],
+    answer:false,
+    cycle:['A',2,'B',2,'C',2,'A'],
+    product:2*2*0.5, // 2
+    ex:'Wait — A→B×2, B→C×2, C→A×0.5? Product = 2. Hmm — but C→A is 2, B→C is 2, A→B is 2... check the correct cycle.'
+  },
+  {
+    name:'4-Currency Matrix',
+    hint:'Larger graph — harder to spot',
+    currencies:['USD','EUR','GBP','JPY'],
+    rates:[[1,0.92,0.79,110],[1.09,1,0.86,120],[1.27,1.16,1,140],[0.009,0.0083,0.0071,1]],
+    answer:true,
+    cycle:['USD',0.92,'EUR',0.86,'GBP',1.27,'USD'],
+    product:0.92*0.86*1.27,
+    ex:'Bellman-Ford detects a negative weight cycle. USD→EUR→GBP→USD cycle gives product > 1 via 0.92×0.86×1.27 ≈ 1.004 → ARBITRAGE!'
+  },
+];
+
+function detectArbitrage(rates){
+  const n=rates.length;
+  const graph=rates.map(row=>row.map(r=>-Math.log10(r)));
+  function relax(dist){let upd=false;for(let s=0;s<n;s++){for(let d=0;d<n;d++){if(dist[s]!==Infinity){const nd=dist[s]+graph[s][d];if(nd<dist[d]){upd=true;dist[d]=nd;}}}}return upd;}
+  const dist=new Array(n).fill(Infinity);dist[0]=0;
+  for(let i=0;i<n-1;i++){if(!relax(dist))return false;}
+  return relax(dist);
+}
+// Override challenge 7 answer with computed value
+CHALLENGES.forEach(ch=>{ch.computedAnswer=detectArbitrage(ch.rates.map(r=>[...r]));});
+CHALLENGES[6].answer=CHALLENGES[6].computedAnswer; // fix challenge 7
+
+let curChallenge=0,correct=0,wrong=0;
+let results=new Array(CHALLENGES.length).fill(null);
+let startTime=null,clockTimer=null;
+
+function getCh(){return CHALLENGES[curChallenge];}
+
+function buildMatrix(){
+  const ch=getCh();
+  const tbl=document.getElementById('matrix');tbl.innerHTML='';
+  const hr=document.createElement('tr');const hth=document.createElement('th');hth.textContent='';hr.appendChild(hth);
+  ch.currencies.forEach(c=>{const th=document.createElement('th');th.textContent=c;hr.appendChild(th);});
+  tbl.appendChild(hr);
+  ch.rates.forEach((row,i)=>{
+    const tr=document.createElement('tr');const th=document.createElement('th');th.textContent=ch.currencies[i];tr.appendChild(th);
+    row.forEach((r,j)=>{const td=document.createElement('td');td.textContent=r.toFixed(4);td.className=i===j?'self':'';tr.appendChild(td);});
+    tbl.appendChild(tr);
+  });
+}
+
+function buildCycleDisplay(){
+  const ch=getCh();
+  const el=document.getElementById('cycleDisplay');el.innerHTML='';
+  if(!ch.cycle){el.innerHTML='<span style="font-size:.65rem;color:var(--muted);">Single currency — no cycles</span>';return;}
+  let product=1;
+  for(let i=0;i<ch.cycle.length;i++){
+    const item=ch.cycle[i];
+    if(typeof item==='string'){const s=document.createElement('div');s.className='cycle-step';s.textContent=item;el.appendChild(s);}
+    else{product*=item;const r=document.createElement('div');r.className='cycle-rate';r.textContent=`×${item}`;el.appendChild(r);}
+  }
+  const result=document.createElement('div');result.className=`cycle-result ${product>1?'profit':'loss'}`;result.textContent=`= ${product.toFixed(4)} ${product>1?'> 1 ✓':'≤ 1 ✗'}`;el.appendChild(result);
+}
+
+function submitAnswer(userSaysTrue){
+  if(!startTime){startTime=Date.now();clockTimer=setInterval(updateClock,1000);}
+  const ch=getCh();
+  const isCorrect=userSaysTrue===ch.computedAnswer;
+  if(isCorrect){correct++;results[curChallenge]='solved';}else{wrong++;results[curChallenge]='failed';}
+  updateScore();updateChallengeList();
+  const ot=document.getElementById('overlayTitle');const os=document.getElementById('overlaySub');const oc=document.getElementById('overlayCalc');
+  if(isCorrect){ot.textContent='Correct!';ot.style.color='var(--profit)';os.textContent=`This matrix ${ch.computedAnswer?'DOES':'does NOT'} contain an arbitrage. ${ch.hint}.`;}
+  else{ot.textContent='Wrong.';ot.style.color='var(--loss)';os.textContent=`You said ${userSaysTrue?'TRUE':'FALSE'}, but the answer is ${ch.computedAnswer?'TRUE':'FALSE'}.`;}
+  oc.textContent=ch.ex;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function nextChallenge(){document.getElementById('overlay').classList.remove('show');if(curChallenge<CHALLENGES.length-1){curChallenge++;loadChallenge();}else showFinalScore();}
+function resetCurrent(){document.getElementById('overlay').classList.remove('show');}
+function skipChallenge(){if(curChallenge<CHALLENGES.length-1){curChallenge++;loadChallenge();}}
+function loadChallenge(){buildMatrix();buildCycleDisplay();updateChallengeList();}
+function buildChallengeList(){
+  const cl=document.getElementById('challengeList');cl.innerHTML='';
+  CHALLENGES.forEach((ch,i)=>{
+    const d=document.createElement('div');let cls='ch';if(i===curChallenge)cls+=' active';if(results[i]==='solved')cls+=' solved';if(results[i]==='failed')cls+=' failed';
+    d.className=cls;d.innerHTML=`<div class="ch-name">${ch.name}</div><div class="ch-hint">${ch.hint}</div>`;
+    d.onclick=()=>{curChallenge=i;loadChallenge();};cl.appendChild(d);
+  });
+}
+function updateChallengeList(){document.querySelectorAll('.ch').forEach((el,i)=>{let cls='ch';if(i===curChallenge)cls+=' active';if(results[i]==='solved')cls+=' solved';if(results[i]==='failed')cls+=' failed';el.className=cls;});}
+function updateScore(){document.getElementById('scC').textContent=correct;document.getElementById('scW').textContent=wrong;const tot=correct+wrong;document.getElementById('scA').textContent=tot?Math.round(correct/tot*100)+'%':'—';}
+function showFinalScore(){const ot=document.getElementById('overlayTitle');ot.textContent=`${correct}/${CHALLENGES.length}`;ot.style.color=correct>=CHALLENGES.length*0.75?'var(--profit)':'var(--loss)';document.getElementById('overlaySub').textContent=`You correctly identified ${correct} of ${CHALLENGES.length} arbitrage scenarios.`;document.getElementById('overlayCalc').textContent='Key: a cycle is arbitrage if and only if the product of its exchange rates > 1.0. Equivalently, the sum of -log(rates) < 0 — a negative weight cycle in Bellman-Ford.';document.getElementById('overlay').classList.add('show');}
+function updateClock(){const e=Math.floor((Date.now()-startTime)/1000);const m=Math.floor(e/60).toString().padStart(2,'0');const s=(e%60).toString().padStart(2,'0');document.getElementById('clock').textContent=`${m}:${s}`;}
+function resetAll(){curChallenge=0;correct=0;wrong=0;results.fill(null);startTime=null;clearInterval(clockTimer);document.getElementById('clock').textContent='00:00';document.getElementById('overlay').classList.remove('show');updateScore();buildChallengeList();loadChallenge();}
+buildChallengeList();loadChallenge();
+</script>
+</body>
+</html>

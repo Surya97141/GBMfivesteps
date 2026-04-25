@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror B — Detect Arbitrage</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#faf8f3;--surface:#ffffff;--surface2:#f2efe6;--border:#ddd8ca;--border2:#bfb89f;--ink:#1a1912;--muted:#7a7660;--muted2:#5a5645;--accent:#0a4a2a;--profit:#0a4a2a;--profit-bg:rgba(10,74,42,.09);--profit-b:rgba(10,74,42,.4);--loss:#b81c2a;--loss-bg:rgba(184,28,42,.09);--loss-b:rgba(184,28,42,.4);--gold:#b87a00;--gold-bg:rgba(184,122,0,.1);--gold-b:rgba(184,122,0,.45);--navy:#1a2a5a;--right:#0a4a2a;--wrong:#b81c2a;--code-bg:#f8f7f2;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;height:100vh;display:grid;grid-template-rows:54px 1fr 52px;overflow:hidden;}
+header{padding:0 2rem;border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;background:var(--ink);}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bg);}
+.nav-tabs{display:flex;border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.nav-tab{padding:5px 11px;font-size:.53rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none;border-right:1px solid rgba(255,255,255,.12);transition:all .2s;}
+.nav-tab:last-child{border-right:none;}.nav-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.1);color:#fff;}
+.mode-pill{font-size:.53rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.2);padding:3px 10px;}
+main{display:grid;grid-template-columns:220px 1fr 250px;overflow:hidden;}
+.left-panel{border-right:1px solid var(--border2);padding:1.2rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;background:var(--surface);}
+.panel-label{font-size:.5rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:.3rem;}
+.matrix{border-collapse:collapse;font-size:.62rem;width:100%;}
+.matrix th{padding:4px 6px;background:var(--surface2);border:1px solid var(--border2);font-size:.52rem;color:var(--muted2);}
+.matrix td{padding:4px 6px;border:1px solid var(--border);text-align:center;font-weight:600;transition:all .3s;font-size:.62rem;}
+.matrix td.normal{color:var(--muted2);}.matrix td.neg-w{color:var(--loss);background:var(--loss-bg);}.matrix td.pos-w{color:var(--navy);}.matrix td.hl{background:var(--gold-bg);border-color:var(--gold-b);color:var(--gold);}
+.sb{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.sbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.sbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.sbr:last-child{border-bottom:none;}
+.sk{color:var(--muted2);}.sv{font-weight:600;}.sv.g{color:var(--right);}.sv.r{color:var(--wrong);}.sv.a{color:var(--accent);}.sv.gold{color:var(--gold);}
+.stk{height:3px;background:var(--border);margin-top:3px;overflow:hidden;border-radius:2px;}
+.stf{height:100%;background:var(--accent);transition:width .4s;}
+.code-panel{background:var(--code-bg);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border2);}
+.code-header{padding:.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.code-title2{font-size:.53rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.code-q{font-size:.6rem;color:var(--accent);}
+.code-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+.code-line{display:flex;min-height:21px;transition:background .15s;}
+.ln{width:34px;text-align:right;padding:0 8px;font-size:.6rem;color:var(--border2);flex-shrink:0;line-height:21px;user-select:none;}
+.cc{flex:1;padding:0 12px 0 4px;font-size:.67rem;line-height:21px;white-space:pre;color:var(--muted2);}
+.code-line.al{background:rgba(10,74,42,.07);border-left:3px solid var(--accent);}.code-line.al .ln{color:var(--accent);}.code-line.al .cc{color:var(--ink);}
+.code-line.dok{background:var(--profit-bg);border-left:3px solid var(--profit-b);}
+.code-line.derr{background:var(--loss-bg);border-left:3px solid var(--loss-b);}
+.kw{color:#882200;}.fn{color:var(--accent);}.nm{color:#0044aa;}.cm{color:var(--muted);font-style:italic;}.op{color:#005588;}
+.pz{flex-shrink:0;padding:.75rem 1rem;background:var(--surface2);border-top:1px solid var(--border);}
+.pq{font-size:.7rem;color:var(--ink);margin-bottom:.5rem;line-height:1.55;}.pq strong{color:var(--accent);}
+.popts{display:flex;flex-direction:column;gap:3px;}
+.popt{background:var(--surface);border:1px solid var(--border2);padding:5px 10px;font-size:.67rem;cursor:pointer;transition:all .2s;display:flex;gap:8px;align-items:center;color:var(--muted2);border-radius:2px;}
+.popt:hover{border-color:var(--accent);background:var(--bg);}
+.popt.sr{border-color:var(--profit-b);background:var(--profit-bg);color:var(--profit);}
+.popt.sw{border-color:var(--wrong);background:var(--loss-bg);color:var(--loss);}
+.popt.rv{border-color:var(--profit-b);}
+.popt.dis{cursor:default;opacity:.5;}
+.okey{width:16px;height:16px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.58rem;color:var(--muted);flex-shrink:0;border-radius:2px;}
+.pfb{margin-top:.4rem;font-size:.67rem;padding:.4rem .6rem;line-height:1.5;display:none;border-radius:2px;}
+.pfb.show{display:block;}
+.pfb.ok{background:var(--profit-bg);border:1px solid var(--profit-b);color:var(--profit);}
+.pfb.err{background:var(--loss-bg);border:1px solid var(--loss-b);color:var(--loss);}
+.tbar2{padding:.5rem 1rem;background:var(--surface2);border-top:1px solid var(--border);font-size:.62rem;color:var(--muted);font-style:italic;flex-shrink:0;min-height:40px;transition:color .3s;}
+.tbar2.lit{color:var(--ink);}
+.right-panel{padding:1rem;display:flex;flex-direction:column;gap:.9rem;overflow-y:auto;background:var(--surface);}
+.vb2{border:1px solid var(--border2);overflow:hidden;border-radius:2px;}
+.vbt{padding:4px 8px;background:var(--surface2);font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.vbr{padding:4px 8px;font-size:.65rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.vbr:last-child{border-bottom:none;}
+.vk{color:var(--muted2);}.vv{font-weight:600;font-size:.62rem;}
+.vv.c{color:var(--accent);animation:vc .4s ease;}
+@keyframes vc{0%{background:rgba(10,74,42,.15);}100%{background:transparent;}}
+.hist-log{display:flex;flex-direction:column;gap:2px;max-height:150px;overflow-y:auto;}
+.hi{font-size:.6rem;padding:2px 7px;display:flex;justify-content:space-between;}
+.hi.ok{color:var(--right);}.hi.err{color:var(--wrong);}
+footer{padding:0 2rem;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:7px 18px;border:1px solid var(--border2);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;text-transform:uppercase;text-decoration:none;display:inline-block;border-radius:2px;}
+.btn:hover{background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Algo · Learn</div>
+  <nav class="nav-tabs">
+    <a href="arb_watch.html" class="nav-tab">01 Watch</a>
+    <a href="arb_guide.html" class="nav-tab">02 Guide</a>
+    <a href="arb_cma.html" class="nav-tab">03 Mirror·A</a>
+    <a href="arb_cmb.html" class="nav-tab active">04 Mirror·B</a>
+    <a href="arb_cmc.html" class="nav-tab">05 Mirror·C</a>
+    <a href="arb_solo.html" class="nav-tab">06 Solo</a>
+  </nav>
+  <div class="mode-pill">Detect Arbitrage · Predict</div>
+</header>
+<main>
+  <div class="left-panel">
+    <div class="panel-label">Neg-Log Matrix</div>
+    <table class="matrix" id="matrix"></table>
+    <div class="panel-label">Score</div>
+    <div class="sb">
+      <div class="sbt">Accuracy</div>
+      <div class="sbr"><span class="sk">Correct</span><span class="sv g" id="scC">0</span></div>
+      <div class="sbr"><span class="sk">Wrong</span><span class="sv r" id="scW">0</span></div>
+      <div class="sbr"><span class="sk">Streak</span><span class="sv gold" id="scS">0</span></div>
+      <div class="sbr"><span class="sk">Accuracy</span><span class="sv" id="scA">—</span></div>
+    </div>
+    <div class="stk"><div class="stf" id="sFill" style="width:0%"></div></div>
+    <div class="panel-label">Current Distances</div>
+    <div id="distDisp" style="display:flex;flex-direction:column;gap:3px;"></div>
+  </div>
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-title2">Predict what this line produces</div>
+      <div class="code-q">Q <span id="qN">1</span>/<span id="qT">?</span></div>
+    </div>
+    <div class="code-body" id="codeBody"></div>
+    <div class="pz">
+      <div class="pq" id="pQ">Loading...</div>
+      <div class="popts" id="pOpts"></div>
+      <div class="pfb" id="pFb"></div>
+    </div>
+    <div class="tbar2" id="tBar">Read the highlighted line. What does it produce right now?</div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-label">Variables</div>
+    <div class="vb2">
+      <div class="vbt">Current</div>
+      <div class="vbr"><span class="vk">iteration</span><span class="vv" id="vIter">—</span></div>
+      <div class="vbr"><span class="vk">src currency</span><span class="vv" id="vSrc">—</span></div>
+      <div class="vbr"><span class="vk">dst currency</span><span class="vv" id="vDst">—</span></div>
+      <div class="vbr"><span class="vk">edge weight (-log)</span><span class="vv" id="vW">—</span></div>
+      <div class="vbr"><span class="vk">dist[src]</span><span class="vv" id="vDS">—</span></div>
+      <div class="vbr"><span class="vk">new_dist</span><span class="vv" id="vND">—</span></div>
+    </div>
+    <div class="panel-label">History</div>
+    <div class="hist-log" id="histLog"></div>
+  </div>
+</main>
+<footer>
+  <div style="font-size:.62rem;color:var(--muted);">Best streak: <span id="bestS">0</span></div>
+  <div style="display:flex;gap:.5rem;">
+    <button class="btn" onclick="skipQ()">Skip →</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+    <a href="arb_cmc.html" class="btn btn-accent">→ Write Mode</a>
+  </div>
+</footer>
+<script>
+const RATES=[[1,0.8631,0.5903],[1.1586,1,0.6849],[1.6939,1.46,1]];
+const CURR=['CAD','USD','GBP'];
+const N=3;
+const NEG_LOG=RATES.map(row=>row.map(r=>-Math.log10(r)));
+
+const CODE=[
+  {n:1,t:'<span class="kw">import</span> math',id:'import'},
+  {n:2,t:'<span class="kw">def</span> <span class="fn">detect_arbitrage</span>(exchange_rates):',id:'def'},
+  {n:3,t:'  graph <span class="op">=</span> [[-math.<span class="fn">log10</span>(r) <span class="kw">for</span> r <span class="kw">in</span> row] <span class="kw">for</span> row <span class="kw">in</span> exchange_rates]',id:'neg_log'},
+  {n:4,t:'  <span class="kw">return</span> <span class="fn">found_negative_weight_cycle</span>(graph, <span class="nm">0</span>)',id:'call_bnf'},
+  {n:5,t:'<span class="kw">def</span> <span class="fn">found_negative_weight_cycle</span>(graph, start):',id:'def_bnf'},
+  {n:6,t:'  dist <span class="op">=</span> [<span class="fn">float</span>(<span class="st">\'inf\'</span>)] <span class="op">*</span> n',id:'init_dist'},
+  {n:7,t:'  dist[start] <span class="op">=</span> <span class="nm">0</span>',id:'set_start'},
+  {n:8,t:'  <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(n <span class="op">-</span> <span class="nm">1</span>):',id:'outer_iter'},
+  {n:9,t:'    <span class="kw">if not</span> <span class="fn">relax_edges</span>(graph, dist): <span class="kw">return</span> <span class="kw">False</span>',id:'relax_call'},
+  {n:10,t:'  <span class="kw">return</span> <span class="fn">relax_edges</span>(graph, dist)  <span class="cm"># Nth check</span>',id:'final_check'},
+  {n:11,t:'<span class="kw">def</span> <span class="fn">relax_edges</span>(graph, dist):',id:'def_relax'},
+  {n:12,t:'  updated <span class="op">=</span> <span class="kw">False</span>',id:'init_upd'},
+  {n:13,t:'  <span class="kw">for</span> src, edges <span class="kw">in</span> <span class="fn">enumerate</span>(graph):',id:'for_src'},
+  {n:14,t:'    <span class="kw">for</span> dst, w <span class="kw">in</span> <span class="fn">enumerate</span>(edges):',id:'for_dst'},
+  {n:15,t:'      new_d <span class="op">=</span> dist[src] <span class="op">+</span> w',id:'calc_new'},
+  {n:16,t:'      <span class="kw">if</span> new_d <span class="op"><</span> dist[dst]:',id:'check_shorter'},
+  {n:17,t:'        updated <span class="op">=</span> <span class="kw">True</span>; dist[dst] <span class="op">=</span> new_d',id:'update_dist'},
+  {n:18,t:'  <span class="kw">return</span> updated',id:'ret_upd'},
+];
+
+const QUESTIONS=[
+  {line:'neg_log',mkQ:(s)=>({
+    q:`Line 3: <strong>-math.log10(rate)</strong> — rate CAD→USD = 0.8631. What is -log₁₀(0.8631)?`,
+    opts:[
+      {t:`+0.0639 (positive — rate < 1 means "loss" edge)`,correct:true},
+      {t:`-0.0639 (negative)`,correct:false},
+      {t:`0.8631 (unchanged)`,correct:false},
+    ],
+    ex:`-log₁₀(0.8631) ≈ +0.0639. Rates < 1 become positive (loss). Rates > 1 become negative (gain). A negative weight cycle in the transformed graph = product > 1 in original = ARBITRAGE.`,
+    quote:'"We convert all of the exchange rates into their negative logarithm. Now a negative weight cycle means we found an arbitrage because log(a·b) = log(a) + log(b) — multiplication becomes addition."'
+  })},
+  {line:'set_start',mkQ:(s)=>({
+    q:`Line 7: <strong>dist[start] = 0</strong>. Why set the start node distance to 0?`,
+    opts:[
+      {t:`We are already at the start node — cost to reach it is zero`,correct:true},
+      {t:`Zero means it's the most profitable node`,correct:false},
+      {t:`All distances must start at zero`,correct:false},
+    ],
+    ex:`dist[start] = 0 means we begin here with no cost. All others are ∞ (unreachable). Bellman-Ford propagates shortest paths outward from this source.`,
+    quote:'"We update the distance to the start node to be equal to zero — at the very beginning of our program, we are already at the start vertex."'
+  })},
+  {line:'check_shorter',mkQ:(s)=>({
+    q:`Line 16: <strong>if new_d < dist[dst]</strong> — new_d=${s.newD?.toFixed(4)||'?'}, dist[dst]=${s.distDst?.toFixed(4)||'?'}. Update?`,
+    opts:[
+      {t:`${s.shouldUpdate?'YES — shorter path found, update dist[dst]':'NO — current path is already shorter'}`,correct:true},
+      {t:`${s.shouldUpdate?'NO — never update':'YES — always update'}`,correct:false},
+      {t:`Only update if the edge weight is negative`,correct:false},
+    ],
+    ex:s.shouldUpdate?`${s.newD?.toFixed(4)} < ${s.distDst?.toFixed(4)} → YES. We found a shorter path to ${s.dst||'dst'}. Update dist[${s.dst||'dst'}] = ${s.newD?.toFixed(4)}.`:`${s.newD?.toFixed(4)} ≥ ${s.distDst?.toFixed(4)} → NO. The current distance to ${s.dst||'dst'} is already optimal.`,
+    quote:'"For every single edge we are seeing if by taking that edge from the source vertex leads us to a shorter distance to the destination than we had currently found."'
+  })},
+  {line:'final_check',mkQ:(s)=>({
+    q:`Line 10: <strong>return relax_edges(graph, dist)</strong> — This is the Nth (extra) iteration. What does it detect?`,
+    opts:[
+      {t:`If ANY distance still decreases → negative weight cycle → ARBITRAGE exists`,correct:true},
+      {t:`The final shortest path to all nodes`,correct:false},
+      {t:`Whether all nodes have been visited`,correct:false},
+    ],
+    ex:`Bellman-Ford guarantees shortest paths in N-1 iterations. If distances STILL decrease in the Nth iteration, they can only be caused by a negative weight cycle — which is our arbitrage signal.`,
+    quote:'"If we find a shorter distance after we\'ve already performed the N-1 steps, there must be a negative weight cycle — because the Bellman Ford algorithm is guaranteed to find the shortest path in N-1 steps."'
+  })},
+  {line:'ret_upd',mkQ:(s)=>({
+    q:`Line 18: <strong>return updated</strong> — updated=${String(s.upd)}. What does this tell the caller?`,
+    opts:[
+      {t:`${s.upd?'TRUE → at least one distance improved this pass — could be a negative cycle':'FALSE → no distances improved — no negative cycle possible'}`,correct:true},
+      {t:`Whether the algorithm is complete`,correct:false},
+      {t:`The total number of edges relaxed`,correct:false},
+    ],
+    ex:s.upd?`updated=True means distances still decreased. The final call (Nth iteration) returning True means a negative weight cycle exists → ARBITRAGE!`:`updated=False means no distances improved. Either we found optimal paths already (early termination) or no negative cycle exists.`,
+    quote:'"At the very bottom here, I just return updated. This tells us if we made any updates to our distances array during this loop or during this step."'
+  })},
+];
+
+function buildNegLogMatrix(hlSrc,hlDst){
+  const tbl=document.getElementById('matrix');tbl.innerHTML='';
+  const hr=document.createElement('tr');const hth=document.createElement('th');hth.textContent='';hr.appendChild(hth);
+  CURR.forEach(c=>{const th=document.createElement('th');th.textContent=c;hr.appendChild(th);});
+  tbl.appendChild(hr);
+  NEG_LOG.forEach((row,i)=>{
+    const tr=document.createElement('tr');const th=document.createElement('th');th.textContent=CURR[i];tr.appendChild(th);
+    row.forEach((w,j)=>{
+      const td=document.createElement('td');td.textContent=w.toFixed(4);
+      const isHl=i===hlSrc&&j===hlDst;
+      td.className=isHl?'hl':w<0?'neg-w':i!==j?'pos-w':'normal';
+      tr.appendChild(td);
+    });
+    tbl.appendChild(tr);
+  });
+}
+
+function computePredSteps(){
+  const steps=[];
+  const dist=new Array(N).fill(Infinity);dist[0]=0;
+  function push(line,src,dst,w,iter){
+    const newD=src!==null&&dist[src]!==Infinity?dist[src]+w:null;
+    const distDstCurr=dst!==null?dist[dst]:null;
+    const shouldUpdate=newD!==null&&distDstCurr!==null&&newD<distDstCurr;
+    const upd=line==='ret_upd'?iter%2===0:null; // simplified
+    steps.push({line,src:src!==null?CURR[src]:null,dst:dst!==null?CURR[dst]:null,w,iter,newD,distDst:distDstCurr,shouldUpdate,dist:[...dist],upd});
+    if(shouldUpdate&&line==='check_shorter')dist[dst]=newD;
+  }
+  // Simulate key steps
+  push('neg_log',null,null,null,0);
+  push('set_start',null,null,null,0);
+  push('outer_iter',null,null,null,0);
+  // A few relax steps
+  push('check_shorter',0,1,NEG_LOG[0][1],0);
+  push('check_shorter',0,2,NEG_LOG[0][2],0);
+  push('check_shorter',1,0,NEG_LOG[1][0],0);
+  push('check_shorter',1,2,NEG_LOG[1][2],0);
+  push('ret_upd',null,null,null,0);
+  push('outer_iter',null,null,null,1);
+  push('check_shorter',2,0,NEG_LOG[2][0],1);
+  push('check_shorter',2,1,NEG_LOG[2][1],1);
+  push('ret_upd',null,null,null,1);
+  push('final_check',null,null,null,2);
+  push('ret_upd',null,null,null,2);
+  return steps;
+}
+
+const QLINES=new Set(QUESTIONS.map(q=>q.line));
+const ALL_STEPS=computePredSteps();
+const PRED_STEPS=ALL_STEPS.filter(s=>QLINES.has(s.line));
+let cur=0,answered=false,correct=0,wrong=0,streak=0,bestStreak=0,history=[];
+
+function buildCode(){const cb=document.getElementById('codeBody');cb.innerHTML='';CODE.forEach(l=>{const d=document.createElement('div');d.className='code-line';d.id=`line-${l.id}`;d.innerHTML=`<span class="ln">${l.n||''}</span><span class="cc">${l.t}</span>`;cb.appendChild(d);});document.getElementById('qT').textContent=PRED_STEPS.length;}
+
+function buildDistDisp(dist){
+  const el=document.getElementById('distDisp');el.innerHTML='';
+  dist.forEach((d,i)=>{
+    const row=document.createElement('div');row.style.cssText='padding:3px 7px;border:1px solid;border-radius:2px;font-size:.63rem;font-weight:600;margin-bottom:2px;display:flex;justify-content:space-between;';
+    const isInf=d===Infinity,isNeg=d<0;
+    row.style.borderColor=isInf?'var(--border2)':isNeg?'var(--loss-b)':'var(--profit-b)';
+    row.style.background=isInf?'transparent':isNeg?'var(--loss-bg)':'var(--profit-bg)';
+    row.style.color=isInf?'var(--muted)':isNeg?'var(--loss)':'var(--profit)';
+    const k=document.createElement('span');k.textContent=CURR[i]+':';
+    const v=document.createElement('span');v.textContent=isInf?'∞':d.toFixed(6);
+    row.appendChild(k);row.appendChild(v);el.appendChild(row);
+  });
+}
+
+function setV(id,val){const el=document.getElementById(id);if(!el)return;const p=el.textContent;el.textContent=String(val);if(p!==String(val)){el.className='vv c';setTimeout(()=>el.className='vv',600);}}
+
+function renderQ(){
+  if(cur>=PRED_STEPS.length){showComplete();return;}
+  const s=PRED_STEPS[cur];answered=false;
+  document.querySelectorAll('.code-line').forEach(el=>el.classList.remove('al','dok','derr'));
+  const lel=document.getElementById(`line-${s.line}`);if(lel){lel.classList.add('al');lel.scrollIntoView({block:'center',behavior:'smooth'});}
+  buildNegLogMatrix(s.src!==null?CURR.indexOf(s.src):-1,s.dst!==null?CURR.indexOf(s.dst):-1);
+  buildDistDisp(s.dist);
+  setV('vIter',s.iter!==null?s.iter:'—');setV('vSrc',s.src||'—');setV('vDst',s.dst||'—');
+  setV('vW',s.w!==null?s.w.toFixed(4):'—');setV('vDS',s.dist[s.src!==null?CURR.indexOf(s.src):0]===Infinity?'∞':s.dist[s.src!==null?CURR.indexOf(s.src):0]?.toFixed(4)||'—');setV('vND',s.newD!==null?s.newD.toFixed(4):'—');
+  document.getElementById('qN').textContent=cur+1;
+  const qDef=QUESTIONS.find(q=>q.line===s.line);if(!qDef){skipQ();return;}
+  const qData=qDef.mkQ(s);
+  document.getElementById('pQ').innerHTML=qData.q;
+  const opts=[...qData.opts];for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
+  const oc=document.getElementById('pOpts');oc.innerHTML='';
+  ['A','B','C'].forEach((k,i)=>{const btn=document.createElement('div');btn.className='popt';btn.innerHTML=`<span class="okey">${k}</span>${opts[i].t}`;btn.onclick=()=>select(btn,opts[i].correct,qData,opts,oc);oc.appendChild(btn);});
+  document.getElementById('pFb').className='pfb';document.getElementById('tBar').textContent='Read the highlighted line. What does it produce right now?';document.getElementById('tBar').className='tbar2';
+}
+
+function select(btn,isOk,qData,opts,container){
+  if(answered)return;answered=true;
+  container.querySelectorAll('.popt').forEach(b=>b.classList.add('dis'));
+  const fb=document.getElementById('pFb');const lel=document.getElementById(`line-${PRED_STEPS[cur].line}`);
+  if(isOk){btn.classList.add('sr');correct++;streak++;if(streak>bestStreak)bestStreak=streak;fb.textContent='✓ '+qData.ex;fb.className='pfb show ok';if(lel)lel.classList.add('dok');history.push({ok:true,q:qData.q.replace(/<[^>]+>/g,'').slice(0,40)});}
+  else{btn.classList.add('sw');opts.forEach((o,i)=>{if(o.correct)container.querySelectorAll('.popt')[i].classList.add('rv');});wrong++;streak=0;fb.textContent='✗ '+qData.ex;fb.className='pfb show err';if(lel)lel.classList.add('derr');history.push({ok:false,q:qData.q.replace(/<[^>]+>/g,'').slice(0,40)});}
+  document.getElementById('tBar').textContent=qData.quote;document.getElementById('tBar').className='tbar2 lit';
+  const hl=document.getElementById('histLog');const item=document.createElement('div');item.className=`hi ${isOk?'ok':'err'}`;item.innerHTML=`<span>${isOk?'✓':'✗'}</span><span style="font-size:.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px;">${history[history.length-1].q}</span>`;hl.appendChild(item);hl.scrollTop=hl.scrollHeight;
+  document.getElementById('scC').textContent=correct;document.getElementById('scW').textContent=wrong;document.getElementById('scS').textContent=streak;document.getElementById('bestS').textContent=bestStreak;const tot=correct+wrong;document.getElementById('scA').textContent=tot?Math.round(correct/tot*100)+'%':'—';document.getElementById('sFill').style.width=Math.min(streak*15,100)+'%';
+  setTimeout(()=>{cur++;renderQ();},isOk?1000:2300);
+}
+function skipQ(){cur++;renderQ();}
+function showComplete(){document.getElementById('pQ').innerHTML=`<strong>All done!</strong> Accuracy: ${Math.round(correct/(correct+wrong||1)*100)}%`;document.getElementById('pOpts').innerHTML=`<a href="arb_cmc.html" style="display:inline-block;margin-top:.5rem;padding:8px 20px;background:var(--accent);color:#fff;font-size:.7rem;text-decoration:none;font-weight:600;border-radius:2px;">→ Write Mode</a>`;}
+function resetAll(){cur=0;correct=0;wrong=0;streak=0;bestStreak=0;history=[];answered=false;document.getElementById('histLog').innerHTML='';document.getElementById('scC').textContent=0;document.getElementById('scW').textContent=0;document.getElementById('scS').textContent=0;document.getElementById('scA').textContent='—';document.getElementById('sFill').style.width='0%';buildCode();renderQ();}
+buildCode();renderQ();
+</script>
+</body>
+</html>
